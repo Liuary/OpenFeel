@@ -17,12 +17,13 @@ import {
   lintRequirementBodies,
   lintStageDocs,
 } from '../../../src/core/plan/body-lint.js';
-
-/** 写实正文（非空白字符数远超 MIN_FILLED_CHARS=40） */
-const FILLED_TEXT =
-  '本段是写实内容，说明问题现状、交付物与边界，并给出可复现的验收路径，足以支撑审查判断。';
-/** 写实判据行（`## 目标与验收` 额外要求至少一条） */
-const CRITERIA_LINE = '- A1：空壳清单可枚举且不改变 lint 退出码。';
+// v1.7.0 / REQ-065 A65.1：写实样本一律来自共享夹具工厂（与 dsh/test/verify.js 同一份导出）
+import {
+  makeFilledRequirement,
+  makeOverview,
+  makeRequirementPlan,
+  makeStagePlan,
+} from '../../fixtures/requirements.js';
 
 /** 空壳需求正文（骨架形态） */
 function shellBody(id: string, eol = '\n'): string {
@@ -44,53 +45,21 @@ function shellBody(id: string, eol = '\n'): string {
   ].join(eol);
 }
 
-/** 写实需求正文 */
+/**
+ * 写实需求正文（共享工厂产出；CRLF 变体只做行尾替换——判据与 LF 同口径由 filled.ts 单点决定）
+ */
 function filledBody(id: string, eol = '\n'): string {
-  return [
-    `# ${id}：写实需求`,
-    '',
-    '## 摘要',
-    '',
-    FILLED_TEXT,
-    '',
-    '## 目标与验收',
-    '',
-    CRITERIA_LINE,
-    '- A2：正文写实后不再出现在 fill.emptyBody。',
-    '',
-  ].join(eol);
+  return makeFilledRequirement(id, '写实需求').replace(/\n/g, eol);
 }
 
-/** 写实需求级计划（三节均过阈值；`## 偏差与回写` 不在本模块判据内） */
+/** 写实需求级计划（共享工厂产出；三节均过阈值） */
 function filledRequirementPlan(): string {
-  return [
-    '## 目标',
-    '',
-    '把空壳检测做成只读清单，判据全部复用 filled.ts，避免第二套占位规则导致的误报与漂移。',
-    '',
-    '## 任务拆解',
-    '',
-    '先遍历需求正文与计划路径，再扫阶段目录，最后接进 lint req 与 lint fill 两个出口。',
-    '',
-    '## 验收判据',
-    '',
-    '单测覆盖空壳 / 写实 / 缺计划 / CRLF / 空目录五类夹具，并且同一夹具连续两次扫描的输出逐字相同，确保清单可被审查者复现。',
-    '',
-  ].join('\n');
+  return makeRequirementPlan('REQ-002', '写实需求');
 }
 
-/** 写实 overview（`## 目标` + `## 操作方案`） */
+/** 写实 overview（共享工厂产出：`## 目标` + `## 操作方案`） */
 function filledOverview(): string {
-  return [
-    '## 目标',
-    '',
-    '让阶段目标与操作方案都可被机器读取，并在派发子 agent 之前提供可判定的上下文与边界，避免空壳目标误导执行方向。',
-    '',
-    '## 操作方案',
-    '',
-    '先补目标与操作方案两节的实质内容，再以 lint 的空壳清单为证据逐条收口，最后由独立审查者复核判据。',
-    '',
-  ].join('\n');
+  return makeOverview();
 }
 
 /** 空壳 overview（两节都是占位） */
@@ -107,20 +76,9 @@ function shellOverview(): string {
   ].join('\n');
 }
 
-/** 写实阶段计划（标题行不计入信息量，正文非空白 ≥ 2×40） */
+/** 写实阶段计划（共享工厂产出；标题行不计入信息量，正文非空白 ≥ 2×40） */
 function filledStagePlan(): string {
-  return [
-    '# 计划',
-    '',
-    '## 一、目标',
-    '',
-    '把正文写入、计划门与空壳枚举收敛到同一判据来源，确保没有第二套占位或字数规则在仓库里漂移。',
-    '',
-    '## 二、拆解',
-    '',
-    '先落判据模块，再做写入原语与空壳清单，最后接门禁与 lint，并用命令级样本逐条取证。',
-    '',
-  ].join('\n');
+  return makeStagePlan('stage-plan');
 }
 
 /** 空壳阶段计划（只剩标题 + 占位行） */

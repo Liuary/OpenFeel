@@ -14,6 +14,7 @@ import { AUTO_DONE_PRECONDITION, syncRequirementStatus } from '../../src/core/re
 import { REQ_STATUSES, type RequirementData, type RequirementStatus } from '../../src/core/req/types.js';
 import { resetSessionCache } from '../../src/core/session.js';
 import { parseStageId } from '../../src/core/plan/path.js';
+import { buildGateOverrideAudit, createGateOverride } from '../../src/core/flow/gate-override.js';
 
 // mock homedir：隔离全局画像读写（stage-42 op-001/op-002），避免污染真实用户主目录
 // 沿用 test/core/config.test.ts 的既有惯例（vi.hoisted + importOriginal 保留其余 os 导出）
@@ -7005,6 +7006,202 @@ describe('T5 阶段计划门（REQ-056）', () => {
     expect(en.length).toBe(2);
     expect(/[\u4e00-\u9fff]/.test(en.join(''))).toBe(false);
     expect(en.join('')).toContain('--force');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.7.0 / REQ-062 A62.2—A62.4：统一 GateOverride 审计 schema
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('GateOverride 统一审计（REQ-062）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-gate-override-'));
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', GOLDEN_SESSION_ID);
+    resetSessionCache();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetSessionCache();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function stageFixture(overrides: Partial<StageData> = {}): StageData {
+    return {
+      name: '阶段', phase: 'scheme_passed' as PipelinePhase, status: 'planned', deps: [], ops: {},
+      ...overrides,
+    };
+  }
+
+  function reqFixture(id: string, status: RequirementStatus, extra: Partial<RequirementData> = {}): RequirementData {
+    return { id, title: id, status, created_at: '', updated_at: '', ...extra };
+  }
+
+  function mgrWith(stages: Record<string, StageData>, requirements?: RequirementData[]): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData({
+      stages,
+      ...(requirements === undefined ? {} : { requirements }),
+    }));
+    return mgr;
+  }
+
+  function writeUnder(rel: string, content: string): string {
+    const abs = join(tmpDir, '.openfeel', ...rel.split('/'));
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, content, 'utf-8');
+    return abs;
+  }
+
+  const FILLED_STAGE_PLAN = [
+    '# 阶段计划',
+    '',
+    '## 一、目标',
+    '把留痕放行收敛到唯一审计构造点，拒绝路径零写盘零审计，放行路径写同一键集（含 from/to）。',
+    '## 二、任务拆解',
+    '先补 helper 与归一函数，再接线 advance/reset 两处写入口，最后镜像命令层并补测试。',
+  ].join('\n');
+
+  const FILLED_REQ_PLAN = [
+    '## 目标',
+    '让进入执行阶段前的需求计划具备机器可校验的存在性与写实性判据，避免只有标题或占位行的空壳计划通过门禁。',
+    '## 任务拆解',
+    '- 新增全局固定的计划路径求解函数，并在核心层插入进入 exec_running 的门禁与留痕审计，禁止第二份占位规则。',
+    '## 验收判据',
+    '- A4：阶段或需求计划缺失时 exit 1 且 flow.json revision 不变。',
+  ].join('\n');
+
+  const AUDIT_KEYS = ['at', 'by', 'from', 'gate_overrides', 'reason', 'to'];
+
+  it('GateOverride A62.4：buildGateOverrideAudit 两态（有 missing / 无 missing 的键集）', () => {
+    const base = createGateOverride({ gates: ['plan'], reason: '紧急修复', by: 'cli', from: 'scheme_passed', to: 'exec_running' });
+    const withMissing = buildGateOverrideAudit(base, { stagePlanMissing: true });
+    expect(Object.keys(withMissing).sort()).toEqual([...AUDIT_KEYS, 'gate_missing'].sort());
+    expect(withMissing.gate_overrides).toEqual(['plan']);
+    expect(withMissing.reason).toBe('紧急修复');
+    expect(withMissing.by).toBe('cli');
+    expect(withMissing.from).toBe('scheme_passed');
+    expect(withMissing.to).toBe('exec_running');
+
+    const withoutMissing = buildGateOverrideAudit(base);
+    expect(Object.keys(withoutMissing).sort()).toEqual([...AUDIT_KEYS].sort());
+  });
+
+  it('GateOverride A62.2：advance 门放行 → detail 含 gate_overrides+缺项+by+reason+from+to+at（from/to 非空）', () => {
+    writeUnder('plan/reqs/REQ-001.plan.md', FILLED_REQ_PLAN);
+    const mgr = mgrWith({
+      'stage-01': stageFixture({ requirements: [{ id: 'REQ-001' }] }),
+    }, [reqFixture('REQ-001', 'in_progress')]);
+
+    const result = mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli', {
+      gateOverride: {
+        gates: [],
+        reason: '紧急修复',
+        by: 'cli',
+        from: '',
+        to: 'exec_running',
+        at: '2026-11-24T00:00:00.000Z',
+      },
+    });
+    expect(result).toBe(false);
+
+    const detail = mgr.getData()!.log.at(-1)!.detail as Record<string, unknown>;
+    expect(detail.gate_overrides).toEqual(['plan']);
+    expect(detail.gate_missing).toMatchObject({ stagePlanMissing: true });
+    expect(detail.by).toBe('cli');
+    expect(detail.reason).toBe('紧急修复');
+    expect(detail.from).toBe('scheme_passed');    // 调用方留空 → 核心层按实际转换补全
+    expect(detail.to).toBe('exec_running');
+    expect(detail.at).toBe('2026-11-24T00:00:00.000Z');
+    expect(Object.keys(detail).filter((k) => AUDIT_KEYS.concat('gate_missing').includes(k)).sort())
+      .toEqual([...AUDIT_KEYS, 'gate_missing'].sort());
+  });
+
+  it('GateOverride A62.3：reset 门放行 → 与 advance 同一键集（resetStagePhaseAudit：放行必有 override 条目）', () => {
+    const mgr = mgrWith({ 'stage-01': stageFixture() });
+    const res = mgr.resetStagePhase('stage-01', 'exec_running', {
+      gateOverride: createGateOverride({ reason: '人工复核后放行', by: 'cli', from: 'scheme_passed' }),
+    });
+    expect(res.changed).toBe(true);
+
+    const detail = mgr.getData()!.log.at(-1)!.detail as Record<string, unknown>;
+    expect(detail.gate_overrides).toEqual(['plan']);
+    expect(detail.gate_missing).toMatchObject({ stagePlanMissing: true });
+    expect(detail.by).toBe('cli');
+    expect(detail.reason).toBe('人工复核后放行');
+    expect(detail.from).toBe('scheme_passed');
+    expect(detail.to).toBe('exec_running');
+    expect(typeof detail.at).toBe('string');
+    expect(Date.parse(String(detail.at))).not.toBeNaN();
+  });
+
+  it('A62.2 两类入口（advance / reset）平铺审计键集逐字相同（含 from/to/at）', () => {
+    writeUnder('plan/reqs/REQ-001.plan.md', FILLED_REQ_PLAN);
+    const mgr = mgrWith(
+      { 'stage-01': stageFixture({ requirements: [{ id: 'REQ-001' }] }), 'stage-02': stageFixture() },
+      [reqFixture('REQ-001', 'in_progress')],
+    );
+
+    mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli', {
+      gateOverride: createGateOverride({ reason: '紧急修复', by: 'cli', to: 'exec_running' }),
+    });
+    const advanceDetail = mgr.getData()!.log.at(-1)!.detail as Record<string, unknown>;
+
+    mgr.resetStagePhase('stage-02', 'exec_running', {
+      gateOverride: createGateOverride({ reason: '人工复核后放行', by: 'cli', from: 'scheme_passed' }),
+    });
+    const resetDetail = mgr.getData()!.log.at(-1)!.detail as Record<string, unknown>;
+
+    // 两个写入口的平铺键集必须与 A62.2 的键集逐字相同（gate_missing 为条件键）
+    for (const detail of [advanceDetail, resetDetail]) {
+      for (const key of AUDIT_KEYS) {
+        expect(detail).toHaveProperty(key);
+      }
+      expect(Object.keys(detail).filter((key) => AUDIT_KEYS.includes(key)).sort())
+        .toEqual([...AUDIT_KEYS].sort());
+      expect(detail.gate_overrides).toEqual(['plan']);
+      expect(detail.gate_missing).toMatchObject({ stagePlanMissing: true });
+      expect(detail.from).toBe('scheme_passed');
+      expect(detail.to).toBe('exec_running');
+      expect(typeof detail.at).toBe('string');
+      expect(Number.isNaN(Date.parse(String(detail.at)))).toBe(false);
+    }
+    // reason / by 由各自入口的调用方提供，但键位一致
+    expect(advanceDetail.reason).toBe('紧急修复');
+    expect(resetDetail.reason).toBe('人工复核后放行');
+    expect(advanceDetail.by).toBe('cli');
+    expect(resetDetail.by).toBe('cli');
+  });
+
+  it('GateOverride：兼容别名 allowGateOverride 归一到同一键集（缺省 reason=manual）', () => {
+    const mgr = mgrWith({ 'stage-01': stageFixture() });
+    mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli', { allowGateOverride: true });
+    const detail = mgr.getData()!.log.at(-1)!.detail as Record<string, unknown>;
+    expect(detail.gate_overrides).toEqual(['plan']);
+    expect(detail.reason).toBe('manual');
+    expect(detail.by).toBe('cli');
+    expect(detail.from).toBe('scheme_passed');
+  });
+
+  it('GateOverride：门正常通过（无 missing）→ 即使传 override 也零审计键；拒绝路径零写盘零审计', () => {
+    // ① 无 missing：计划齐全 → 门正常通过，不写任何 override 审计键
+    writeUnder('plan/v1/stage-01/plan.md', FILLED_STAGE_PLAN);
+    const clean = mgrWith({ 'stage-01': stageFixture() });
+    clean.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli', {
+      gateOverride: createGateOverride({ reason: 'x', by: 'cli' }),
+    });
+    const cleanDetail = clean.getData()!.log.at(-1)!.detail;
+    expect(cleanDetail).not.toHaveProperty('gate_overrides');
+    expect(cleanDetail).not.toHaveProperty('by');
+    expect(cleanDetail).not.toHaveProperty('reason');
+
+    // ② 拒绝：无 override → reset 拒绝、phase 不变、零审计（放行 ⇒ 才有 override 条目）
+    //    用另一个阶段（stage-02）避免命中上面已写实的 stage-01 计划
+    const refuse = mgrWith({ 'stage-02': stageFixture() });
+    expect(() => refuse.resetStagePhase('stage-02', 'exec_running')).toThrow(/阶段计划/);
+    expect(refuse.getData()!.log).toHaveLength(0);
   });
 });
 

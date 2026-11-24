@@ -247,10 +247,12 @@ export function updateRequirementBody(
   const raw = options.text !== undefined
     ? options.text
     : (options.file !== undefined ? readBodyTextFile(projectPath, options.file) : '');
-  const body = raw.trim();
-  if (body === '') {
+  // v1.7.0 / REQ-064 A64.4：**只拒绝全空白，不做首尾裁剪** —— 输入原样落盘
+  // （保留首尾空行、缩进、`###` 子标题、行首列表符、`---` 与 CRLF；`lines` 与正文同源）。
+  if (raw.trim() === '') {
     throw new RequirementBodyUpdateError('empty_text', 'Section body is empty');
   }
+  const body = raw;
 
   const filePath = getRequirementBodyPath(projectPath, req.id);
   mkdirSync(getRequirementsDir(projectPath), { recursive: true });
@@ -268,6 +270,79 @@ export function updateRequirementBody(
     lines: body.split(/\r?\n/).length,
     created: updated.created,
   };
+}
+
+/** {@link importRequirementBodySections} 单节结果 */
+export interface ImportedBodySection {
+  /** 小节名（原文标题） */
+  name: string;
+  /** 是否新建了小节 */
+  created: boolean;
+  /** 写入正文行数 */
+  lines: number;
+}
+
+/** {@link importRequirementBodySections} 结果 */
+export interface ImportRequirementBodyResult {
+  /** 正文相对路径（POSIX） */
+  path: string;
+  /** 实际写入的小节（按 `##` 出现序） */
+  sections: ImportedBodySection[];
+  /** 被跳过的小节名（元信息受保护 / 空正文 / 名称非法）——由命令层报告，不静默 */
+  skipped: string[];
+}
+
+/** {@link importRequirementBodySections} 选项 */
+export interface ImportRequirementBodyOptions {
+  /** 完整 Markdown 文件（相对路径按 projectPath 解析） */
+  file: string;
+  /** 变更记录署名（缺省 `cli`） */
+  by?: string;
+  /** 变更记录时间（ISO 8601；缺省当前时间） */
+  now?: string;
+}
+
+/**
+ * `req body --from` 的**唯一实现**：把整份 Markdown 按 `##` 分节后逐节写入。
+ *
+ * - 分节规则复用 {@link parseBodySections}（`###` 及更深标题属于小节正文，不切节）；
+ * - 元信息小节（{@link PROTECTED_BODY_SECTIONS}）**跳过并报告**（进 `skipped`，零写入）；
+ * - 空正文小节同样跳过（避免用空白冲掉既有正文）；
+ * - 每个实际写入的小节各追加一条 `## 变更记录`（复用 {@link updateRequirementBody}，一次调用算一条）；
+ * - 文件不可读 / 无 `##` 小节 → `invalid_field`（**在任何写盘之前抛出**，零写盘）。
+ */
+export function importRequirementBodySections(
+  projectPath: string,
+  req: RequirementData,
+  options: ImportRequirementBodyOptions,
+): ImportRequirementBodyResult {
+  const content = readBodyTextFile(projectPath, options.file);
+  const parsed = parseBodySections(content);
+  if (parsed.length === 0) {
+    throw new RequirementBodyUpdateError(
+      'invalid_field',
+      `No "## " sections found in body file: ${options.file}`,
+    );
+  }
+  const sections: ImportedBodySection[] = [];
+  const skipped: string[] = [];
+  for (const section of parsed) {
+    if (isProtectedBodySection(section.name) || !isValidSectionName(section.name) || section.body === '') {
+      skipped.push(section.name);
+      continue;
+    }
+    const result = updateRequirementBody(projectPath, req, {
+      section: section.name,
+      text: section.body,
+      append: false,
+      replace: true,
+      createSectionIfMissing: true,
+      by: options.by,
+      now: options.now,
+    });
+    sections.push({ name: result.section, created: result.created, lines: result.lines });
+  }
+  return { path: getRequirementBodyRelPath(req.id), sections, skipped };
 }
 
 /** 需求正文目录：{projectPath}/.openfeel/requirements（**不纳入 WORKSPACE_DIRS**，按需 mkdir 幂等创建——与归档目录同口径） */

@@ -60,7 +60,7 @@ describe('lint req core：命令树构建', () => {
     expect(tree[0].argCount).toBe(0);
   });
 
-  it('T2：守卫 —— 生产树根命令恰 20 项，lint 组含 req/fill，且带参节点元数据真实存在', () => {
+  it('T2：守卫 —— 生产树根命令恰 20 项，lint 组含 req/fill/adherence，且带参节点元数据真实存在', () => {
     const roots = TREE.map((n) => n.name).sort();
     expect(roots).toEqual([
       'archive', 'chore', 'config', 'dashboard', 'dev', 'flow', 'init', 'instructions', 'knowledge',
@@ -70,7 +70,8 @@ describe('lint req core：命令树构建', () => {
     const lintNode = TREE.find((n) => n.name === 'lint');
     expect(lintNode).toBeDefined();
     // ★ v1.6.0-stage-132 / T3：新增 `lint fill`（空壳清单，advisory）；注册序追加在末尾
-    expect(lintNode!.children.map((n) => n.name)).toEqual(['i18n', 'kb', 'req', 'fill']);
+    // ★ v1.7.0 / REQ-066 A66.3：新增 `lint adherence`（遵守率四指标；注册序追加在 fill 之后）
+    expect(lintNode!.children.map((n) => n.name)).toEqual(['i18n', 'kb', 'req', 'fill', 'adherence']);
     // REV-020：`archive <stage>` / `knowledge search <query>` 声明了位置参数
     expect(TREE.find((n) => n.name === 'archive')!.argCount).toBeGreaterThan(0);
     const knowledge = TREE.find((n) => n.name === 'knowledge')!;

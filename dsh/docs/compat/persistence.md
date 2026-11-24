@@ -1024,3 +1024,16 @@ Top-level keys in order: `meta, pipeline, stages, reviews, log` (no `requirement
 4. **新增持久面：需求级计划** `.openfeel/plan/reqs/REQ-NNN.plan.md`（全局固定，不随阶段/版本漂移；`mkdir` 幂等）；`requirements[*].plan = {path, sha256(前 12 位), recorded_at, deviations?}` 在阶段计划门通过时盖章。
 5. **新增可选需求字段**：`body_waiver` / `plan_waiver`（`{at, by, reason, gate}`）与 `plan`；旧数据缺省即未 waiver / 未盖章（读侧宽容）。
 6. **既有持久面零改动**：`flow.json` 的 revision / `.bak` / 锁顺序、`sessions.json` / `.preflight.json` / `guard-state.json` / `.sync.json` 的格式与写入时机均不变（`dispatch.jsonl` 是新文件，不参与 `flow.json` 事务）。
+
+---
+
+## v1.7.0 增量（现行契约；以上 v1.6.0 段保持冻结）
+
+> 实现锚点：`dsh/lib/adapters/dispatch-ledger.js`、`dsh/lib/guard.js`、`dsh/lib/adapters/adherence.js`、`src/core/adherence.ts`、`src/core/req/plan-file.ts`。
+
+1. **派发台账 schema v2（REQ-066）**：v1.6.0 十三键零改动；闭环追加**可选** `closing{status:'done'|'failed', artifacts[], durationMs, summary}`（恰 4 键固定序）与**行顶层** `closedAt`。按 `dispatchId` 原地补写（行数 / 行序 / 其余行字节不变），重复 finish 内容相同 → `changed:false`（`ts`/`closing`/`closedAt` 不二次改写）；未知 id 零写盘。旧行缺 `closing` 视为未闭环。`feel_status.dispatch` = `{required,total,sincePhase,open[],closedRatio,missingRoles,records[]}`；`closedRatio` = `done` 条数 / `total`（空台账 `null`）；`missingRoles` 只按 `closing.status==='done'` 判定。
+2. **guard 审计字段扩展（REQ-066 / REQ-067）**：写类决策可携带 `origin`（`root|subagent|delegated`，缺失 = `unknown`，参与 `main_write_ratio` 分母并标注）；wrapper 不可判定行写 `kind:'undecidable'` + `detail:{wrapper, scriptPath, reason}`；wrapper 命中写 `detail.{wrapper,scriptPath,class,reason:'wrapper-write'}`。审计文件仍 `.openfeel/log/guard-audit.jsonl`（best-effort、500 字符截断口径不变）。
+3. **文档 / 夹具白名单相位（REQ-062）**：`DOC_WRITE_PHASES = ['review_passed','test_passed']`；放行 `docs/**`、根级 `*.md`、`test/fixtures/**`、`dsh/test/fixtures/**`（`reason:'doc-asset-phase'`），`src/**` / `test/core/**` 仍拒。判定在相位层，不改 `CODE_DIRECTORIES` / `isCodeDirectoryPath` / `isExemptPath`，受保护路径集合**零新增**。
+4. **需求级计划文件（REQ-064）**：`req plan` 生成 `.openfeel/plan/reqs/REQ-NNN.plan.md`（四节 + 变更记录，固定路径不随版本漂移）；`lint fill --fix-plan` 只为缺失计划生成骨架（不覆盖、不编内容，仍 advisory exit 0）。`requirements[*].plan` 的 `{path,sha256,recorded_at,deviations?}` 盖章语义不变。
+5. **遵守率只读观测（REQ-066 A66.3）**：数据源为 `.openfeel/log/guard-audit.jsonl`（全量）、`.openfeel/dev/dispatch.jsonl`（24h / 200 行）、`.openfeel/dev/.sync.json` 与当前 `flow.json`；`lint adherence --json` / `feel_verify action=adherence` **只读、恒 exit 0**，样本不足 `value:null`（0/0 不是 0），**不写任何文件**。
+6. **既有持久面零改动**：`flow.json` 事务 / `.bak` / 锁顺序、`sessions.json` / `.preflight.json` / `guard-state.json` / `.sync.json` 格式与写入时机均不变；`release` 脚本是外部执行通道，不在 agent 写入门禁内。

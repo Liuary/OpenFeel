@@ -23,3 +23,4 @@
 | [2026-11-24-Liuary-018.md](2026-11-24-Liuary-018.md) | Liuary | v1.6.0-stage-132 review_added |
 | [2026-11-24-Liuary-019.md](2026-11-24-Liuary-019.md) | Liuary | v1.6.0-stage-132 review_added |
 | [2026-11-24-Liuary-020.md](2026-11-24-Liuary-020.md) | Liuary | 阶段 v1.6.0-stage-132 完成 |
+| [2026-11-24-Liuary-021.md](2026-11-24-Liuary-021.md) | Liuary | v1.7.0-stage-133 review_added |

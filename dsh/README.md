@@ -35,8 +35,8 @@ OpenFeel 是一个给 AI 助手用的记录本和工作流程，主要解决两�
 - **每次派发都记账**：`feel_dispatch` 追加一行到 `.openfeel/dev/dispatch.jsonl`（`feel_status.dispatch.records` 可查；该文件受 guard 保护，手写会被拒）。示例：
 
   ```text
-  feel_dispatch stage=v1.6.0-stage-132 phase=exec_running targetAgent=openfeel-executor role=executor
-    goal="T13 文档对账：把 docs/json-contract.md 计数改为 46/47 并通过 npm run build"
+  feel_dispatch stage=v1.7.0-stage-133 phase=exec_running targetAgent=openfeel-executor role=executor
+    goal="E13 文档对账：把 docs/json-contract.md 计数改为 51/52 并通过 npm run build"
     files=["docs/json-contract.md","CHANGELOG.md"]
     returnFormat="≤10 行：结论/改动文件/验证/阻塞"
   ```
@@ -157,18 +157,18 @@ Windows 上的 `openfeel.cmd` 垫片。
 
 | 工具 | 覆盖的 CLI | 能力域 |
 |---|---|---|
-| `feel_status` | `flow next --json`（权威）→ 失败回退 `flow status --json` + `flow mode --json`（+`req list --json`） | **状态快照**：宏观相位、每阶段相位、模式与来源、合法下一相位、负责 Agent、审查档位、守卫、阻塞审查、`dispatch{required,records,missingRoles}`、动作型 `nextAction`。默认 **compact**（去 `mode.transitionsByMode` / `recovery.handoff` / `observability`，按需用 `feel_flow action=phases|mode` 现取）；`detail: "full"` 返回完整快照（v1.5.7） |
+| `feel_status` | `flow next --json`（权威）→ 失败回退 `flow status --json` + `flow mode --json`（+`req list --json`） | **状态快照**：宏观相位、每阶段相位、模式与来源、合法下一相位、负责 Agent、审查档位、守卫、阻塞审查、`dispatch{required,total,sincePhase,open,closedRatio,missingRoles,records}`、动作型 `nextAction`。默认 **compact**（去 `mode.transitionsByMode` / `recovery.handoff` / `observability`，按需用 `feel_flow action=phases|mode` 现取）；`detail: "full"` 返回完整快照（v1.5.7）；`dispatch` 的 `open[]` / `closedRatio` 与 `missingRoles` 口径见 v1.7.0（`dsh/ADAPTER.md`） |
 | `feel_next` | 同上快照的派生决策（`flow next --json` 字段直出） | **该谁做**：负责 Agent、合法下一相位、建议命令、守卫、阻塞审查、工具化 `dispatch`（goal/context/boundaries/returnFormat）、`nextAction`、`[HANDOFF: agent]` 标记 |
 | `feel_flow` | `flow advance/current/overview/phases/mode/log/metrics/retry/repair/migrate/review_*` | 流水线推进与审查条目（`review_add` 的 `op` / `stage` 二选一，v1.3.4） |
 | `feel_stage` | `plan stage add/list`、`stage status/set/task`、`flow stage set/reset/remove` | 阶段与 `status.md` |
 | `feel_op` | `flow ops list`、`plan scheme create/publish/rename/remove/register`、`flow attempt/retry` | 操作方案与执行结果 |
-| `feel_req` | `req add/list/show/board/next/claim/release/set/link/advance/split/review/verify/release-check/rollover` + **`body`（v1.6.0）** | 需求分发（7 状态）；`action=body` 是**正文唯一写入口**（`section/text/file/append/replace`），元信息小节受保护 |
-| `feel_dispatch` | 无 CLI（适配器直写 `.openfeel/dev/dispatch.jsonl`） | **派发台账（v1.6.0）**：`stage/phase/targetAgent/role/goal/files/returnFormat` → 一行 JSONL + `dispatchId`；5 分钟去重、24h / 200 行清理；文件受 guard 保护 |
+| `feel_req` | `req add/list/show/board/next/claim/release/set/link/advance/split/review/verify/complete/waive/trivial/release-check/rollover` + **`body`（v1.6.0）** | 需求分发（8 状态，v1.7.0 新增 `review_pending`）；`action=body` 是**正文唯一写入口**（`section/text/file/append/replace`；`text` 走临时文件，多行保真），元信息小节受保护。**适配器暂无 `action=plan` / `body --from`**：需求级计划用 CLI `openfeel req plan`，多节导入用 `openfeel req body --from`（见 `dsh/ADAPTER.md` 已知缺口） |
+| `feel_dispatch` | 无 CLI（适配器直写 `.openfeel/dev/dispatch.jsonl`） | **派发台账（v1.6.0 / v1.7.0 闭环）**：`action=record` 写 `stage/phase/targetAgent/role/goal/files/returnFormat` → 一行 JSONL + `dispatchId`（5 分钟去重、24h / 200 行清理）；**`action=finish`** 按 `dispatchId` 原地补写 `closing{status,artifacts,durationMs,summary}` + 顶层 `closedAt`（幂等）；`action=list` 读最近 20 条；文件受 guard 保护 |
 | `feel_dev` | `dev sync` / `dev status` | **开发账本（v1.6.0）**：`action=sync\|status`；写命令成功出口已自动同步，通常只需 `status` 核对 `due` |
 | `feel_checkpoint` | `flow checkpoint list/restore` | 检查点快照与选择性回退 |
 | `feel_archive` | `flow archive <version>/list/show`、`archive <stage>` | 版本分片归档（`allow_unfinished` 显式放行发布软门）+ 阶段摘要归档 |
 | `feel_kb` | `knowledge list/add/search/index/dedup` | 知识库（4 个固定分类） |
-| `feel_verify` | `flow health`、`lint i18n/kb`、`flow recover`、`project overview`、`config get/set/effective` | 健康检查与配置 |
+| `feel_verify` | `flow health`、`lint i18n/kb/adherence`、`flow recover`、`project overview`、`config get/set/effective` | 健康检查与配置；**`action=adherence`（v1.7.0）** 输出遵守率四指标 `{value,definition}`（数据源 `lint adherence --json`，只读、样本不足 `null`） |
 | `feel_review` | `view list/accept` | REV 条目视图 |
 | `feel_plan` | `plan stage list`、`plan scheme list`、`roadmap create/show`、`instructions` | 计划与路线图 |
 | `feel_model` | `model list/get/set` | Agent 模型意识配置 |
@@ -289,6 +289,8 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
   3. **构建产物豁免**：`dist/**`、`build/**`、`out/**`、`target/**`、`.next/**`、`*.tsbuildinfo`；`npx vitest` / `npm run build` / `cargo build` / `tsc -b` / `git status` 等只读或产物命令不误杀。
   4. **不可判定 → 默认告警放行 + 审计留痕**（`kind=undecidable`）；要更严设 `OPENFEEL_SHELL_GATE=strict`。
   相对路径按 `workdir ?? guard cwd` 解析；档位见下方「shell 判定档位」。
+- **wrapper 静态分类（v1.7.0 / REQ-067）**：`pwsh|powershell -File|-f <脚本>`、`cmd /c|/k <脚本>`、`bash|sh <脚本>` 会**读脚本内容**（≤64KB，超限不做部分读取）并按同一套 `classifyShellCommand` 递归分类（深度上限 4）。编码只接受 UTF-8（含 BOM）与 UTF-16（BOM / NUL 启发式）；**GBK 等双字节编码不解码**（解错会给出假安全）→ 一律 `undecidable`，默认 `warn` 并写审计（含 `wrapper` / `scriptPath`），`strict` 下拒绝；`node` 脚本不读内容 → `undecidable`。普通脚本（`readonly.ps1` / `build.ps1` / 只读 `node -e`）仍放行，不写 deny 审计。
+- **审后文档 / 夹具白名单（v1.7.0 / REQ-062）**：`review_passed` / `test_passed` 相位放行 `docs/**`、根级 `*.md`、`test/fixtures/**`、`dsh/test/fixtures/**`（审计 `reason:'doc-asset-phase'`）；`src/**`（含其中 `*.md`/`*.svg`）与 `test/core/**` / `test/commands/**` **仍拒**——夹具 ≠ 测试代码，豁免只在相位层、不扩散到源码树。
 - **chore 写窗口（v1.5.11 收窄）**：`openfeel chore "<说明>"` **只允许人类在外部终端**开启（agent 经 shell 跑 `openfeel chore` 属写子命令 → 硬拒；`.openfeel/chore.json` 也是受保护路径）。窗口上限 **30 分钟**（`--ttl-min 1..30` 只能改短，越界 / 非整数 exit 1 且零写盘）；**源码写入必须显式 `--source`**——缺省窗口只放行 doc / 静态资源，旧 `chore.json` 无 `source_allowed: true` 一律视为未授权。`openfeel chore --end` 收口；不写 `flow.json.stages`，只留 `chore_start` / `chore_end` 日志。存在活跃阶段时 chore 不生效（不绕过相位门）。
 - **bootstrap 例外（v1.3.3）**：无 `.openfeel/` 时，全部目标为**新增文件**（`apply_patch` 须全部 `*** Add File:`）→ 放行并提示补账本；已存在文件、`.openfeel/**`、Update/Delete/Move 仍拒绝（`enforce=always` 下）。`project`/`off` 放行。
 - `apply_patch` 解析所有 patch 头（`*** Update/Add/Delete File:`、`*** Move to:`、`---/+++`）；全部目标在 `.openfeel/**` 才内部放行，混合/无头保守拒绝。
@@ -305,16 +307,16 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ```powershell
 cd plugin
-node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（53 项）
-node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（129 项）
-node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（180 项）
+node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（54 项）
+node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（136 项）
+node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（191 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（10 项）
 ```
 
 - `contract.js` 用宿主 asar 提取出的**真实** `assertSupportedJsonSchema`。
 - `verify.js` 对真实 OpenFeel 项目做只读校验，**所有写操作只打在 `os.tmpdir()` 副本上**，并断言原项目 `revision` 未被改动。
   **前置条件**：当前项目必须至少有 1 个已注册阶段（`flow.json` 的 `stages` 非空）。版本归档（`flow archive <version>`）会把阶段从 `flow.json` 移出，归档后 `stages = 0` 时脚本会在 `[2] 只读工具 — 真实项目快照` 报「需要至少一个阶段用于适配器验证」并退出 1——这是**前置条件不满足**，不是适配器缺陷。此时先 `openfeel plan stage add <临时阶段>`（或切到有活跃阶段的工作区）再跑；CI 不执行本脚本（CI 只跑 `node --check dsh/lib/**` 与 `npm test`），不影响发布门禁。
-- `guard.js` 覆盖 `off/project/always`、`.openfeel/**` 产物、`exec_running`、general 需求、apply_patch 混合/无头/Move 同块、受保护路径、bootstrap 文案、shell 四类判定与 `OPENFEEL_SHELL_GATE` 三档等 138 条。
+- `guard.js` 覆盖 `off/project/always`、`.openfeel/**` 产物、`exec_running`、general 需求、apply_patch 混合/无头/Move 同块、受保护路径、bootstrap 文案、shell 四类判定与 `OPENFEEL_SHELL_GATE` 三档、v1.7.0 wrapper 静态分类（`-File` / `cmd /c` / 编码混淆）与审后文档白名单等（当前 **191** 条）。
 - `integration.js` 构造真实 Cordis 上下文 + 真实 `ToolRuntime`，调用适配器 `apply()`，断言 **15** 个工具真的完成注册与投影。
 
 依赖提取：`contract.js` / `integration.js` 默认读 `%TEMP%\dsh-asar\dsh\node_modules\@deepseek-ai`（从宿主
@@ -369,7 +371,7 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 3. **CLI 契约（v1.3.0）**：`flow next --json` 提供调度决策；`flow status --json` 的
    `stages[]` 已含 `workflowMode` / `requirementId` / `reviewTier` / `effectiveReviewTier` /
    `opsSummary`；`--json` 失败输出 envelope（`error.code` / `kind` / `detail`）为分类权威；
-   `flow advance --json` 仅用于失败 envelope。v1.6.0 起共 **46 个成功 `--json` 出口 / 47 个注册选项**；
+   `flow advance --json` 仅用于失败 envelope。v1.7.0 起共 **51 个成功 `--json` 出口 / 52 个注册选项**；
    适配器按需消费其中一部分（具体调用点见各工具实现，不再按出口总数折算）。详见 [操作指南](https://github.com/Liuary/OpenFeel/blob/master/dsh/ACTION-GUIDE.md) 与
    [更新说明](https://github.com/Liuary/OpenFeel/blob/master/docs/dsh-cli-requirements-supplement-1.2.3.md)。
 4. **读命令已全面结构化**：v1.2.4 补齐了 `plan stage list` / `model list|get` / `flow retry` /

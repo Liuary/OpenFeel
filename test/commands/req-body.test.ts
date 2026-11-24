@@ -376,4 +376,203 @@ describe('req body（v1.6.0-stage-132 / T2）', () => {
     expect(extractSection(md, '摘要')).toBe('（待补充）');
     expect(isRequirementBodyFilled(md)).toBe(false);
   });
+
+  // ═══ 12. --from：一次导入多节（v1.7.0 / REQ-064 A64.2 / A64.5） ═══
+
+  /** 在项目内写一个草稿 Markdown（相对路径按项目根解析） */
+  function writeDraft(name: string, content: string): string {
+    const dir = join(tmpDir, '.openfeel', 'tmp');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, name), content, 'utf-8');
+    return `.openfeel/tmp/${name}`;
+  }
+
+  it('--from 一次写入多节 + 元信息小节跳过并报告 + 每节各追加 1 条变更记录', async () => {
+    await createRequirement();
+    const beforeLogCount = (extractSection(readBody(), '变更记录') ?? '').split('\n').filter((l) => l.trim() !== '').length;
+    const draft = writeDraft('draft.md', [
+      '# 草稿（一级标题不进正文）',
+      '',
+      '## 摘要',
+      '',
+      '从草稿一次导入摘要：该小节由 --from 写入，且元信息小节一律不被覆盖。',
+      '',
+      '## 问题',
+      '',
+      '### 子标题保留',
+      '',
+      '- 列表项 A',
+      '- 列表项 B',
+      '',
+      '## 状态',
+      '',
+      '这行绝不能落盘（元信息受保护）',
+      '',
+      '## 变更记录',
+      '',
+      '- 这行也不能落盘',
+      '',
+    ].join('\n'));
+    const statusBefore = extractSection(readBody(), '状态');
+    resetCapture();
+
+    await safeParse(['req', 'body', 'REQ-001', '--from', draft, '--json']);
+
+    expect(process.exitCode).toBe(0);
+    const doc = JSON.parse(out()) as Record<string, unknown>;
+    expect(Object.keys(doc)).toEqual(['schemaVersion', 'id', 'sections']);
+    expect(doc.id).toBe('REQ-001');
+    const sections = doc.sections as Array<Record<string, unknown>>;
+    expect(sections.map((s) => s.name)).toEqual(['摘要', '问题']);
+    for (const section of sections) {
+      expect(Object.keys(section)).toEqual(['name', 'created', 'lines']);
+      expect(typeof section.lines).toBe('number');
+    }
+    // 元信息小节被跳过并在 stderr 报告
+    expect(err()).toContain('已跳过小节');
+    expect(err()).toContain('状态');
+    const md = readBody();
+    expect(extractSection(md, '摘要')).toContain('从草稿一次导入摘要');
+    const problem = extractSection(md, '问题')!;
+    expect(problem).toContain('### 子标题保留');
+    expect(problem).toContain('- 列表项 A');
+    expect(extractSection(md, '状态')).toBe(statusBefore);
+    // 每个写入小节各追加 1 条变更记录
+    const afterLogCount = (extractSection(md, '变更记录') ?? '').split('\n').filter((l) => l.trim() !== '').length;
+    expect(afterLogCount).toBe(beforeLogCount + 2);
+    expect(extractSection(md, '变更记录')).toContain('body:问题 更新');
+  });
+
+  it('--from 重复执行幂等：小节正文不变（只有变更记录增长）', async () => {
+    await createRequirement();
+    const draft = writeDraft('idempotent.md', [
+      '## 摘要', '',
+      '幂等正文：重复 --from 不改变小节内容，只追加变更记录。', '',
+      '## 目标与验收', '',
+      '### 目标', '让导入幂等。', '',
+      '### 验收', '- A1：重复导入正文不变。', '',
+    ].join('\n'));
+
+    await safeParse(['req', 'body', 'REQ-001', '--from', draft]);
+    expect(process.exitCode).toBe(0);
+    const first = readBody();
+    const firstSummary = extractSection(first, '摘要');
+    const firstGoal = extractSection(first, '目标与验收');
+
+    resetCapture();
+    await safeParse(['req', 'body', 'REQ-001', '--from', draft]);
+    expect(process.exitCode).toBe(0);
+    const second = readBody();
+    expect(extractSection(second, '摘要')).toBe(firstSummary);
+    expect(extractSection(second, '目标与验收')).toBe(firstGoal);
+    expect((extractSection(second, '变更记录') ?? '').split('\n').length)
+      .toBeGreaterThan((extractSection(first, '变更记录') ?? '').split('\n').length);
+  });
+
+  it('--from 文件缺失 → exit 1 且零写盘', async () => {
+    await createRequirement();
+    const before = readBody();
+    resetCapture();
+
+    await safeParse(['req', 'body', 'REQ-001', '--from', '.openfeel/tmp/missing.md']);
+
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('导入失败');
+    expect(readBody()).toBe(before);
+  });
+
+  it('--from 只有受保护小节 → exit 1 且零写盘', async () => {
+    await createRequirement();
+    const before = readBody();
+    const draft = writeDraft('protected-only.md', [
+      '## 状态', '', 'x', '',
+      '## 变更记录', '', '- y', '',
+    ].join('\n'));
+    resetCapture();
+
+    await safeParse(['req', 'body', 'REQ-001', '--from', draft, '--json']);
+
+    expect(process.exitCode).toBe(1);
+    const doc = JSON.parse(out()) as Record<string, unknown>;
+    expect(doc.error).toBe('invalid_field');
+    expect(readBody()).toBe(before);
+  });
+
+  it('--from 与 --section 互斥 → exit 1（零写盘）', async () => {
+    await createRequirement();
+    const before = readBody();
+    const draft = writeDraft('exclusive.md', ['## 摘要', '', 'x', ''].join('\n'));
+    resetCapture();
+
+    await safeParse(['req', 'body', 'REQ-001', '--section', '摘要', '--from', draft]);
+
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('--from');
+    expect(readBody()).toBe(before);
+
+    // --from 恒整节替换：--append / --replace 显式拒绝（不静默忽略）
+    resetCapture();
+    await safeParse(['req', 'body', 'REQ-001', '--from', draft, '--append']);
+    expect(process.exitCode).toBe(1);
+    expect(err()).toContain('--append');
+    expect(readBody()).toBe(before);
+  });
+
+  // ═══ 13. --text 多行保真（v1.7.0 / REQ-064 A64.4） ═══
+
+  it('--text 多行原样落盘：首尾空行 / ### 子标题 / 列表行 / --- 分隔线逐字相等', async () => {
+    await createRequirement();
+    const multiline = [
+      '',
+      '多行正文第一段：空行、子标题与列表都必须保留。',
+      '',
+      '### 子标题',
+      '',
+      '- 列表项 A',
+      '- 列表项 B',
+      '1. 有序项 C',
+      '',
+      '---',
+      '',
+      '末段：行尾不留裁剪痕迹。',
+      '',
+    ].join('\n');
+    resetCapture();
+
+    await safeParse(['req', 'body', 'REQ-001', '--section', '摘要', '--text', multiline, '--json']);
+
+    expect(process.exitCode).toBe(0);
+    const doc = JSON.parse(out()) as Record<string, unknown>;
+    expect(doc.lines).toBe(multiline.split(/\r?\n/).length);
+    // 文件字节逐字包含输入（不做首尾裁剪、不改写子标题/列表/分隔线）
+    expect(readBody()).toContain(multiline);
+  });
+
+  it('--text CRLF 输入保真（不归一成 LF）', async () => {
+    await createRequirement();
+    const crlf = ['多行 CRLF 正文第一行。', '', '### 子标题', '', '- CRLF 列表项', '', '末行。'].join('\r\n');
+    resetCapture();
+
+    await safeParse(['req', 'body', 'REQ-001', '--section', '摘要', '--text', crlf, '--json']);
+
+    expect(process.exitCode).toBe(0);
+    const doc = JSON.parse(out()) as Record<string, unknown>;
+    expect(doc.lines).toBe(crlf.split(/\r?\n/).length);
+    expect(readBody()).toContain(crlf);
+    // 没有被归一成 LF：CRLF 序列仍然存在
+    expect(readBody()).toContain('- CRLF 列表项\r\n');
+  });
+
+  it('--text 全空白 → JSON empty_text + exit 1 零写盘', async () => {
+    await createRequirement();
+    const before = readBody();
+    resetCapture();
+
+    await safeParse(['req', 'body', 'REQ-001', '--section', '摘要', '--text', ' \r\n\t ', '--json']);
+
+    expect(process.exitCode).toBe(1);
+    const doc = JSON.parse(out()) as Record<string, unknown>;
+    expect(doc.error).toBe('empty_text');
+    expect(readBody()).toBe(before);
+  });
 });

@@ -86,6 +86,13 @@ openfeel flow next                                               # 5. Iterate as
 - **Every mode enforces plan → exec → review**: `general` / `fast` / `full` all require "requirement plan → execute → review"; only the stage-level trimming of scheme/test differs, and `general` remains **requirement-level only** (its stage-level transition table stays empty).
 - `--force` is a **recorded override** (waiver + `flow.json.log` audit), never a bypass of the done gate (review + verify), blocking REVs or archive criteria; existing skeletons are listed by `openfeel lint fill`.
 
+### Review phase, plan generation and the release chain (v1.7.0)
+
+- **Requirements gain a review gate**: `in_progress → review_pending → done` (the old direct `in_progress → done` is gone; `--force` is recorded); a missing review / verification returns `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` (stable codes from `req claim/advance/complete --json`).
+- **Plan and body in one command**: `openfeel req plan REQ-NNN` generates the requirement-level plan skeleton (refuses to overwrite unless `--force`); `openfeel req body REQ-NNN --from draft.md` imports many sections at once; `openfeel lint fill --fix-plan` fills only missing plans (advisory, always exit 0).
+- **Release in one command**: `npm run release` chains version → build → publish → market → archive-commit → tag; **it never really publishes by default** — the only real-publish switch is `--publish` (guarded by `npm whoami`); use `--dry-run`, `--notes-only`, `--commit-archive`, `--tag`.
+- **One recorded `--force` audit**: `flow advance` / `flow stage reset` / requirement writes share the same `gate_override` entry (with `from`/`to`); after review (`review_passed` / `test_passed`) docs and test fixtures are writable, while **source still requires `exec_running`**.
+
 ## Claude Code Adapter (since v1.1.6)
 
 > Coexists with the opencode adapter; **disabled by default** (requires explicit `--tools claude`).

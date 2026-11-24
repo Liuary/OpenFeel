@@ -427,6 +427,33 @@ async function main() {
     assert(Array.isArray(compact.dispatch.records) && compact.dispatch.records.length === 1, 'compact.dispatch.records 应保留');
   });
 
+  await check('v1.7.0 / REQ-066：feel_dispatch finish 与 feel_verify adherence（action 不是新工具）', () => {
+    const dispatchTool = tools.find((tool) => tool.name === 'feel_dispatch');
+    assert(dispatchTool, '缺少 feel_dispatch 工具');
+    assert(
+      JSON.stringify(dispatchTool.parameters.properties.action.enum) === JSON.stringify(['record', 'finish', 'list']),
+      'feel_dispatch.action 枚举应为 record|finish|list',
+    );
+    for (const key of ['dispatch_id', 'summary']) {
+      assert(dispatchTool.parameters.properties[key]?.type === 'string', `feel_dispatch.${key} 应为 string`);
+    }
+    assert(
+      JSON.stringify(dispatchTool.parameters.properties.status.enum) === JSON.stringify(['done', 'failed']),
+      'feel_dispatch.status 枚举应为 done|failed',
+    );
+    assert(dispatchTool.parameters.properties.artifacts?.type === 'array', 'feel_dispatch.artifacts 应为 array');
+    assert(/action=finish/.test(dispatchTool.description ?? ''), 'feel_dispatch.description 应提到 action=finish');
+
+    const verifyTool = tools.find((tool) => tool.name === 'feel_verify');
+    assert(verifyTool, '缺少 feel_verify 工具');
+    assert(
+      verifyTool.parameters.properties.action.enum.includes('adherence'),
+      'feel_verify.action 缺枚举值 adherence（出口约定：不新增 CLI 子命令 / 不新增工具）',
+    );
+    // finish / adherence 都是 action，不是新工具：计数锁不放宽
+    assert(tools.length === 15, `工具数应保持 15，实际 ${tools.length}`);
+  });
+
   // v1.5.12 / stage-127 §3-B（V4）：真实 guard 状态未被本测试改写。
   await check('guard 测试隔离：真实 marker 与全局目录未被改写（V4）', () => {
     const verdict = assertRealGuardUntouched(realGuardBefore, iso);

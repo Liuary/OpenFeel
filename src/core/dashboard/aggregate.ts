@@ -2,20 +2,25 @@
  * 看板数据聚合层（D-125-02 / D-125-03）
  *
  * 职责：把命令层注入的 `data` / `statusDoc` / `healthReport` 聚合成 `dashboard --json` 的冻结契约
- * （`requirements` / `stages` / `releases` / `blockingReviews` / `health` / `metrics` + `project` 元信息）。
+ * （`requirements` / `stages` / `releases` / `blockingReviews` / `health` / `metrics` + `project` 元信息
+ * + v1.7.0 末位追加的 `flowDebt` 流程债块）。
  *
  * 边界（硬约束）：
  * - 只 import `src/core/**` 与 Node 内建（禁 `commands/` / `cli/` 说明符——层次禁令见
  *   `src/commands/shared/preflight-gate.ts:11-12`；由 T24 单测机械守住）；
  * - 纯聚合：零控制台输出、零写盘、零进程退出调用、零 CWD 读取（路径只来自入参 `projectPath`）；
- * - **不** `new FlowManager`、**不**二次读 `flow.json`（`data` / `statusDoc` / `healthReport` 由命令层注入）；
- * - 只读 IO 恰好三处：`{projectPath}/package.json`（失败宽容为 null）、
+ * - **不** `new FlowManager`（`data` / `statusDoc` / `healthReport` 由命令层注入）；
+ * - 只读 IO 四处：`{projectPath}/package.json`（失败宽容为 null）、
  *   `.openfeel/metrics.json`（经 `MetricsStore` 显式 dataDir）、
- *   `.openfeel/flow-archive/*.json`（`listArchiveVersions` / `readArchiveFile`）。
+ *   `.openfeel/flow-archive/*.json`（`listArchiveVersions` / `readArchiveFile`）、
+ *   `flowDebt` 的 `lintRequirementBodies(projectPath)`（A65.3 要求与 `lint fill` **同源同值**：
+ *   该单点是空壳/缺计划的唯一实现，其中「在办需求状态 + 已归档排除」由它自己读取——
+ *   本层不复制这份口径，也不在 `src/core/dashboard/**` 里另写占位/字数判定）。
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  AUTO_DONE_PRECONDITION,
   computeRequirementAggregate,
   listLinkedStages,
   requirementHealthItems,
@@ -39,6 +44,12 @@ import {
 } from '../flow-manager.js';
 import { MetricsStore } from '../metrics.js';
 import { getOpenfeelVersion } from '../update-state.js';
+import {
+  lintRequirementBodies,
+  type RequirementBodyLintEntry,
+  type RequirementPlanLintEntry,
+} from '../plan/body-lint.js';
+import { DEFAULT_SYNC_INTERVAL_MINUTES, getDevStatus } from '../dev-status.js';
 
 // ═══ 契约类型（键集 / 键序冻结，改动须过 docs/json-contract.md 与 T1）═══
 
@@ -123,6 +134,47 @@ export interface DashboardHealthBlock {
 /** 指标块（`getSummaryData()` 逐字，不含 `processHealth`） */
 export type DashboardMetrics = ReturnType<MetricsStore['getSummaryData']>;
 
+/** 流程债分组（`count` 恒 = `items.length`；`items` 次序由来源单点决定，本层不重排） */
+export interface DashboardDebtGroup<T> {
+  count: number;
+  items: T[];
+}
+
+/** 未盖章需求行：非终态（`AUTO_DONE_PRECONDITION` = scheduled / in_progress）且无 `plan` 指纹 */
+export interface DashboardUnstampedItem {
+  id: string;
+  status: RequirementStatus;
+}
+
+/** dev 同步过期行（`due === true` 时恰 1 条，否则 0 条） */
+export interface DashboardDevSyncItem {
+  due: boolean;
+  lastSync: string | null;
+  intervalMinutes: number;
+}
+
+/**
+ * dev 同步块：与其余三组同形（`count` + `items[]`），并额外透出 `due` / `lastSync`——
+ * 「最近同步时间」在**未过期**时同样要可见（A65.2 的「dev 同步过期状态」不只是布尔）。
+ */
+export interface DashboardDevSyncDebt extends DashboardDebtGroup<DashboardDevSyncItem> {
+  due: boolean;
+  lastSync: string | null;
+}
+
+/**
+ * 流程债块（A65.2：**恰 4 键**）。
+ * `emptyBody` / `missingPlan` 的计数只经 `lintRequirementBodies` 单点（A65.3 同源同值）；
+ * `unstamped` 用注入的 `data.requirements`（`plan` 字段缺省 = 未盖章）；
+ * `devStale` 来自 `getDevStatus`（与 `openfeel dev status` 同源）。
+ */
+export interface DashboardFlowDebt {
+  emptyBody: DashboardDebtGroup<RequirementBodyLintEntry>;
+  missingPlan: DashboardDebtGroup<RequirementPlanLintEntry>;
+  unstamped: DashboardDebtGroup<DashboardUnstampedItem>;
+  devStale: DashboardDevSyncDebt;
+}
+
 /**
  * 看板聚合结果（顶层键序冻结：`schemaVersion` 恒首键、`generatedAt` 唯一时间字段）。
  * 测试不得断言 `generatedAt` 的值。
@@ -138,6 +190,8 @@ export interface DashboardData {
   blockingReviews: DashboardBlockingReview[];
   health: DashboardHealthBlock;
   metrics: DashboardMetrics;
+  /** v1.7.0 / REQ-065 A65.2：末位追加（既有 10 键键序零改动） */
+  flowDebt: DashboardFlowDebt;
 }
 
 /**
@@ -371,6 +425,65 @@ function collectMetrics(projectPath: string): DashboardMetrics {
   return store.getSummaryData();
 }
 
+/** dev 同步状态读取（失败 → 「过期且无记录」；advisory 块不得让快照命令变 INTERNAL_ERROR） */
+function readDevSyncState(projectPath: string): {
+  due: boolean;
+  lastSync: string | null;
+  intervalMinutes: number;
+} {
+  try {
+    const status = getDevStatus(projectPath);
+    return { due: status.due, lastSync: status.lastSync, intervalMinutes: status.intervalMinutes };
+  } catch {
+    return { due: true, lastSync: null, intervalMinutes: DEFAULT_SYNC_INTERVAL_MINUTES };
+  }
+}
+
+/**
+ * 流程债块（A65.2 / A65.3）：
+ * - `emptyBody` / `missingPlan` **只经** `lintRequirementBodies(projectPath)` 单点——
+ *   与 `lint fill --json` 的 `empty` / `missingPlan` 同一个函数、同一状态源、同一归档排除口径，
+ *   故两处计数**必然同值**（本层不复制任何占位/字数判定，见 A65.3 的 grep 断言）；
+ * - `unstamped` = 注入数据里 `plan === undefined` 的非终态需求（`AUTO_DONE_PRECONDITION` 单点）；
+ * - `devStale` = `getDevStatus`（与 `openfeel dev status` 同源）；`count` = 是否过期（0/1）。
+ */
+function collectFlowDebt(projectPath: string, data: FlowData): DashboardFlowDebt {
+  let emptyBody: RequirementBodyLintEntry[] = [];
+  let missingPlan: RequirementPlanLintEntry[] = [];
+  try {
+    const report = lintRequirementBodies(projectPath);
+    emptyBody = report.empty;
+    missingPlan = report.missingPlan;
+  } catch {
+    // 清单是 advisory：读盘异常降级为空（不抛、不改退出码）
+    emptyBody = [];
+    missingPlan = [];
+  }
+
+  const requirements = Array.isArray(data.requirements) ? data.requirements : [];
+  const unstamped = requirements
+    .filter((row) => row !== null
+      && typeof row === 'object'
+      && row.plan === undefined
+      && (AUTO_DONE_PRECONDITION as readonly string[]).includes(row.status))
+    .map((row) => ({ id: row.id, status: row.status }));
+
+  const dev = readDevSyncState(projectPath);
+  const devStale: DashboardDevSyncDebt = {
+    count: dev.due ? 1 : 0,
+    items: dev.due ? [{ due: true, lastSync: dev.lastSync, intervalMinutes: dev.intervalMinutes }] : [],
+    due: dev.due,
+    lastSync: dev.lastSync,
+  };
+
+  return {
+    emptyBody: { count: emptyBody.length, items: emptyBody },
+    missingPlan: { count: missingPlan.length, items: missingPlan },
+    unstamped: { count: unstamped.length, items: unstamped },
+    devStale,
+  };
+}
+
 /**
  * 看板数据聚合入口（纯聚合；给定入参相同输出，唯一时间字段 `generatedAt` 除外）。
  *
@@ -396,5 +509,6 @@ export function collectDashboardData(
     blockingReviews: collectBlockingReviews(data),
     health: collectHealth(projectPath, data, healthReport, lang),
     metrics: collectMetrics(projectPath),
+    flowDebt: collectFlowDebt(projectPath, data),
   };
 }

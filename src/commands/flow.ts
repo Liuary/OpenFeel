@@ -23,7 +23,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, isStagePlanGateBlocked, StagePlanGateError, DevSyncStaleError, type PipelinePhase, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, isStagePlanGateBlocked, StagePlanGateError, DevSyncStaleError, createGateOverride, type PipelinePhase, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, type GateOverride, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES, DEFAULT_EFFECTIVE_REVIEW_TIER, type ReviewTier } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
 import { getConfigFieldLegalValues, setConfigValue, readExplicitConfigDefaults, type WorkflowMode } from '../core/config.js';
@@ -938,14 +938,15 @@ export function registerFlowCommand(program: Command): void {
       }));
     });
 
-  // flow stage reset <stageId> --to <phase> [--dry-run] [--force]
+  // flow stage reset <stageId> --to <phase> [--dry-run] [--force] [--reason <text>]
   stageCmd
     .command('reset <stageId>')
     .description('复位阶段 phase（允许回退；受合法值域与 to=done 的 REV 阻塞约束）')
     .requiredOption('--to <phase>', '目标 phase（如 review_pending / test_pending / done）；合法值见 openfeel flow phases')
     .option('--dry-run', '仅预览，不写盘')
-    .option('--force', '越过进入 exec_running 的计划门（放行并在 flow.json.log 记录 gate_overrides/gate_missing）')
-    .action((stageId: string, options: { to: string; dryRun?: boolean; force?: boolean }) => {
+    .option('--force', '留痕放行：越过进入 exec_running 的计划门，并在 flow.json.log 写统一审计（缺项快照 + by/reason/from/to/at）')
+    .option('--reason <text>', '留痕放行原因（--force 放行时写入审计；缺省 manual）')
+    .action((stageId: string, options: { to: string; dryRun?: boolean; force?: boolean; reason?: string }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -954,9 +955,13 @@ export function registerFlowCommand(program: Command): void {
       }
       const stageArg = normalizeStageId(stageId) ?? stageId;
       try {
+        // v1.7.0 / REQ-062 A62.2—A62.3：`--force` → 统一 GateOverride（新名；核心层归一，不允许无审计放行）
+        const gateOverride: GateOverride | undefined = options.force === true
+          ? createGateOverride({ reason: options.reason, by: 'cli', to: options.to })
+          : undefined;
         const result = mgr.resetStagePhase(stageArg, options.to, {
           dryRun: options.dryRun,
-          allowGateOverride: options.force === true,
+          ...(gateOverride === undefined ? {} : { gateOverride }),
         });
         if (options.dryRun) {
           console.log(t('flow.stage.reset.previewTitle', lang));
@@ -1021,10 +1026,10 @@ export function registerFlowCommand(program: Command): void {
     .option('--op <id>', '操作 ID（如 stage-01.op-001），仅用于日志/展示')
     .requiredOption('--to <phase>', '目标阶段（如 exec_running）。合法 phase 与转移表：openfeel flow phases；查看当前模式：openfeel flow mode')
     .option('--stage <id>', '阶段 ID（如 stage-03），必须指定')
-    .option('--force', '强制执行（跳过非法 phase 校验和阶段跳跃检查，但不可绕过 REV 阻塞检查）')
+    .option('--force', '留痕放行：跳过非法 phase 校验与阶段跳跃检查；门（计划/账本）放行必须留痕审计，不可绕过 REV 阻塞检查')
     .option('--dry-run', '仅验证不执行修改（预览输出）。与 --force 组合时跳过校验但仍不执行修改')
     .option('--review-tier <tier>', '审查档位（full / lean / skip；缺省=full（零裁剪）；仅显式声明时裁剪审查关，不可绕过 REV 阻塞检查）')
-    .option('--reason <text>', '返工原因（仅 review_passed → exec_running 时写入审计日志 rework_reason）')
+    .option('--reason <text>', '原因：review_passed → exec_running 时写入 rework_reason；--force 门放行时同时作为留痕原因（缺省 manual）')
     .option('--json', '以 JSON 输出错误封装（仅失败时；成功输出保持人类文本）')
     .option('--quiet', '静默非错误输出（成功确认与 Git 警告均不打印）')
     .action((options: { op?: string; to: string; stage?: string; force?: boolean; dryRun?: boolean; reviewTier?: string; reason?: string; quiet?: boolean }) => {
@@ -1299,7 +1304,7 @@ export function registerFlowCommand(program: Command): void {
       // v1.6.0 / REQ-056 T5「执行前有计划」硬门（命令层镜像）：**进入** exec_running 要求
       //   阶段 plan.md 与每个在办需求的 REQ-NNN.plan.md 存在且写实。
       // 判据单源 = mgr.describeStagePlanGate / isStagePlanGateBlocked（与 advanceStagePhase 内同一谓词）；
-      // `--force` 不绕过拦截：它只把 allowGateOverride 传给核心层做**留痕放行**（gate_overrides）。
+      // `--force` 不绕过拦截：它只把 GateOverride 传给核心层做**留痕放行**（统一审计键集）。
       // 位置：done 门镜像之后、逐步推进之前；多步路径中 exec_running 为中间步时由循环 catch 兜底。
       const entersExecRunning = phasePath.some((p, i) => p === 'exec_running' && (i > 0 ? phasePath[i - 1] : startPhase) !== 'exec_running');
       if (entersExecRunning && options.force !== true) {
@@ -1344,10 +1349,12 @@ export function registerFlowCommand(program: Command): void {
             ? options.reason
             : undefined;
           if (reworkReason !== undefined) reasonUsed = true;
-          // v1.6.0 / REQ-056 T5：`--force` → 计划门留痕放行（只传开关，判定仍在核心层）
-          const stepOpts: { reviewTier?: ReviewTier; reworkReason?: string; allowGateOverride?: boolean } = {
-            allowGateOverride: options.force === true,
-          };
+          // v1.6.0 / REQ-056 T5；v1.7.0 / REQ-062 A62.2：`--force` → 统一 GateOverride 留痕放行
+          // （判定仍在核心层；reason 缺省 manual，经 --reason 带入审计）
+          const stepOpts: { reviewTier?: ReviewTier; reworkReason?: string; gateOverride?: GateOverride } = {};
+          if (options.force === true) {
+            stepOpts.gateOverride = createGateOverride({ reason: options.reason, by: 'cli', to: next });
+          }
           if (explicitTier) stepOpts.reviewTier = explicitTier;
           if (reworkReason !== undefined) stepOpts.reworkReason = reworkReason;
           archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli', stepOpts);
@@ -1497,7 +1504,7 @@ export function registerFlowCommand(program: Command): void {
             ? t('flow.advance.reviewTierSourceExplicit', lang)
             : t('flow.advance.reviewTierSourceDefault', lang),
         }));
-        if (options.reason !== undefined && !reasonUsed) {
+        if (options.reason !== undefined && !reasonUsed && options.force !== true) {
           console.warn(t('flow.advance.reasonIgnoredTmpl', lang));
         }
       }

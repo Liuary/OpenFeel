@@ -1583,3 +1583,15 @@ Errors surface as `错误：{msg}` (`common.errorTmpl`) → exit 1; `isFlowConcu
 3. **为何不给阶段表加 `general_transitions`**：阶段级 `general` 在写入面即被拒（`src/commands/stage.ts` / `src/commands/plan.ts` 的 `general_mode_conflict`），表没有消费者——加了是死代码。`flow advance --force` 对阶段级 general 的既有行为不变（仍可强制移动，属既有边界，非本版新增）。
 4. **门不进 done / 归档判据**：`describeStageDoneGate`、`requirementDoneBlocker`（review + verify）、`flow archive` 判据**一字不改**；正文门与计划门是不参与这三处的独立前置检查（存量债因此可经 `--force` 留痕到达归档）。
 5. **`PipelineConfigSchema.parse` 失败仍是硬错**（`flow-manager.ts:5087-5113` 现状）。
+
+---
+
+## v1.7.0 增量（现行契约；以上 v1.6.0 段保持冻结）
+
+> 实现锚点：`src/core/req/types.ts`、`src/commands/flow.ts`、`src/commands/lint.ts`、`src/core/errors.ts`、`docs/json-contract.md`。
+
+1. **阶段级转移表继续一字不改**：v1.7.0 的 `review_pending` 是**需求状态**（`REQ_STATUSES`），不是阶段相位；阶段相位表（full / fast）与 `general → {}` 均不变，`flow phases --mode general` 仍为空表。
+2. **统一 GateOverride 落日志**：`flow advance --force` / `flow stage reset --force` 的 `detail` 上**平铺** `{gate_overrides,gate_missing?,by,reason,from,to,at}`（含 `from`/`to`），是 `--force` 唯一留痕 schema；需求侧（`requirement_status`）装在 `detail.gate_override` 下，同一键集。不新增转移表分支、不新增隐式放行路径。
+3. **错误码通道扩到 20 行**：新增 `REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED`（**无 `REQ_REVIEW_GATE`**）；`req claim/advance/complete --json` 失败输出 envelope（`error.code` 为稳定码），与 `flow` 侧 envelope 同一套 `code → kind → exitCode`。
+4. **JSON 契约计数 51 / 52**：新增出口 #47 `req claim` / #48 `req advance` / #49 `req complete` / #50 `req plan` / #51 `lint adherence`；`npm run release` 的 `--json` 是独立脚本输出（`scripts/release.mjs`），**不登记、不计数**。`lint fill` / `lint adherence` **恒 exit 0**（advisory / 只读），不参与门禁退出码。
+5. **既有门语义零改动**：done 门、blocking REV 门、阶段验证门、归档判据与 `--force` 不绕过的边界均不变；新增的 `--force` 只多做**审计**（不是放行面扩大）。

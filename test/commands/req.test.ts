@@ -383,7 +383,8 @@ describe('req 命令组（stage-82）', () => {
     expect(fail.error).toBe('invalid-argument');
     expect(fail.field).toBe('status');
     expect(fail.value).toBe('foo');
-    expect(fail.allowed).toEqual(['draft', 'scheduled', 'in_progress', 'done', 'blocked', 'cancelled', 'rejected']);
+    // v1.7.0 / REQ-063 A63.1：allowed 取自 REQ_STATUSES（review_pending 已入值域）
+    expect(fail.allowed).toEqual(['draft', 'scheduled', 'in_progress', 'review_pending', 'done', 'blocked', 'cancelled', 'rejected']);
     expect(errorMock).not.toHaveBeenCalled();
   });
 
@@ -945,7 +946,9 @@ describe('req 命令组（stage-82）', () => {
     // --to done 仍有阶段在 plan_pending → exit 1 专用 done 门文案（v1.5.7 解耦后仍拒绝 plan/scheme 相位）
     // （stage-93 BUG-002 判类改写：静态表放行 done 而完成门拒绝，改用专用键 req.err.doneGateTmpl；
     //   v1.5.7 / REQ-023 起文案改为「关联阶段仍在计划/方案相位」语义，exit 1 与零写盘不变）
-    seed('in_progress', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'plan_pending' }) });
+    // v1.7.0 / REQ-063 A63.1：done 门前置状态改为 review_pending（in_progress→done 直连已移除），
+    // 断言与语义逐字保留。
+    seed('review_pending', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'plan_pending' }) });
     resetCapture();
     let raw = flowRaw();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
@@ -957,7 +960,7 @@ describe('req 命令组（stage-82）', () => {
     expect(flowRaw()).toBe(raw);
 
     // 阶段仍在执行（exec_running）→ 需求可完成（v1.5.7 解耦；阶段不关闭）
-    seed('in_progress', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'exec_running' }) });
+    seed('review_pending', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'exec_running' }) });
     resetCapture();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(0);
@@ -967,7 +970,7 @@ describe('req 命令组（stage-82）', () => {
     expect(d.log.some((e: any) => e.action === 'requirement_status')).toBe(true);
 
     // 全 done → 成功 + 审计 requirement_status
-    seed('in_progress', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'done' }) });
+    seed('review_pending', { 'v1.0.0-stage-01': stage_({ requirement_id: 'REQ-001', phase: 'done' }) });
     resetCapture();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(0);
@@ -1008,11 +1011,11 @@ describe('req 命令组（stage-82）', () => {
     mkdirSync(dirname(planAbs), { recursive: true });
     writeFileSync(planAbs, basePlan, 'utf-8');
 
-    /** 盖章 + done 门齐全的在办需求（plan 指纹 = basePlan） */
+    /** 盖章 + done 门齐全的在办需求（plan 指纹 = basePlan；v1.7.0：done 门前置状态 = review_pending） */
     const seedStamped = (): void => {
       writeFlow((d) => {
         d.requirements = [req_('REQ-001', {
-          status: 'in_progress',
+          status: 'review_pending',
           plan: { path: planRel, sha256: sha, recorded_at: '2026-11-24T00:00:00.000Z' },
         })];
       });
@@ -1029,7 +1032,7 @@ describe('req 命令组（stage-82）', () => {
     expect(flowRaw()).toBe(raw);
 
     // ② 未盖章历史需求 → 放行 + warn + done 审计记 plan_unstamped
-    writeFlow((d) => { d.requirements = [req_('REQ-001', { status: 'in_progress' })]; });   // 无 plan
+    writeFlow((d) => { d.requirements = [req_('REQ-001', { status: 'review_pending' })]; });   // 无 plan
     const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
     resetCapture();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
@@ -1078,12 +1081,19 @@ describe('req 命令组（stage-82）', () => {
     saveSpy.mockRestore();
   });
 
-  it('T-B11 写命令无 --json（边界）：commander 未知选项报错，无 JSON 输出', async () => {
+  it('T-B11 写命令 --json 闭集（v1.7.0 / REQ-063）：claim/advance/complete 接受，其余写命令仍报未知选项', async () => {
     writeFlow((d) => { d.requirements = [req_('REQ-001')]; });
+    // ① 新增三命令接受 --json（A63.3）：stdout 恰一个 JSON 文档
+    resetCapture();
+    await safeParse(['req', 'claim', 'REQ-001', '--owner', 'Alice', '--json']);
+    expect(process.exitCode).toBe(0);
+    expect(out()).toContain('schemaVersion');
+
+    // ② 其余写命令仍无 --json → commander 未知选项（边界逐字保留：只有 A63.3 三命令扩容）
     resetCapture();
     let threw: unknown = null;
     try {
-      await program.parseAsync(['req', 'claim', 'REQ-001', '--json'], { from: 'user' });
+      await program.parseAsync(['req', 'release', 'REQ-001', '--json'], { from: 'user' });
     } catch (e) {
       threw = e;
     }
@@ -1093,7 +1103,7 @@ describe('req 命令组（stage-82）', () => {
 
   // ═══ 测试段 C（op-003）：board / next / help 全覆盖 / 正交 ═══
 
-  it('T-C1 board：7 组固定顺序 + 恒含空组；--target-version 过滤；--json 7 键；no-init 分流', async () => {
+  it('T-C1 board：8 组固定顺序 + 恒含空组；--target-version 过滤；--json 8 键；no-init 分流', async () => {
     writeFlow((d) => {
       d.requirements = [
         req_('REQ-001', { status: 'draft', target_version: 'v1.3.0' }),
@@ -1118,7 +1128,7 @@ describe('req 命令组（stage-82）', () => {
     expect(filtered).toContain('done（1）');
     expect(filtered).toContain('draft（0）');
 
-    // --json：groups 恒 7 键 + 空组 []
+    // --json：groups 恒 8 键 + 空组 []
     resetCapture();
     await safeParse(['req', 'board', '--json']);
     const obj = JSON.parse(logMock.mock.calls[0][0] as string);
@@ -1211,7 +1221,7 @@ describe('req 命令组（stage-82）', () => {
     expect(err()).toContain('flow.json 未初始化');
   });
 
-  it('T-C3 help 键双向逐键断言（105 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
+  it('T-C3 help 键双向逐键断言（108 键）：正向 hasKey + 反向命令树 ⊆ 期望 + applyHelpI18n 生效', async () => {
     const EXPECTED = [
       'help.req',
       'help.req.add', 'help.req.add.argtitle', 'help.req.add.targetVersion', 'help.req.add.priority', 'help.req.add.workflowMode',
@@ -1225,12 +1235,16 @@ describe('req 命令组（stage-82）', () => {
       'help.req.claim', 'help.req.claim.argid', 'help.req.claim.owner',
       // v1.6.0 / stage-132 T4：正文门 --force 留痕放行
       'help.req.claim.force',
+      // v1.7.0 / REQ-063 A63.3：claim --json
+      'help.req.claim.json',
       'help.req.release', 'help.req.release.argid',
       'help.req.set', 'help.req.set.argid', 'help.req.set.status', 'help.req.set.title', 'help.req.set.targetVersion', 'help.req.set.priority', 'help.req.set.workflowMode',
       'help.req.link', 'help.req.link.stage', 'help.req.link.requirement', 'help.req.link.unlink',
       'help.req.advance', 'help.req.advance.argid', 'help.req.advance.to',
       // v1.6.0 / stage-132 T6：计划偏差门 --force 留痕放行
       'help.req.advance.force',
+      // v1.7.0 / REQ-063 A63.3：advance --json
+      'help.req.advance.json',
       'help.req.board', 'help.req.board.targetVersion', 'help.req.board.json',
       'help.req.next', 'help.req.next.owner', 'help.req.next.json', 'help.req.next.limit',
       'help.req.split', 'help.req.split.argid', 'help.req.split.into', 'help.req.split.json',
@@ -1251,11 +1265,16 @@ describe('req 命令组（stage-82）', () => {
       'help.req.complete.independent', 'help.req.complete.self',
       // v1.6.0 / stage-132 T4 · T7：正文门 / 计划门 --force 留痕放行
       'help.req.complete.force',
+      // v1.7.0 / REQ-063 A63.3：complete --json
+      'help.req.complete.json',
       // v1.6.0 / stage-132 T2：req body（需求正文唯一写入口）
       'help.req.body', 'help.req.body.argid', 'help.req.body.section', 'help.req.body.text',
       'help.req.body.file', 'help.req.body.append', 'help.req.body.replace', 'help.req.body.json',
+      // v1.7.0 / REQ-064：req body --from（多节导入）与 req plan（需求级计划生成）
+      'help.req.body.from',
+      'help.req.plan', 'help.req.plan.argid', 'help.req.plan.force', 'help.req.plan.json',
     ];
-    expect(EXPECTED).toHaveLength(105);
+    expect(EXPECTED).toHaveLength(113);
 
     // ① 正向：zh / en 双侧 hasKey
     for (const k of EXPECTED) {
@@ -1861,6 +1880,8 @@ describe('stage-87 op-002 接取视图与并行接取', () => {
       'scheduled（1）',
       '  - REQ-001 需求 REQ-001',
       'in_progress（0）',
+      // v1.7.0 / REQ-063 A63.1：值域新增 review_pending（旧 7 组一个不删，新档插在 in_progress 与 done 之间）
+      'review_pending（0）',
       'done（0）',
       'blocked（0）',
       'cancelled（0）',
@@ -2192,6 +2213,11 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'in_progress']);
     expect(process.exitCode).toBe(0);
 
+    // v1.7.0 / REQ-063 A63.1：审查相位（in_progress → review_pending）不可跳过
+    resetCapture();
+    await safeParse(['req', 'advance', 'REQ-001', '--to', 'review_pending']);
+    expect(process.exitCode).toBe(0);
+
     // v1.5.8 / REQ-027：done 门要求审查 + 验证均 pass（先记录，再推进）
     resetCapture();
     await safeParse(['req', 'review', 'REQ-001', '--result', 'pass', '--by', 'reviewer', '--note', 'ok', '--independent']);
@@ -2204,12 +2230,12 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(0);                                        // 修复前恒 exit 1（死锁）
     expect(readFlow().requirements[0].status).toBe('done');
-    expect(out()).toContain('已推进 REQ-001：in_progress → done');            // 成功文案在位
+    expect(out()).toContain('已推进 REQ-001：review_pending → done');         // 成功文案在位
     expect(readFlow().log.some((e: any) => e.action === 'requirement_status')).toBe(true);
   });
 
   it('T93.7：req set --status done 同源放行（general）+ req board done 桶收纳', async () => {
-    seedReq({ status: 'in_progress', workflow_mode: 'general' });
+    seedReq({ status: 'review_pending', workflow_mode: 'general' });
     resetCapture();
     await safeParse(['req', 'set', 'REQ-001', '--status', 'done']);
     expect(process.exitCode).toBe(0);
@@ -2223,8 +2249,9 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
   });
 
   it('T93.8：零关联非 general 需求可显式完成（v1.5.7 解耦；advance / set 两路径 + 审计 / 写盘在位）', async () => {
+    // v1.7.0 / REQ-063 A63.1：done 门前置状态 = review_pending（in_progress→done 直连已移除）
     // advance 路径：零关联 → 放行
-    seedReq({ status: 'in_progress' });
+    seedReq({ status: 'review_pending' });
     let raw = flowRaw();
     await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
     expect(process.exitCode).toBe(0);
@@ -2233,14 +2260,14 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     expect(flowRaw()).not.toBe(raw);                                         // 落盘（非零写盘）
 
     // set 路径（同源放行）
-    seedReq({ status: 'in_progress' });
+    seedReq({ status: 'review_pending' });
     resetCapture();
     await safeParse(['req', 'set', 'REQ-001', '--status', 'done']);
     expect(process.exitCode).toBe(0);
     expect(readFlow().requirements[0].status).toBe('done');
 
     // 关联阶段仍在 plan_pending → 仍拒绝（专用 done 门文案 + 零写盘）
-    seedReq({ status: 'in_progress' });
+    seedReq({ status: 'review_pending' });
     seedStage('REQ-001', 'plan_pending');
     resetCapture();
     raw = flowRaw();
@@ -2430,7 +2457,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
 
     // v1.5.24 / REQ-051：complete 自动补状态链
   describe('req complete（v1.5.24 / REQ-051）', () => {
-    it('draft 直接收口 → 自动 scheduled → in_progress → done（一条命令）', async () => {
+    it('draft 直接收口 → 自动 scheduled → in_progress → review_pending → done（一条命令）', async () => {
       seedReq({ status: 'draft', review: undefined, verification: undefined });
       // v1.6.0 / stage-132 T7：自动补链同样过需求级计划门（不因「一条命令」而绕过）
       writeReqPlan(tmpDir);
@@ -2444,7 +2471,21 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       const statusChanges = readFlow().log
         .filter((e: { action: string }) => e.action === 'requirement_status')
         .map((e: { detail: { to: string } }) => e.detail.to);
-      expect(statusChanges).toEqual(['scheduled', 'in_progress', 'done']);
+      // v1.7.0 / REQ-063 A63.1：收口链经过审查相位（review_pending）
+      expect(statusChanges).toEqual(['scheduled', 'in_progress', 'review_pending', 'done']);
+    });
+
+    it('review_pending 直接收口 → done（审查窗口已挂起的需求可一次收口）', async () => {
+      seedReq({ status: 'review_pending', review: undefined, verification: undefined });
+      resetCapture();
+      await safeParse(['req', 'complete', 'REQ-001', '--result', 'pass', '--note', '窗口内收口']);
+      expect(process.exitCode).toBe(0);
+      const r = readFlow().requirements[0];
+      expect(r.status).toBe('done');
+      const statusChanges = readFlow().log
+        .filter((e: { action: string }) => e.action === 'requirement_status')
+        .map((e: { detail: { to: string } }) => e.detail.to);
+      expect(statusChanges).toEqual(['done']);
     });
 
     it('blocked 状态拒绝且零写盘', async () => {
@@ -2544,8 +2585,8 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
     });
 
     it('done 门文案分流：未审 → 专用文案；未验 → 专用文案；齐全 → 成功', async () => {
-      // 未审
-      seedReq({ status: 'in_progress', review: undefined });
+      // 未审（v1.7.0 / REQ-063 A63.1：done 门前置状态 = review_pending）
+      seedReq({ status: 'review_pending', review: undefined });
       let raw = flowRaw();
       resetCapture();
       await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
@@ -2555,7 +2596,7 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
 
       // 未验
       seedReq({
-        status: 'in_progress',
+        status: 'review_pending',
         review: { result: 'pass', by: 'r', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
         verification: undefined,
       });
@@ -2577,6 +2618,227 @@ describe('stage-93 op-001 BUG-002 完成路径（CLI）', () => {
       await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
       expect(process.exitCode).toBe(0);
       expect(readFlow().requirements[0].status).toBe('done');
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // v1.7.0 / REQ-063 A63.1—A63.3：审查相位 + req 三命令 --json + 两码
+  // ═══════════════════════════════════════════════════════════════════
+  describe('v1.7.0 / REQ-063 审查相位与 req JSON 错误码', () => {
+    it('A63.1 状态机：in_progress → review_pending → done 正向链 + 回退 in_progress', async () => {
+      seedReq({ status: 'in_progress' });
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'review_pending']);
+      expect(process.exitCode).toBe(0);
+      expect(readFlow().requirements[0].status).toBe('review_pending');
+
+      // 回退（审不过 / 补改代码）——回到 in_progress 仍受需求级计划门约束（零关联阶段）
+      writeReqPlan(tmpDir);
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'in_progress']);
+      expect(process.exitCode).toBe(0);
+      expect(readFlow().requirements[0].status).toBe('in_progress');
+
+      // 正向到 done（review / verification 齐全；零关联阶段无阶段前置）
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'review_pending']);
+      expect(process.exitCode).toBe(0);
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+      expect(process.exitCode).toBe(0);
+      expect(readFlow().requirements[0].status).toBe('done');
+      const statusChanges = readFlow().log
+        .filter((e: { action: string }) => e.action === 'requirement_status')
+        .map((e: { detail: { from: string; to: string } }) => `${e.detail.from}→${e.detail.to}`);
+      expect(statusChanges).toEqual([
+        'in_progress→review_pending', 'review_pending→in_progress',
+        'in_progress→review_pending', 'review_pending→done',
+      ]);
+    });
+
+    it('A63.1 旧直连移除：in_progress --to done → exit 1 且文案含 review_pending', async () => {
+      seedReq({ status: 'in_progress' });
+      const raw = flowRaw();
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done']);
+      expect(process.exitCode).toBe(1);
+      expect(err()).toContain('review_pending');
+      expect(flowRaw()).toBe(raw);            // 零写盘
+    });
+
+    it('A63.1 --force 跳链留痕：exit 0 + log 末条 gate_override.gate_overrides=[req_review]', async () => {
+      seedReq({ status: 'in_progress' });
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done', '--force']);
+      expect(process.exitCode).toBe(0);
+      const d = readFlow();
+      expect(d.requirements[0].status).toBe('done');
+      const last = d.log[d.log.length - 1];
+      expect(last.action).toBe('requirement_status');
+      expect(last.detail.gate_override.gate_overrides).toEqual(['req_review']);
+      expect(last.detail.gate_override.from).toBe('in_progress');
+      expect(last.detail.gate_override.to).toBe('done');
+      for (const k of ['by', 'reason', 'at'] as const) {
+        expect(typeof last.detail.gate_override[k]).toBe('string');
+      }
+      // A62.2 统一审计形状（v1.7.0 修复）：需求侧除嵌套外，同时写与 flow 侧一致的**平铺键**
+      expect(last.detail.gate_overrides).toEqual(['req_review']);
+      expect(last.detail.from).toBe('in_progress');
+      expect(last.detail.to).toBe('done');
+      for (const k of ['by', 'reason', 'at'] as const) {
+        expect(typeof last.detail[k]).toBe('string');
+      }
+      expect(last.detail.by).toBe(last.detail.gate_override.by);
+      expect(last.detail.at).toBe(last.detail.gate_override.at);
+    });
+
+    it('A63.1 --force 跳链 + 其它门叠加：跳链状态跨重试保持（正文门 + 计划偏差同轮放行）', async () => {
+      // ① 跳链 + 正文门：空壳正文被 --force 留痕放行后，重试仍须续带 allowReviewSkip
+      mkdirSync(join(tmpDir, '.openfeel', 'requirements'), { recursive: true });
+      writeFileSync(join(tmpDir, '.openfeel', 'requirements', 'REQ-001.md'), [
+        '# REQ-001：空壳', '', '## 摘要', '', '（待补充）', '', '## 目标与验收', '', '（待补充）', '',
+      ].join('\n'), 'utf-8');
+      seedReq({ status: 'in_progress', body_path: '.openfeel/requirements/REQ-001.md' });
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done', '--force', '--json']);
+      expect(process.exitCode).toBe(0);
+      const json = JSON.parse(out());
+      expect(json.status).toBe('done');
+      expect(json.gates).toEqual(['req_review', 'req_body']);
+      expect(readFlow().requirements[0].body_waiver).toBeDefined();
+      expect(readFlow().log[readFlow().log.length - 1].detail.gate_override.gate_overrides)
+        .toEqual(['req_review']);
+
+      // ② 跳链 + 计划偏差：偏差 --force 放行时同样续带跳链
+      const planAbs = join(tmpDir, '.openfeel', 'plan', 'reqs', 'REQ-001.plan.md');
+      mkdirSync(dirname(planAbs), { recursive: true });
+      const plan = ['## 目标', '目标写实内容足够长以满足写实判据（不少于四十个非空白字符）。', '## 任务拆解',
+        '- 拆解项；', '## 验收判据', '- A1：可验收。'].join('\n');
+      writeFileSync(planAbs, plan, 'utf-8');
+      const sha = createHash('sha256').update(plan, 'utf-8').digest('hex').slice(0, 12);
+      seedReq({ status: 'in_progress', plan: { path: '.openfeel/plan/reqs/REQ-001.plan.md', sha256: sha, recorded_at: '2026-11-24T00:00:00.000Z' } });
+      writeFileSync(planAbs, plan + '\n\n## 执行补充\n- 改了计划。\n', 'utf-8');
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done', '--force', '--json']);
+      expect(process.exitCode).toBe(0);
+      const json2 = JSON.parse(out());
+      expect(json2.status).toBe('done');
+      expect(json2.gates).toEqual(['req_review', 'req_plan']);
+      expect(readFlow().requirements[0].plan.deviations).toBe(1);
+    });
+
+    it('A63.2 三态 + 两码：缺审 → REQ_REVIEW_REQUIRED / 缺验 → REQ_VERIFY_REQUIRED / 齐全 → exit 0', async () => {
+      // ① 缺 review（有 verify）
+      seedReq({ status: 'review_pending', review: undefined });
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done', '--json']);
+      expect(process.exitCode).toBe(1);
+      let doc = JSON.parse(out());
+      expect(doc.schemaVersion).toBe(1);
+      expect(doc.error.code).toBe('REQ_REVIEW_REQUIRED');
+      expect(doc.error.kind).toBe('refusal');
+      expect(doc.errorKind).toBe('refusal');
+      expect(err()).toBe('');                 // stdout 恰一个 JSON、stderr 零输出
+
+      // ② 只有 review pass、缺 verify
+      seedReq({ status: 'review_pending', verification: undefined });
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done', '--json']);
+      expect(process.exitCode).toBe(1);
+      doc = JSON.parse(out());
+      expect(doc.error.code).toBe('REQ_VERIFY_REQUIRED');
+
+      // ③ 两者均 pass → exit 0 + 成功文档
+      seedReq({ status: 'review_pending' });
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done', '--json']);
+      expect(process.exitCode).toBe(0);
+      expect(JSON.parse(out())).toEqual({
+        schemaVersion: 1, id: 'REQ-001', from: 'review_pending', to: 'done', status: 'done',
+      });
+    });
+
+    it('A63.3 claim --json：成功文档（from=to=当前状态）+ 失败文档（error.code）', async () => {
+      seedReq({ status: 'scheduled' });
+      resetCapture();
+      await safeParse(['req', 'claim', 'REQ-001', '--owner', 'Alice', '--json']);
+      expect(process.exitCode).toBe(0);
+      expect(JSON.parse(out())).toEqual({
+        schemaVersion: 1, id: 'REQ-001', from: 'scheduled', to: 'scheduled', status: 'scheduled',
+      });
+
+      // 失败：他人已占用 → INVALID_ARGUMENT（能力域码，非门禁码）
+      seedReq({ status: 'scheduled', owner: 'Bob' });
+      resetCapture();
+      await safeParse(['req', 'claim', 'REQ-001', '--owner', 'Alice', '--json']);
+      expect(process.exitCode).toBe(1);
+      const doc = JSON.parse(out());
+      expect(doc.error.code).toBe('INVALID_ARGUMENT');
+      expect(doc.errorKind).toBe('refusal');
+      expect(err()).toBe('');
+    });
+
+    it('A63.3 advance --json：成功（无 gates）+ --force 跳链（gates=[req_review]）', async () => {
+      seedReq({ status: 'in_progress' });
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'review_pending', '--json']);
+      expect(process.exitCode).toBe(0);
+      expect(JSON.parse(out())).toEqual({
+        schemaVersion: 1, id: 'REQ-001', from: 'in_progress', to: 'review_pending', status: 'review_pending',
+      });
+
+      seedReq({ status: 'in_progress' });
+      resetCapture();
+      await safeParse(['req', 'advance', 'REQ-001', '--to', 'done', '--force', '--json']);
+      expect(process.exitCode).toBe(0);
+      const doc = JSON.parse(out());
+      expect(doc.status).toBe('done');
+      expect(doc.gates).toEqual(['req_review']);
+    });
+
+    it('A63.3 complete --json：计划门失败码 + 成功文档（to=done）', async () => {
+      // 自动补链 scheduled → in_progress 撞需求级计划门（零关联阶段 + 无写实计划）→ REQ_PLAN_GATE
+      seedReq({ status: 'scheduled', review: undefined, verification: undefined });
+      resetCapture();
+      await safeParse(['req', 'complete', 'REQ-001', '--result', 'pass', '--note', '收口', '--json']);
+      expect(process.exitCode).toBe(1);
+      expect(JSON.parse(out()).error.code).toBe('REQ_PLAN_GATE');
+
+      // 写实计划后成功
+      writeReqPlan(tmpDir);
+      resetCapture();
+      await safeParse(['req', 'complete', 'REQ-001', '--result', 'pass', '--note', '收口', '--json']);
+      expect(process.exitCode).toBe(0);
+      const doc = JSON.parse(out());
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'id', 'from', 'to', 'status']);
+      expect(doc.from).toBe('scheduled');
+      expect(doc.to).toBe('done');
+      expect(doc.status).toBe('done');
+    });
+
+    it('A64.1 req plan 已存在 → legacy 形态补 code + errorKind（error 恒 string、零写盘）', async () => {
+      seedReq({ status: 'draft' });
+      const planAbs = join(tmpDir, '.openfeel', 'plan', 'reqs', 'REQ-001.plan.md');
+      mkdirSync(dirname(planAbs), { recursive: true });
+      const existing = FILLED_REQ_PLAN;
+      writeFileSync(planAbs, existing, 'utf-8');
+
+      resetCapture();
+      await safeParse(['req', 'plan', 'REQ-001', '--json']);
+
+      expect(process.exitCode).toBe(1);
+      const doc = JSON.parse(out());
+      // 兼容：error 仍是字符串（旧消费方逐字不变）
+      expect(typeof doc.error).toBe('string');
+      expect(doc.error).toBe('plan_exists');
+      // 新增：机器可读 code + 拒绝分类（errorKind 是 failJson 的末尾键）
+      expect(doc.code).toBe('plan_exists');
+      expect(doc.errorKind).toBe('refusal');
+      expect(Object.keys(doc).pop()).toBe('errorKind');
+      expect(doc.path).toBe('.openfeel/plan/reqs/REQ-001.plan.md');
+      expect(typeof doc.hint).toBe('string');
+      // 零写盘：字节不变
+      expect(readFileSync(planAbs, 'utf-8')).toBe(existing);
     });
   });
 });

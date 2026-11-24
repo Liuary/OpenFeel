@@ -86,6 +86,13 @@ openfeel flow next                                               # 5. 按调度�
 - **全模式强制 plan → exec → review**：`general` / `fast` / `full` 一律要求「需求级计划 → 执行 → 审查」，区别只在阶段级是否裁剪 scheme/test；`general` 仍**仅需求级合法**，阶段级转移表保持为空。
 - `--force` 只做**留痕放行**（waiver + `flow.json.log` 审计），**不能**绕过 done 门（review + verify）、blocking REV 与版本归档判据；存量空壳可用 `openfeel lint fill` 枚举。
 
+### 审查相位、计划生成与发布链路（v1.7.0）
+
+- **需求多一道审后关**：`in_progress → review_pending → done`（旧 `in_progress → done` 直连移除，`--force` 留痕）；缺审查 / 缺验证分别返回 `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED`（`req claim/advance/complete --json` 的稳定错误码）。
+- **计划与正文一条命令**：`openfeel req plan REQ-NNN` 生成需求级计划骨架（已存在默认拒绝，`--force` 才覆盖）；`openfeel req body REQ-NNN --from draft.md` 一次导入多节；`openfeel lint fill --fix-plan` 批量补缺失计划（advisory，恒 exit 0）。
+- **一条命令发版**：`npm run release` 串起 version → build → publish → market → archive-commit → tag；**默认不真发**，唯一真实发布开关是 `--publish`（先 `npm whoami`）；`--dry-run` 预演、`--notes-only` 只出 CHANGELOG 草稿、`--commit-archive` 提交归档产物、`--tag` 打 tag。
+- **`--force` 统一留痕**：`flow advance` / `flow stage reset` / 需求侧写同一份 `gate_override` 审计（含 `from`/`to`）；审后（`review_passed` / `test_passed`）可改 `docs/**` 与测试夹具，**源码仍只在 `exec_running` 可写**。
+
 ## Claude Code 适配器（v1.1.6 起）
 
 > 与 opencode 适配器**并存**，**默认不启用**（须显式 `--tools claude`）。

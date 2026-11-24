@@ -736,6 +736,17 @@ export const lint: I18nDomain = {
   'req.suspectTmpl':       { key: 'lint.req.suspectTmpl',       zh: '', en: 'L{line}: `{span}` → suspected unknown command group (tail `{tail}` is registered)' },
   'req.argAsCommandTmpl':  { key: 'lint.req.argAsCommandTmpl',  zh: '', en: 'L{line}: `{span}` → suspected positional argument written as a command name (`{token}` is a registered command name; command path undeterminable)' },
   'req.unclosedRegionWarn': { key: 'lint.req.unclosedRegionWarn', zh: '', en: '⚠️ {path} L{line}: unclosed ignore-start region (no matching ignore-end); suppressed to end of file' },
+  // v1.7.0 / REQ-066 A66.3: adherence metrics (lint adherence; read-only)
+  'adherence.title':             { key: 'lint.adherence.title',             zh: '', en: 'Adherence (read-only observation; numerator/denominator and sample window of each metric are in its definition)' },
+  'adherence.sampleTmpl':        { key: 'lint.adherence.sampleTmpl',        zh: '', en: 'Sample: {dispatches} dispatch record(s) / {audit} guard decision(s) / {sessions} session(s) / {requirements} in-progress requirement(s)' },
+  'adherence.mainWriteRatio':    { key: 'lint.adherence.mainWriteRatio',    zh: '', en: 'Main-session write ratio' },
+  'adherence.subagentPerReq':    { key: 'lint.adherence.subagentPerReq',    zh: '', en: 'Executor dispatches per requirement' },
+  'adherence.syncGap':           { key: 'lint.adherence.syncGap',           zh: '', en: 'Ledger sync gap' },
+  'adherence.violationRate':     { key: 'lint.adherence.violationRate',     zh: '', en: 'Guard denial rate' },
+  'adherence.insufficient':      { key: 'lint.adherence.insufficient',      zh: '', en: 'insufficient sample (null)' },
+  'adherence.percentTmpl':       { key: 'lint.adherence.percentTmpl',       zh: '', en: '{percent}% ({count})' },
+  'adherence.decimalTmpl':       { key: 'lint.adherence.decimalTmpl',       zh: '', en: '{value} ({count})' },
+  'adherence.minutesTmpl':       { key: 'lint.adherence.minutesTmpl',       zh: '', en: '{minutes} minute(s)' },
 };
 
 /* ==================== help ==================== */
@@ -812,12 +823,12 @@ export const help: I18nDomain = {
   'flow.stage.reset.argstageId': { key: 'help.flow.stage.reset.argstageId', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
   'flow.stage.reset.to':   { key: 'help.flow.stage.reset.to',   zh: '', en: 'Target phase (e.g. review_pending / test_pending / done); valid values: openfeel flow phases' },
   'flow.stage.reset.dryRun': { key: 'help.flow.stage.reset.dryRun', zh: '', en: 'Preview only; nothing is written' },
-  'flow.stage.reset.force': { key: 'help.flow.stage.reset.force', zh: '', en: 'Override the plan gate for entering exec_running (allowed and recorded as gate_overrides/gate_missing in flow.json.log)' },
+  'flow.stage.reset.force': { key: 'help.flow.stage.reset.force', zh: '', en: 'Logged override: bypass the plan gate for entering exec_running and record one audit entry in flow.json.log (missing snapshot + by/reason/from/to/at)' },
   'flow.advance':          { key: 'help.flow.advance',          zh: '', en: 'Advance pipeline stage' },
   'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001), for logging/display only' },
   'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '', en: 'Target phase (e.g. exec_running). Valid phases & transitions: openfeel flow phases' },
   'flow.advance.stage':    { key: 'help.flow.advance.stage',    zh: '', en: 'Stage ID (e.g. stage-03), required' },
-  'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '', en: 'Force execution (skip invalid phase check and phase jump check, but not REV block check)' },
+  'flow.advance.force':    { key: 'help.flow.advance.force',    zh: '', en: 'Logged override: skip invalid phase check and phase jump check; gate (plan/dev_sync) passes are always audited and the REV block check cannot be bypassed' },
   'flow.advance.dryRun':   { key: 'help.flow.advance.dryRun',   zh: '', en: 'Validate only without modifying (preview output). When combined with --force, skips validation but still does not modify' },
   'flow.advance.reviewTier': { key: 'help.flow.advance.reviewTier', zh: '', en: 'Review tier (full / lean / skip; default = full (zero pruning); the tier trims review gates only when declared explicitly, and cannot bypass the REV block check)' },
   'flow.advance.quiet':    { key: 'help.flow.advance.quiet',    zh: '', en: 'Silence non-error output (no success confirmation or Git warning)' },
@@ -1017,6 +1028,8 @@ export const help: I18nDomain = {
   'lint.req.json':         { key: 'help.lint.req.json',         zh: '', en: 'Output { schemaVersion, target, ok, issues, suspects, unknownCount, suspectCount, fill } as JSON' },
   'lint.fill':             { key: 'help.lint.fill',             zh: '', en: 'List empty requirement bodies / missing requirement plans / empty stage docs (advisory, exit code unchanged)' },
   'lint.fill.json':        { key: 'help.lint.fill.json',        zh: '', en: 'Output { schemaVersion, target, ok, checked, empty, missingPlan, stageDocs } as JSON' },
+  'lint.adherence':        { key: 'help.lint.adherence',        zh: '', en: 'Adherence metrics (main-session write ratio / executor dispatches per requirement / ledger sync gap / guard denial rate; read-only)' },
+  'lint.adherence.json':   { key: 'help.lint.adherence.json',   zh: '', en: 'Output { schemaVersion, target, ok, main_write_ratio, subagent_per_req, sync_gap, violation_rate } (each { value, definition }) as JSON' },
 
   // migrate (legacy layout migration)
   'migrate':               { key: 'help.migrate',               zh: '', en: 'Legacy layout migration (detect/backup/migrate/rollback existing project legacy layout)' },
@@ -1083,6 +1096,7 @@ export const help: I18nDomain = {
   'req.complete.independent': { key: 'help.req.complete.independent', zh: '', en: 'Independent review (recommended)' },
   'req.complete.self':   { key: 'help.req.complete.self',   zh: '', en: 'Self review (non-independent; marked in the archive summary)' },
   'req.complete.force':  { key: 'help.req.complete.force',  zh: '', en: 'Force gates through with an audit trail (writes body_waiver / plan_waiver + audit; files still need filling in)' },
+  'req.complete.json':   { key: 'help.req.complete.json',   zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.7.0 / REQ-063)' },
   'req.list':            { key: 'help.req.list',            zh: '', en: 'List requirements (filter by status/version/owner; --include-archived merges archived ones)' },
   'req.list.status':     { key: 'help.req.list.status',     zh: '', en: 'Filter by status (draft/scheduled/in_progress/done/blocked/cancelled/rejected)' },
   'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '', en: 'Filter by target version' },
@@ -1097,6 +1111,7 @@ export const help: I18nDomain = {
   'req.claim.argid':     { key: 'help.req.claim.argid',     zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.claim.owner':     { key: 'help.req.claim.owner',     zh: '', en: 'Owner (default: .openfeel/.info.json user -> git config user.name)' },
   'req.claim.force':     { key: 'help.req.claim.force',     zh: '', en: 'Kept for compatibility: claim does not check the body (the body gate fires only on ->scheduled / ->in_progress / ->done transitions); this option currently has no effect' },
+  'req.claim.json':      { key: 'help.req.claim.json',      zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.7.0 / REQ-063)' },
   'req.release':         { key: 'help.req.release',         zh: '', en: 'Release claim (no-op success if unclaimed)' },
   'req.release.argid':   { key: 'help.req.release.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.set':             { key: 'help.req.set',             zh: '', en: 'Update requirement fields (whitelist; transition legality checked by engine)' },
@@ -1113,8 +1128,9 @@ export const help: I18nDomain = {
   'req.advance':         { key: 'help.req.advance',         zh: '', en: 'Advance requirement status (legality by engine transition table; done: allowed with no linked stages, or once every linked stage reaches exec_running or later)' },
   'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.advance.to':      { key: 'help.req.advance.to',      zh: '', en: 'Target status (legality checked by engine)' },
-  'req.advance.force':   { key: 'help.req.advance.force',   zh: '', en: 'Force gates through with an audit trail (body/plan gate writes a waiver, plan deviation +1; files still need filling in)' },
-  'req.board':           { key: 'help.req.board',           zh: '', en: 'Requirement board (grouped by status; 7 fixed groups)' },
+  'req.advance.force':   { key: 'help.req.advance.force',   zh: '', en: 'Force gates through with an audit trail (body/plan gate writes a waiver, plan deviation +1, in_progress→done review skip records req_review; files still need filling in)' },
+  'req.advance.json':    { key: 'help.req.advance.json',    zh: '', en: 'Output { schemaVersion, id, from, to, status, gates? } as JSON (v1.7.0 / REQ-063)' },
+  'req.board':           { key: 'help.req.board',           zh: '', en: 'Requirement board (grouped by status; 8 fixed groups)' },
   'req.board.targetVersion': { key: 'help.req.board.targetVersion', zh: '', en: 'Filter by target version' },
   'req.board.json':      { key: 'help.req.board.json',      zh: '', en: 'Output JSON { schemaVersion, groups }' },
   'req.next':            { key: 'help.req.next',            zh: '', en: 'Recommend the next claimable requirement (scheduled & unclaimed; by target version ascending)' },
@@ -1152,12 +1168,18 @@ export const help: I18nDomain = {
   // v1.6.0-stage-132 / T2: requirement body write-through (req body) and req add body sections
   'req.body':            { key: 'help.req.body',            zh: '', en: 'Write a business section of the requirement body (meta sections are protected; every write appends to the change log)' },
   'req.body.argid':      { key: 'help.req.body.argid',      zh: '', en: 'Requirement ID (e.g. REQ-001)' },
-  'req.body.section':    { key: 'help.req.body.section',    zh: '', en: 'Section name (e.g. 摘要 / 目标与验收 / 问题 / 初步规划; meta sections are not writable)' },
+  'req.body.section':    { key: 'help.req.body.section',    zh: '', en: 'Section name (e.g. 摘要 / 目标与验收 / 问题 / 初步规划; mutually exclusive with --from)' },
   'req.body.text':       { key: 'help.req.body.text',       zh: '', en: 'Section body (Markdown; mutually exclusive with --file)' },
   'req.body.file':       { key: 'help.req.body.file',       zh: '', en: 'Read the section body from a file (mutually exclusive with --text; relative paths resolve from the project root)' },
   'req.body.append':     { key: 'help.req.body.append',     zh: '', en: 'Append to the end of the section (default replaces the whole section)' },
   'req.body.replace':    { key: 'help.req.body.replace',    zh: '', en: 'Replace the whole section (default; mutually exclusive with --append)' },
   'req.body.json':       { key: 'help.req.body.json',       zh: '', en: 'Output JSON { schemaVersion, id, section, path, lines, created }' },
+  // v1.7.0 / REQ-064: req body --from + req plan (requirement-level plan generation)
+  'req.body.from':       { key: 'help.req.body.from',       zh: '', en: 'Import several business sections at once from a Markdown file split by ## (mutually exclusive with --section/--text/--file)' },
+  'req.plan':            { key: 'help.req.plan',            zh: '', en: 'Generate the requirement-level plan skeleton (four sections; refuses to overwrite unless --force)' },
+  'req.plan.argid':      { key: 'help.req.plan.argid',      zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.plan.force':      { key: 'help.req.plan.force',      zh: '', en: 'Overwrite an existing plan (discards hand-written content; default refuses and writes nothing)' },
+  'req.plan.json':       { key: 'help.req.plan.json',       zh: '', en: 'Output JSON { schemaVersion, id, path, created, overwritten, lines } (adds replaced:true at the end when --force overwrites an existing plan; 7 keys in that case)' },
   'req.add.problem':     { key: 'help.req.add.problem',     zh: '', en: 'Body section ## 问题 (v1.6.0: filled body)' },
   'req.add.goal':        { key: 'help.req.add.goal',        zh: '', en: 'Body section ## 目标与验收 -> 目标 subsection (v1.6.0: filled body)' },
   'req.add.acceptance':  { key: 'help.req.add.acceptance',  zh: '', en: 'Body section ## 目标与验收 -> 验收 subsection (v1.6.0: filled body)' },
@@ -1333,7 +1355,7 @@ export const req: I18nDomain = {
   'trivial.noMarkTmpl':  { key: 'req.trivial.noMarkTmpl',     zh: '', en: '{id} has no trivial mark; nothing to revoke' },
   'trivial.alreadyDoneTmpl': { key: 'req.trivial.alreadyDoneTmpl', zh: '', en: '{id} is already done; cannot mark it trivial' },
   'complete.doneTmpl':   { key: 'req.complete.doneTmpl',      zh: '', en: '✓ {id} completed: review {result} / verify {kind} → done' },
-  'complete.statusTmpl': { key: 'req.complete.statusTmpl',    zh: '', en: '{id} is in status {status}: `req complete` only accepts draft / scheduled / in_progress (handle blocked or terminal states first)' },
+  'complete.statusTmpl': { key: 'req.complete.statusTmpl',    zh: '', en: '{id} is in status {status}: `req complete` only accepts draft / scheduled / in_progress / review_pending (handle blocked or terminal states first)' },
   'add.bodyTmpl':        { key: 'req.add.bodyTmpl',           zh: '', en: 'Body skeleton: {path}' },
   // shared validation messages
   'invalidIdTmpl':       { key: 'req.invalidIdTmpl',          zh: '', en: '{input} -> invalid requirement ID (expected REQ-NNN, e.g. REQ-001)' },
@@ -1461,6 +1483,8 @@ export const req: I18nDomain = {
   'claim.bodyForcedSuffix': { key: 'req.claim.bodyForcedSuffix', zh: '', en: ' [body gate force-allowed with audit trail: body_waiver + audit requirement_body_forced]' },
   'advance.gateForcedSuffix': { key: 'req.advance.gateForcedSuffix', zh: '', en: ' [gate force-allowed with audit trail: body_waiver / plan_waiver + audit]' },
   'complete.gateForcedSuffix': { key: 'req.complete.gateForcedSuffix', zh: '', en: ' [gate force-allowed with audit trail: body_waiver / plan_waiver + audit]' },
+  // v1.7.0 / REQ-063 A63.1: review phase (in_progress → review_pending → done)
+  'err.reviewPhaseRequiredTmpl': { key: 'req.err.reviewPhaseRequiredTmpl', zh: '', en: 'Requirement {id} cannot complete directly from in_progress: enter the review phase first with `openfeel req advance {id} --to review_pending`, record review and verification, then `--to done`; to skip the review phase use `--force` (audited as gate_overrides=[req_review])' },
 };
 
 /* ==================== dashboard domain: dashboard HTML rendering copy (v1.5.10 / stage-125 op-002) ==================== */
@@ -1513,6 +1537,21 @@ export const dashboard: I18nDomain = {
   'jsonOpenConflict':           { key: 'dashboard.jsonOpenConflict',           zh: '', en: '--json and --open cannot be combined (--json starts no external process)' },
   'outEmpty':                   { key: 'dashboard.outEmpty',                   zh: '', en: 'The --out path must not be empty' },
   'outIsDirectory':             { key: 'dashboard.outIsDirectory',             zh: '', en: 'The --out path is an existing directory: {path}' },
+  // v1.7.0 / REQ-065 A65.2: process-debt panel (4 counts + first 5 items each)
+  'html.section.flowDebt':      { key: 'dashboard.html.section.flowDebt',      zh: '', en: 'Process debt' },
+  'html.debt.emptyBody':        { key: 'dashboard.html.debt.emptyBody',        zh: '', en: 'Empty bodies' },
+  'html.debt.missingPlan':      { key: 'dashboard.html.debt.missingPlan',      zh: '', en: 'Missing requirement plans' },
+  'html.debt.unstamped':        { key: 'dashboard.html.debt.unstamped',        zh: '', en: 'Unstamped requirements' },
+  'html.debt.devStale':         { key: 'dashboard.html.debt.devStale',         zh: '', en: 'Dev ledger stale' },
+  'html.debt.due':              { key: 'dashboard.html.debt.due',              zh: '', en: 'stale' },
+  'html.debt.fresh':            { key: 'dashboard.html.debt.fresh',            zh: '', en: 'fresh' },
+  'html.debt.lastSync':         { key: 'dashboard.html.debt.lastSync',         zh: '', en: 'Last sync' },
+  'html.debt.moreTmpl':         { key: 'dashboard.html.debt.moreTmpl',         zh: '', en: '...and {count} more' },
+  // Command summary line 4 (A65.2 human exit)
+  'debtTmpl':                   { key: 'dashboard.debtTmpl',                   zh: '', en: 'Process debt: empty bodies {emptyBody} / missing plans {missingPlan} / unstamped {unstamped} / dev ledger {devState} (last sync {lastSync})' },
+  'debtDue':                    { key: 'dashboard.debtDue',                    zh: '', en: 'stale' },
+  'debtFresh':                  { key: 'dashboard.debtFresh',                  zh: '', en: 'fresh' },
+  'debtNever':                  { key: 'dashboard.debtNever',                  zh: '', en: 'never synced' },
 };
 
 /* ==================== 聚合导出 ==================== */

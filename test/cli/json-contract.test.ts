@@ -501,6 +501,103 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(d2.candidates).toHaveLength(2);
   });
 
+  // ── #47~#49（v1.7.0 / REQ-063 A63.3）：需求写命令成功出口 ──
+
+  it('#47 req claim：5 键固定序（gates 为条件出现键；claim 不改状态 → from=to=status）', async () => {
+    seedRequirements([reqRow('REQ-001', { status: 'scheduled' })]);
+    const d = await doc(['req', 'claim', 'REQ-001', '--owner', 'Alice', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'id', 'from', 'to', 'status']);
+    expect(d.id).toBe('REQ-001');
+    expect(d.from).toBe('scheduled');
+    expect(d.to).toBe('scheduled');
+    expect(d.status).toBe('scheduled');
+  });
+
+  it('#48 req advance：5 键固定序；--force 跳链追加 gates（末位条件键）', async () => {
+    seedRequirements([reqRow('REQ-001', { status: 'in_progress' })]);
+    const d = await doc(['req', 'advance', 'REQ-001', '--to', 'review_pending', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'id', 'from', 'to', 'status']);
+    expect(d).toMatchObject({ id: 'REQ-001', from: 'in_progress', to: 'review_pending', status: 'review_pending' });
+
+    // A63.1：in_progress → done 跳链只能 --force（留痕），成功文档追加 gates
+    // （跳链只放行**流转表**这一条；done 门的 review + verification 证据照旧生效）
+    seedRequirements([reqRow('REQ-001', {
+      status: 'in_progress',
+      review: { result: 'pass', by: 'r', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
+      verification: { result: 'pass', kind: 'test', by: 't', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
+    })]);
+    const forced = await doc(['req', 'advance', 'REQ-001', '--to', 'done', '--force', '--json']);
+    expect(Object.keys(forced)).toEqual(['schemaVersion', 'id', 'from', 'to', 'status', 'gates']);
+    expect(forced.gates).toEqual(['req_review']);
+
+    // 失败形态：门码 FAILURE（stdout 恰一个文档；error.code 为稳定码）
+    seedRequirements([reqRow('REQ-001', { status: 'review_pending', review: undefined })]);
+    const fail = await docFailure(['req', 'advance', 'REQ-001', '--to', 'done', '--json']);
+    expect(Object.keys(fail)).toEqual(['schemaVersion', 'error', 'errorKind']);
+    expect((fail.error as Record<string, unknown>).code).toBe('REQ_REVIEW_REQUIRED');
+    expect(fail.errorKind).toBe('refusal');
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+  });
+
+  it('#49 req complete：5 键固定序（收口链经 review_pending → done）', async () => {
+    seedRequirements([reqRow('REQ-001', { status: 'in_progress' })]);
+    const d = await doc(['req', 'complete', 'REQ-001', '--result', 'pass', '--note', '一次收口', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'id', 'from', 'to', 'status']);
+    expect(d).toMatchObject({ id: 'REQ-001', from: 'in_progress', to: 'done', status: 'done' });
+  });
+
+  // ── #50（v1.7.0 / REQ-064 A64.1）：需求级计划生成出口 ──
+
+  it('#50 req plan：六键固定序 + 固定路径；已存在 → legacy plan_exists（零写盘）', async () => {
+    seedRequirements([reqRow('REQ-001')]);
+    const d = await doc(['req', 'plan', 'REQ-001', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'id', 'path', 'created', 'overwritten', 'lines']);
+    expect(d).toMatchObject({
+      id: 'REQ-001',
+      path: '.openfeel/plan/reqs/REQ-001.plan.md',
+      created: true,
+      overwritten: false,
+    });
+    expect(typeof d.lines).toBe('number');
+    const planPath = join(tmpDir, '.openfeel', 'plan', 'reqs', 'REQ-001.plan.md');
+    expect(existsSync(planPath)).toBe(true);
+    const before = readFileSync(planPath, 'utf-8');
+    expect(process.exitCode).toBe(0);
+
+    // 已存在且未 --force：legacy 失败形态（stdout 恰一个文档、字节不变）
+    const fail = JSON.parse(await capture(['req', 'plan', 'REQ-001', '--json'])) as Record<string, unknown>;
+    expect(Object.keys(fail)[0]).toBe('schemaVersion');
+    expect(fail.error).toBe('plan_exists');
+    expect(fail.errorKind).toBe('refusal');
+    expect(readFileSync(planPath, 'utf-8')).toBe(before);
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+  });
+
+  // ── #51（v1.7.0 / REQ-066 A66.3）：遵守率出口（feel_verify action=adherence 的数据源） ──
+
+  it('#51 lint adherence：七键固定序 + 四指标各 {value, definition}；恒 exit 0', async () => {
+    const d = await doc(['lint', 'adherence', '--json']);
+    expect(Object.keys(d)).toEqual([
+      'schemaVersion', 'target', 'ok',
+      'main_write_ratio', 'subagent_per_req', 'sync_gap', 'violation_rate',
+    ]);
+    expect(d.target).toBe('adherence');
+    expect(d.ok).toBe(true);
+    for (const key of ['main_write_ratio', 'subagent_per_req', 'sync_gap', 'violation_rate']) {
+      const metric = d[key] as Record<string, unknown>;
+      expect(Object.keys(metric)).toEqual(['value', 'definition']);
+      // initProject 夹具无台账 / 无 guard audit / 无 .sync.json / 无进行中需求 → 样本不足
+      expect(metric.value).toBeNull();
+      expect(typeof metric.definition).toBe('string');
+      expect(String(metric.definition)).toContain('分子');
+      expect(String(metric.definition)).toContain('分母');
+    }
+    // 只读观测：恒 exit 0
+    expect(process.exitCode).toBe(0);
+  });
+
   // ── 17~18：instructions / setup --check ──
 
   it('#17 instructions：schemaVersion 首键 + 既有 9 键相对序不变（C1）', async () => {

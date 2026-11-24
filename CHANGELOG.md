@@ -1,3 +1,28 @@
+## [1.7.0] - 2026-11-25
+
+> 发布链路一条命令 + 文档写白名单 + 需求审查相位 + 需求级计划生成 + 流程债看板 + 派发闭环/遵守率 + guard wrapper 静态分类。
+> 需求 REQ-061~067。
+
+### Added
+- [stage-133] **`npm run release` 一条命令（REQ-061）**：`scripts/release.mjs` 串起 version → build → publish → market → archive-commit → tag 六步；默认零真实 publish，唯一真实发布开关是 `--publish`（先 `npm whoami`，失败早停并提示 `npm login`，绝不打印 token）；`--dry-run` 预演、`--notes-only` 只出 CHANGELOG 草稿（人工确认后才 `--write-changelog`）、`--commit-archive` 只提交归档产物白名单、`--tag` 才打 tag。
+- [stage-133] **文档 / 夹具写白名单（REQ-062）**：`review_passed` / `test_passed` 相位放行 `docs/**`、根级 `*.md`、`test/fixtures/**`、`dsh/test/fixtures/**`（审计 `reason:'doc-asset-phase'`），`src/**` 与 `test/core/**` 仍拒；`flow advance --force` / `flow stage reset --force` / 各门 `allowGateOverride` 收敛为同一 `GateOverride` 审计（`{gate_overrides,gate_missing,by,reason,from,to,at}`，含 `from`/`to`）。
+- [stage-133] **需求审查相位（REQ-063）**：`REQ_STATUSES` 新增 `review_pending`（`in_progress → review_pending → done`，可回退；旧 `in_progress → done` 直连移除，`--force` 留痕 `gate_overrides=['req_review']`）；`req claim/advance/complete` 首次提供 `--json`（出口 #47~#49）与稳定错误码 `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED`。
+- [stage-133] **需求级计划一条命令（REQ-064）**：`req plan <id> [--force]`（出口 #50，固定路径 `.openfeel/plan/reqs/REQ-NNN.plan.md`，四节 + 变更记录）；`req body --from <md>` 按 `##` 一次导入多节（元信息小节受保护）；`lint fill --fix-plan` 只补缺失计划（`created[]` / `skipped[]`，仍恒 exit 0）；`--text` 多行 / CRLF / `###` 字节保真，适配器改走临时文件 `--file`。
+- [stage-133] **测试夹具工厂 + 流程债看板（REQ-065）**：`test/fixtures/req-input.js` 为字段口径单点（`factories.ts` 与 `dsh/test/verify.js` 共用）；`dashboard --json.flowDebt` 四类债 `emptyBody` / `missingPlan` / `unstamped` / `devStale`（与 `lint fill` 同源）。
+- [stage-133] **派发闭环 + 遵守率（REQ-066）**：`feel_dispatch action=finish` 按 `dispatchId` 原地补写 `closing{status,artifacts,durationMs,summary}` + 顶层 `closedAt`（幂等）；`feel_status.dispatch` 增 `open[]` / `closedRatio`，`missingRoles` 改按 `closing.status==='done'`；`feel_verify action=adherence`（数据源 `lint adherence --json`，出口 #51）输出四指标 `{value,definition}`，样本不足 → `null`。
+- [stage-133] **guard wrapper 静态分类（REQ-067）**：`pwsh -File` / `cmd /c` / `bash <脚本>` 读脚本内容（≤64KB）按同一套 `classifyShellCommand` 递归分类；UTF-16LE+BOM 解码后命中 deny；GBK 不解码 → `undecidable`（warn，`strict` 仍拒）并写审计 `{wrapper,scriptPath,reason}`。
+
+### Changed
+- [stage-133] `flow advance` / `flow stage reset` 的 `--reason` 成为 `--force` 留痕原因（缺省 `manual`）；`--force` 文案统一为「留痕放行」，不绕过 done 门 / blocking REV / 归档判据。
+- [stage-133] JSON 契约计数 46/47 → **51 成功出口 / 52 注册 `--json` 选项**（#47~#51；`release` 脚本的 `--json` 不进 CLI 出口表）；错误码表 15 → **20 行**。
+- [stage-133] 两包 lockstep → **1.7.0**；`openfeel.requiresCli` 抬到 `>=1.7.0`。
+
+### Fixed
+- [stage-133] `req plan --json` 的 help 文案补齐覆盖路径条件键 `replaced`（6 键 → 覆盖时 7 键），与实测输出一致。
+
+### Notes
+- 真实 `npm publish` 只由人类在发版窗口执行（`--publish`）；本版收口只交付脚本与 `--dry-run` / `--notes-only` 取证。
+
 ## [1.6.0] - 2026-11-24
 
 > 流程可信度版本：需求正文与执行前计划从「约定」变成**可校验的门**（硬门 + `--force` 留痕 + 审计），

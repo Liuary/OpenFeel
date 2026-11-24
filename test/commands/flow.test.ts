@@ -1730,6 +1730,75 @@ describe('flow 命令（stage-41）', () => {
     expect(entry?.detail.gate_missing).toMatchObject({ stagePlanMissing: true });
   });
 
+  // ── v1.7.0 / REQ-062 A62.2—A62.3：三处 --force 统一 GateOverride 审计 ──
+
+  it('v1.7.0 A62.2：flow advance --force --reason → 审计键集含 gate_overrides/gate_missing/by/reason/from/to/at', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-16');
+    mgr.getData()!.stages['v1.0.0-stage-16'].phase = 'scheme_passed' as PipelinePhase;
+    mgr.save();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-16', '--to', 'exec_running', '--force', '--reason', '紧急修复']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    const entry = (after.log as Array<{ action: string; detail: Record<string, unknown> }>)
+      .filter((l) => l.action === 'advance_stage_phase' && l.detail.to === 'exec_running')
+      .pop();
+    const detail = entry?.detail as Record<string, unknown>;
+    expect(detail.gate_overrides).toEqual(['plan']);
+    expect(detail.gate_missing).toMatchObject({ stagePlanMissing: true });
+    expect(detail.by).toBe('cli');
+    expect(detail.reason).toBe('紧急修复');
+    expect(detail.from).toBe('scheme_passed');
+    expect(detail.to).toBe('exec_running');
+    expect(typeof detail.at).toBe('string');
+    expect(Number.isNaN(Date.parse(String(detail.at)))).toBe(false);
+  });
+
+  it('v1.7.0 A62.3：flow stage reset --to exec_running --force --reason → 放行且末条审计同键集（不再无审计）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-17');
+    mgr.getData()!.stages['v1.0.0-stage-17'].phase = 'scheme_passed' as PipelinePhase;
+    mgr.save();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-17', '--to', 'exec_running', '--force', '--reason', '人工复核后放行']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(after.stages['v1.0.0-stage-17'].phase).toBe('exec_running');
+    const entry = (after.log as Array<{ action: string; detail: Record<string, unknown> }>)
+      .filter((l) => l.action === 'reset_stage_phase')
+      .pop();
+    const detail = entry?.detail as Record<string, unknown>;
+    expect(detail.gate_overrides).toEqual(['plan']);
+    expect(detail.gate_missing).toMatchObject({ stagePlanMissing: true });
+    expect(detail.by).toBe('cli');
+    expect(detail.reason).toBe('人工复核后放行');
+    expect(detail.from).toBe('scheme_passed');
+    expect(detail.to).toBe('exec_running');
+    expect(typeof detail.at).toBe('string');
+  });
+
+  it('v1.7.0 A62.3：同一条 reset 命令无 --force → exit 1 且零伪造审计', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-18');
+    mgr.getData()!.stages['v1.0.0-stage-18'].phase = 'scheme_passed' as PipelinePhase;
+    mgr.save();
+    const before = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-18', '--to', 'exec_running', '--reason', '人工复核后放行']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(after.meta.revision).toBe(before.meta.revision);
+    expect((after.log as Array<{ action: string }>).some((l) => l.action === 'reset_stage_phase')).toBe(false);
+  });
+
   // ── v1.6.0 / REQ-059 T8：archiving → done 的账本陈旧门（命令层出口 + --force 留痕） ──
 
   /** archiving + 阶段验证 pass 的最小阶段（done 门可通过，只剩账本门可拦） */

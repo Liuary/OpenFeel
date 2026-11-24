@@ -20,7 +20,7 @@ export interface CliErrorSpec {
 }
 
 /**
- * 15 个稳定错误码（kind 与 exitCode 内嵌，禁止命令层自行推导）。
+ * 20 个稳定错误码（kind 与 exitCode 内嵌，禁止命令层自行推导）。
  * 顺序与 `docs/json-contract.md` §3 逐行一致。
  */
 export const CLI_ERROR_CODES = {
@@ -43,12 +43,20 @@ export const CLI_ERROR_CODES = {
   STAGE_PLAN_GATE: { code: 'STAGE_PLAN_GATE', kind: 'refusal', exitCode: 1 },
   // v1.6.0 / REQ-059：archiving → done 前开发账本仍陈旧（同步失败；零写盘拒绝，--force 留痕放行）
   DEV_SYNC_STALE: { code: 'DEV_SYNC_STALE', kind: 'refusal', exitCode: 1 },
+  // v1.7.0 / REQ-063 A63.3：需求生命周期门禁（`req claim/advance/complete --json` 的失败码）。
+  // 码值与门一一对应，命令层单点映射（`RequirementErrorCode → CliErrorCode`），不就地拼第二份。
+  REQ_BODY_GATE: { code: 'REQ_BODY_GATE', kind: 'refusal', exitCode: 1 },
+  REQ_PLAN_GATE: { code: 'REQ_PLAN_GATE', kind: 'refusal', exitCode: 1 },
+  REQ_PLAN_DEVIATION: { code: 'REQ_PLAN_DEVIATION', kind: 'refusal', exitCode: 1 },
+  // A63.2：`review_pending → done` 缺审查 / 缺验证（两码互斥，按 requirementDoneBlocker 的首个不满足判据）
+  REQ_REVIEW_REQUIRED: { code: 'REQ_REVIEW_REQUIRED', kind: 'refusal', exitCode: 1 },
+  REQ_VERIFY_REQUIRED: { code: 'REQ_VERIFY_REQUIRED', kind: 'refusal', exitCode: 1 },
 } as const;
 
 /** 稳定错误码联合类型（由码表键派生，防字符串漂移） */
 export type CliErrorCode = keyof typeof CLI_ERROR_CODES;
 
-/** 有序 15 行映射表（顺序与契约文档 §3 逐行一致，供测试逐行断言） */
+/** 有序 20 行映射表（顺序与契约文档 §3 逐行一致，供测试逐行断言） */
 export const CLI_ERROR_TABLE: readonly CliErrorSpec[] = [
   CLI_ERROR_CODES.NO_INIT,
   CLI_ERROR_CODES.INVALID_ARGUMENT,
@@ -65,6 +73,11 @@ export const CLI_ERROR_TABLE: readonly CliErrorSpec[] = [
   CLI_ERROR_CODES.ARCHIVE_EXISTS,
   CLI_ERROR_CODES.STAGE_PLAN_GATE,
   CLI_ERROR_CODES.DEV_SYNC_STALE,
+  CLI_ERROR_CODES.REQ_BODY_GATE,
+  CLI_ERROR_CODES.REQ_PLAN_GATE,
+  CLI_ERROR_CODES.REQ_PLAN_DEVIATION,
+  CLI_ERROR_CODES.REQ_REVIEW_REQUIRED,
+  CLI_ERROR_CODES.REQ_VERIFY_REQUIRED,
 ];
 
 /**

@@ -1,6 +1,6 @@
 {
   "name": "openfeel",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "AI Agent 开发流程治理 CLI 工具",
   "type": "module",
   "private": false,
@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "node build.js",
+    "release": "node scripts/release.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "dev": "vitest",

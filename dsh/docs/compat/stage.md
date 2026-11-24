@@ -1448,3 +1448,15 @@ const SchemaSchema = z.object({
 4. **账本陈旧门（REQ-059）**：`advanceStagePhase` 入口**先**跑 `maybeSyncDevStatus()`，再在 done 门之前判 `targetPhase === 'done' && fromPhase !== 'done'` 且 `getDevStatus().due === true` ⇒ `DEV_SYNC_STALE` / refusal / exit 1，零写盘；同一 `allowGateOverride` 放行并在 `gate_overrides` 追加 `'dev_sync'`。正常路径同步成功即 `due=false`，不会触发（构造法单测见 `test/core/dev-status.test.ts`）。
 5. **盖章（REQ-056）**：计划门**通过时**对每个在办需求写 `requirements[*].plan = {path, sha256(前 12 位), recorded_at}`（已有 `deviations` 保留）；拒绝路径零写盘。
 6. **既有行为零改动**：`describeStageDoneGate`（`archiving → done` 的 verification + 关联需求全 done）、`status.md` 投影、`reset_stage_phase` / `advance_stage_phase` 既有字段、`--force` 跳过非法 phase 的既有语义均不变。
+
+---
+
+## v1.7.0 增量（现行契约；以上 v1.6.0 段保持冻结）
+
+> 实现锚点：`src/core/flow/gate-override.ts`、`src/core/flow-manager.ts`（`advanceStagePhase` / `resetStagePhase`）、`src/commands/flow.ts`。
+
+1. **统一 `GateOverride` 审计（REQ-062 A62.2）**：`flow advance --force`、`flow stage reset --force` 与各门 `allowGateOverride` 收敛为**同一份** helper `buildGateOverrideAudit({gates,missing,by,reason,from,to})` → `{gate_overrides, gate_missing?, by, reason, from, to, at}`，并**平铺写入 `appendLog.detail`**（flow 侧不嵌套；需求侧 `requirement_status` 条目才装在 `detail.gate_override` 下）。`from`/`to` **必填**；`gate_overrides` 取值闭集 `plan|dev_sync|req_review|req_body|req_plan`。
+2. **`reset --force` 也有审计（REQ-062 A62.3）**：`flow stage reset --to <后置相> --force` 的 `flow.json.log` 末条必含 `gate_override`（非空 `gate_overrides` + `from`/`to` + `by`/`reason`/`at`）；无 `--force` 时同命令被拒且**零伪造审计**。单点 `grep -rn "gate_missing" src/` 只命中 helper 与写入口。
+3. **`--reason` 成为留痕原因**：`flow advance` / `flow stage reset` 的 `--reason <text>` 在 `--force` 放行时写入 `detail.reason`（缺省 `manual`）；`advance` 的 `review_passed → exec_running` 仍写既有 `rework_reason`，两者互不覆盖。
+4. **`--force` 语义边界不变（REQ-062 A62.4）**：仍只跳过非法 phase / 阶段跳跃检查；blocking open REV 门、done 门（阶段 verify + 关联需求全 done）、版本归档判据**不可 force 绕过**；`GateOverride` 类型与 `buildGateOverrideAudit()` 由 `src/core/flow/gate-override.ts` 导出，既有 done 门三态用例零改动。
+5. **既有行为零改动**：阶段转移表（full / fast / general）、`describeStagePlanGate` / `describeStageDoneGate`、`status.md` 投影与 checkpoint 写点均不变；进入 `exec_running` 的计划门（v1.6.0）同口径。

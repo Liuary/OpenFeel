@@ -13,7 +13,7 @@
 - **落点**：`ctx.tools`（15 个 `feel_*` 工具）、`ctx.commands`（`/feel`）、
   `ctx.systemPrompt`（`<feel_mode>` 纪律段 + 每轮提醒段）。不写任何领域状态。
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
-  （v1.6.0 起 46 个成功出口 / 47 个注册 `--json` 选项）；本适配器只消费、不重实现。
+  （v1.7.0 起 51 个成功出口 / 52 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
   的 `openfeel.requiresCli`（≥1.6.0；`req body` / `feel_req body` / 五个新门禁码是硬依赖）。
 
@@ -199,6 +199,67 @@ spike 原始证据（含 upgrade 条件）见 `.openfeel/tmp/stage-132/spike.md`
 - **写入者唯一**：适配器 `lib/adapters/dispatch-ledger.js`（原子 temp + rename，仿 `sessions.js`）；该文件在 `PROTECTED_OPENFEEL_PATHS` 内，agent 工具直写 → `deny`。
 - **`origin` / `dispatchDepth`**：按 schema 保留缺省 `root` / `1`；**从宿主会话头读取的路径未在真实宿主验证**（spike T9 遗留），因此不构成实测证据，也不据此改审计 schema 版本。
 - **`feel_status.dispatch`** = `{required, records, missingRoles}`：`required` 恒 `true`（**提示级，不做硬拦**，用户裁定②）；`records` = 24h 内行数；`missingRoles` = 本快照应有但台账缺的 agent 角色。`feel_status` / `feel_next` 另给动作型 `nextAction`（`{kind:'dispatch'|'command'|'idle', tool, goal, prompt, reason}`），`next` 字符串键保留以不破坏既有断言。
+
+## v1.7.0：派发闭环、遵守率、guard wrapper 与文档白名单
+
+> 基线：CLI `1.7.0`（`openfeel.requiresCli >=1.7.0`）；工具面**仍 15 个**（新增的是 action，不是工具）。
+
+### 工具面增量（15 个，计数不变）
+
+| 工具 | v1.7.0 增量 |
+|---|---|
+| `feel_dispatch` | **`action=finish`**：按 `dispatchId` **原地补写** `closing{status:'done'\|'failed', artifacts[], durationMs, summary}` + 行顶层 `closedAt`；行数 / 行序 / 其余行字节不变；重复 finish 内容相同 → `ok:true, changed:false`（`ts` / `closing` / `closedAt` 不二次改写）；未知 id → 报错。`durationMs` 缺省 = `now - Date.parse(ts)`（非负整数，解析失败 → 0）。 |
+| `feel_status` | `dispatch` 汇总升到 **7 键**：`{required, total, sincePhase, open[], closedRatio, missingRoles, records[]}`（旧四键保留）。`open[]` = 当前 `stage` 范围内无 `closing` 或 `closing.status!=='done'` 的派发；`closedRatio` = `closing.status==='done'` 条数 / `total`（`total===0` → `null`，不出现 NaN）；`missingRoles` **改按 `closing.status==='done'`** 判定（旧「有 record 即算」作废）；`records[]` 透出 `closing` / `closedAt`。 |
+| `feel_verify` | **`action=adherence`**：调 `openfeel lint adherence --json`（CLI 出口 #51），返回四指标 `{main_write_ratio, subagent_per_req, sync_gap, violation_rate}`，每键 `{value, definition}`；样本不足 → `value:null` 且不抛错。**不新增工具、不新增 `openfeel verify` 顶层命令**。 |
+| `feel_req` | `action=body`（v1.6.0 起；v1.7.0 起 `text` **走 `os.tmpdir()` 临时文件 + `--file`**，argv 零 `--text`，`finally` 清理）；`action=add` 可带 `plan` 参数写正文 `## 初步规划` 小节。**已知缺口**：适配器当前没有 `action=plan`，也没有 `body --from` 透传——需求级计划请用 `openfeel req plan <id> [--force]`（CLI 出口 #50），多节导入请用 `openfeel req body <id> --from <md>`。 |
+
+### 派发台账 schema v2（`.openfeel/dev/dispatch.jsonl`）
+
+v1.6.0 的 13 键（`dispatchId,ts,leadSessionId,origin,stage,phase,targetAgent,role,taskId,goal,files,returnFormat,dispatchDepth`）**零改动**；v1.7.0 只在闭环后追加两个**可选**字段（旧行缺省即未闭环）：
+
+```json
+{"dispatchId":"d-0001","ts":"…","leadSessionId":"<session.id>","origin":"root","stage":"v1.7.0-stage-133","phase":"exec_running","targetAgent":"executor-a","role":"executor","taskId":"E13","goal":"…","files":["docs/commands.md"],"returnFormat":"≤10 行","dispatchDepth":1,"closing":{"status":"done","artifacts":["docs/commands.md"],"durationMs":123456,"summary":"文档对账完成"},"closedAt":"2026-11-25T02:00:00.000Z"}
+```
+
+- `closing` **恰 4 键固定序**：`status` / `artifacts` / `durationMs` / `summary`；`closedAt` 是**行顶层**字段（不塞进 `closing`）。
+- 兼容：读侧跳过畸形行，缺 `closing` 视为未闭环；`summarizeDispatch` 输出 `closing:null` / `closedAt:null`。
+- 写入者唯一（适配器进程直接 fs，temp+rename）；文件在 `PROTECTED_OPENFEEL_PATHS` 内，工具直写 → `deny`。
+
+### 遵守率四指标（`feel_verify action=adherence`）
+
+| 指标 | 分子 / 分母 | 样本窗口 |
+|---|---|---|
+| `main_write_ratio` | `origin=root` 的写调用 /（root + 子 Agent 派生 `subagent\|delegated` + `origin` 缺失计 unknown） | `.openfeel/log/guard-audit.jsonl` 全量 |
+| `subagent_per_req` | `role=executor` 且 `closing.status='done'` 的派发数 / `status='in_progress'` 的需求数 | 台账 24h / 200 行 + 当前 `flow.json` |
+| `sync_gap` | 现在 − `.openfeel/dev/.sync.json` 的 `last_sync`（毫秒 ÷ 60000，取整分钟；缺失/不可解析 → null） | 最近一次同步时刻（单点，无平均） |
+| `violation_rate` | `decision='deny'` 条数 / 全部 guard 决策（`allow\|deny\|warn`） | `guard-audit.jsonl` 全量 |
+
+> 口径单点在 `src/core/adherence.ts`；`value` 为 number 或 `null`，**绝不 NaN / Infinity**；**只读观测、恒 exit 0**（低遵守率不是门禁、不产生 deny）。
+
+### guard wrapper 静态分类（REQ-067）
+
+`bash` / `pwsh` 命令文本里的 wrapper 会**读脚本内容**（`MAX_SCRIPT_BYTES = 64KB`，超限不做部分读取）后按**同一套** `classifyShellCommand` 递归分类（`WRAPPER_MAX_DEPTH = 4`，触顶即不可判定）：
+
+- **解析面**（v1.7.0 实测，四种 + 内联）：`pwsh|powershell -File|-f <脚本>` 与同 token 的 `-File:<脚本>`；`pwsh|powershell <脚本>`（**位置参数**，中间开关值如 `-ExecutionPolicy Bypass` 不丢载体）；`cmd [/d|/q|/e:on 等前置开关] [/c|/k] <脚本>`（前置开关不吃掉载体，`/c:x.cmd` 同 token 也认）；`bash|sh|zsh|dash|fish|ksh <脚本>`（第一个非旗标参数；`-c` 走内联递归）；`source <脚本>` / `. <脚本>`（**只在命令位**识别，避免 `rg source x.sh` 误判；只认已知脚本扩展名）；`node <脚本>` 见下条。
+- 命中 openfeel 写动词 → class 1 `deny`；可解析出受保护 / 源码目标 → class 2 `deny`；内容确认只读（`readonly.ps1` / `build.ps1` / 只读 `node -e`）→ `allow`，**不写 deny 审计**（不误杀）。
+- **`.cmd` / `.bat` 用 cmd 语义**（不拿 PowerShell 表硬套）：`copy` / `move` **只算目标**（源只读，否则误杀 `copy src\a.ts dist\`）、`xcopy` / `robocopy` 第二个位置参数是目标、`del` / `erase` / `ren` / `rename` / `rd` / `rmdir` / `rm` **全部位置参数都算写**；`>` / `>>` 重定向统一按写处理。
+- **`node` 默认不读内容** → `undecidable`（`node test/guard.js` 正文里本来就有 openfeel 字面量，读内容会误杀）；只有脚本路径落在 `scripts/**`、或文件名含 `release` / `publish` / `commit` 时才读内容分类，且这类高风险脚本**内容不可判定时按 class 1 拒绝**（发布/提交类脚本要求人类在外部终端执行）；内联 `node -e` / `bash -c` 仍走原递归。
+- 编码：只接受 **UTF-8（含 BOM，严格校验）** 与 **UTF-16（BOM 或 NUL 启发式）**；**GBK 等双字节编码刻意不解码**（解错会给出假安全）→ 一律 `undecidable`。
+- 不可判定（不存在 / 非文件 / 超限 / 编码不明 / `node` 默认不读）→ 第 4 类 `SHELL_GATE_UNDECIDABLE = warn`，**必须写审计**：`event:'guard_deny'` 之外的不可判定行带 `kind:'undecidable'` + `detail:{wrapper, scriptPath, class:'undecidable', reason}`；命中 1/2 类时 `detail.class` 为 `class1`/`class2`、`reason:'wrapper-write'`。`strict` 档下不可判定改为 `deny`。
+- **仍存绕过面（如实记录，未封）**：
+  - `python <脚本>` / `deno run` / `bun <脚本>` 等解释器**不读脚本内容**，只落 `undecidable`（默认 `warn` 放行；只有 `strict` 才拒）——经它们真写文件时默认只留告警；
+  - `bash < x.sh`（stdin 重定向）没有位置参数载体，内容不被读取（实测落 `undecidable`，`scriptPath` 记为 `<`）；
+  - PowerShell 调用符 `& ./x.ps1` 与 `if` / `foreach` / `{}` 等**控制流块**不在解析面内（落 `undecidable`，块内写命令不被分类）；
+  - GBK 等双字节编码的 `.cmd` / `.ps1` 按设计不解码（`undecidable`，`strict` 拒）；
+  - 变量拼接 / 运行时生成的动态命令同样只能到 `undecidable`。
+
+### 文档 / 夹具写白名单相位（REQ-062）
+
+`DOC_WRITE_PHASES = ['review_passed', 'test_passed']`（`exec_running` 本就放行，不在名单内）：
+
+- **放行**：`docs/**`、工作区根级 `*.md`（`README.md` / `CHANGELOG.md` 等）、`test/fixtures/**`、`dsh/test/fixtures/**`；审计 `reason:'doc-asset-phase'`。
+- **仍拒**：`src/**`（含 `src/*.md` / `*.svg`）、`test/core/**` / `test/commands/**`（夹具 ≠ 测试代码）、以及所有受保护路径。
+- 判定发生在**相位层**（`dsh/lib/guard.js` 的命令分类 / 相位判定区）；`CODE_DIRECTORIES` / `isCodeDirectoryPath` / `isExemptPath` **未改**，豁免不扩散到源码树。
 
 ## 目录
 

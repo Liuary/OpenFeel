@@ -1255,3 +1255,18 @@ split(data, parentId, children):
 5. **偏差门（REQ-056）**：`→done` 前比对 `requirements[*].plan.sha256`（执行前盖章的前 12 位）与当前计划文件；不一致且 `## 偏差与回写` 未写实 ⇒ `plan_deviation`（`REQ_PLAN_DEVIATION`）；`plan.recorded_at` 缺失的历史需求放行 + `console.warn` + 独立审计 `requirement_plan_unstamped`（不阻塞）。顺序：正文门 → 计划门 → done 门（review + verify）→ 偏差门；缺 review/verify 仍先得 `invalid_status`。
 6. **错误码通道**：`RequirementErrorCode` 由 7 值扩到 10 值（+`body_empty` / `plan_missing` / `plan_deviation`）。`req claim/advance/complete` **均无 `--json`**；三码只由 `advance` / `complete` 触发，目前以 i18n 文案 + exit 1 呈现（`REQ_*` envelope 码尚未进入 `src/core/errors.ts`）。
 7. **既有行为零改动**：`requirementDoneBlocker`（done 门的 review + verify 两条判据）、`req claim --json` 的 unknown-option 行为、7 状态值域与 `general` 阶段级拒绝均不变。
+
+---
+
+## v1.7.0 增量（现行契约；以上 v1.6.0 段保持冻结）
+
+> 实现锚点：`src/core/req/types.ts`、`src/core/req/requirement-ops.ts`、`src/core/req/plan-file.ts`、`src/commands/req.ts`、`src/core/errors.ts`。
+
+1. **`review_pending` 状态（REQ-063 A63.1）**：`REQ_STATUSES` 在 `in_progress` 与 `done` 之间插入 `review_pending`（现 8 值）；`ALLOWED_TRANSITIONS`：`in_progress: ['review_pending','blocked','cancelled','rejected']`，`review_pending: ['done','in_progress','blocked','cancelled','rejected']`。**旧 `in_progress → done` 直连移除**（exit 1，文案含 `review_pending`）；`--force` 跳链留痕 `detail.gate_override.gate_overrides=['req_review']`（复用统一 `buildGateOverrideAudit`，含 `from`/`to`/`by`/`reason`/`at`）。`req board` / `dashboard` 的 `groups` 键序随值域只增一档（旧 7 键一个不删）。
+2. **done 门码化（REQ-063 A63.2/A63.3）**：`requirementDoneBlocker` 三值语义与判定顺序**不变**；命令层把 `review` / `verification` 分别映射为稳定码 `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED`（`stage_phase` 仍 `invalid_status`），并进入 `src/core/errors.ts` 与 error-envelope 契约表。**无 `REQ_REVIEW_GATE`**。`REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` 同批进表（错误码表共 20 行）。
+3. **`--json` 出口（REQ-063 A63.3）**：`req claim`（#47）/ `req advance`（#48）/ `req complete`（#49）成功 5 键固定序 `schemaVersion,id,from,to,status`，`gates` 为末位条件键（仅 `--force` 实际放行过门时出现，取值闭集 `req_review|req_body|req_plan`）；失败走 envelope（稳定码）。stdout 恰一个 JSON 文档、stderr 零输出。
+4. **`req plan`（REQ-064 A64.1，出口 #50）**：`req plan <id> [--force] [--json]` 写固定路径 `.openfeel/plan/reqs/REQ-NNN.plan.md`；四节 `## 目标` / `## 任务拆解` / `## 验收判据` / `## 偏差与回写` + `## 变更记录`；写实判据复用 `isRequirementPlanFilled`（禁第二份规则）。已存在默认拒绝且**字节不变**（legacy `plan_exists`），`--force` 覆盖并在 `--json` 末位追加 `replaced:true`（新建 6 键 / 覆盖 7 键）。
+5. **`req body --from`（REQ-064 A64.2）**：按 `##` 一次导入多节，一次调用写多小节（`sections[{name,created,lines}]`）；元信息小节（`状态` / `预估版本` / `父需求` / `关联阶段` / `变更记录`）与空正文小节**跳过并在 stderr 报告**；`--from` 恒整节替换、与 `--section/--text/--file/--append/--replace` 互斥；每个实际写入小节各追加 1 条 `## 变更记录`。
+6. **`--text` 多行保真（REQ-064 A64.4）**：只拒绝全空白、**不做首尾裁剪**；空行、`###` 子标题、列表行、`---` 与 CRLF 原样落盘；`lines` 与 `body.split(/\r?\n/).length` 同源。适配器 `feel_req action=body text=` 改走 `os.tmpdir()` 临时文件 + `--file`（argv 零 `--text`，`finally` 清理）。
+7. **`lint fill --fix-plan`（REQ-064 A64.3）**：只为 `missingPlan`（计划文件不存在）生成骨架，已有计划（含空壳）进 `skipped[{id,reason:'exists'}]` 且字节不变；`--json` 末位追加 `created[]` / `skipped[]`；**仍恒 exit 0**（advisory 不变）。
+8. **既有行为零改动**：`req claim` 仍只写身份字段、不校验正文；7 状态既有键序与 `general` 阶段级拒绝不变；`req add` / `body` / `lint` 既有用例零失败。

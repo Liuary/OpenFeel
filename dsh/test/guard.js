@@ -7,9 +7,12 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { classifyShellCommand, clearGuardCache, createOpenFeelGuard, isPresentationalAssetPath, normalizeForComparison, parsePatchTargets, resolveGuardCwd } from '../lib/guard.js';
 import { touchSession } from '../lib/adapters/sessions.js';
@@ -686,6 +689,62 @@ check('D-126-06：无活跃阶段写 src/x.md 被拒（文案给「开会话/开
   const reason = projectOnly(execution('write', cwd, { path: 'src/x.md' }));
   assert.match(String(reason), /无活跃阶段/);
   assert.match(String(reason), /feel_stage add/);
+});
+
+// ── v1.7.0 / REQ-062 A62.1：审后相位（review_passed / test_passed）文档/夹具白名单 ──
+
+const reviewPassedFlow = { stages: { 'v1-stage-1': { phase: 'review_passed' } }, requirements: [] };
+const testPassedFlow = { stages: { 'v1-stage-1': { phase: 'test_passed' } }, requirements: [] };
+
+for (const [phase, flow] of [['review_passed', reviewPassedFlow], ['test_passed', testPassedFlow]]) {
+  check(`A62.1：${phase} 下 docs / 根 md / 测试夹具放行（reason=doc-asset-phase）`, () => {
+    const cwd = project(`doc-asset-phase-${phase}`, flow);
+    const allowed = [
+      'docs/research/x.md',
+      'README.md',
+      'CHANGELOG.md',
+      'other-root-note.md',
+      'test/fixtures/legacy-project/src/legacy.ts',
+      'test/fixtures/factories.ts',
+      'dsh/test/fixtures/wrapper/write-openfeel.ps1',
+    ];
+    for (const path of allowed) {
+      assert.equal(projectOnly(execution('write', cwd, { path })), undefined, path);
+      assert.equal(readAudit(cwd).at(-1).reason, 'doc-asset-phase', path);
+    }
+  });
+
+  check(`A62.1：${phase} 下 src/**、测试代码、脚本仍拒（reason=phase；夹具 ≠ 测试代码）`, () => {
+    const cwd = project(`doc-asset-phase-deny-${phase}`, flow);
+    const denied = [
+      'src/core/flow-manager.ts',
+      'src/x.md',
+      'src/assets/logo.svg',
+      'test/core/req.test.ts',
+      'test/commands/flow.test.ts',
+      'scripts/release.mjs',
+    ];
+    for (const path of denied) {
+      const reason = projectOnly(execution('write', cwd, { path }));
+      assert.equal(typeof reason, 'string', path);
+      assert.equal(readGuardState(cwd).lastDecision.reason, 'phase', path);
+    }
+  });
+}
+
+check('A62.1：exec_running 下文档/夹具/源码全放行（回归）', () => {
+  const cwd = project('doc-asset-phase-exec', execFlow);
+  const all = [
+    'docs/x.md',
+    'README.md',
+    'test/fixtures/factories.ts',
+    'dsh/test/fixtures/wrapper/write-openfeel.ps1',
+    'src/core/flow-manager.ts',
+    'test/core/req.test.ts',
+  ];
+  for (const path of all) {
+    assert.equal(projectOnly(execution('write', cwd, { path })), undefined, path);
+  }
 });
 
 check('R9 防自锁：touchSession 直写 dev/sessions.json、recordGuardAudit 直写审计（不经工具路径）', () => {
@@ -2845,6 +2904,378 @@ check('OF-05：白名单不触达第 1/2 类 deny（openfeel 写命令 / 受保�
     assert.equal(typeof projectOnly(shellExec('pwsh', cwd, protectedCommand)), 'string');
     assert.equal(readAudit(cwd).at(-1).reason, 'shell-protected');
   });
+});
+
+// ── v1.7.0 / REQ-067 A67.1—A67.4：guard wrapper 静态分类（R7）──────────────
+//
+// fixture 落在 `dsh/test/fixtures/wrapper/`（A67.4）：包装器执行时读脚本正文并按其内容
+// 分类；用例表是**唯一**的用例来源（数量断言直接从表里取，不靠人工数）。
+
+const wrapperFixtureDir = fileURLToPath(new URL('./fixtures/wrapper/', import.meta.url));
+/** @param {string} name */
+const wrapperFixture = (name) => join(wrapperFixtureDir, name);
+
+/** fixture 清单（A67.4 的数量断言基准；新增/删除 fixture 必须同步这里）。 */
+const WRAPPER_FIXTURE_FILES = [
+  'bin.dat',
+  'build.ps1',
+  'cmd-copy-move.cmd',
+  'cmd-del-ren.cmd',
+  'gbk-write.cmd',
+  'readonly.ps1',
+  'set-content-src.cmd',
+  'sh-write.sh',
+  'utf16-openfeel.ps1',
+  'write-openfeel.ps1',
+];
+
+/**
+ * A67 用例表：`expect` = deny（1/2 类拒）| allow（放行，可带 wrapper 证据）| warn（第 4 类）。
+ * `wrapper`/`auditClass`/`script`/`detailReason` 是审计行 `detail` 的硬断言（A67.1/A67.3）。
+ */
+const A67_CASES = [
+  {
+    id: 'ps1-openfeel-deny',
+    command: `pwsh -File "${wrapperFixture('write-openfeel.ps1')}"`,
+    expect: 'deny',
+    wrapper: 'pwsh -File',
+    auditClass: 'class1',
+    reason: 'wrapper-write',
+    script: 'write-openfeel.ps1',
+  },
+  {
+    id: 'cmd-src-deny',
+    command: `cmd /c "${wrapperFixture('set-content-src.cmd')}"`,
+    expect: 'deny',
+    wrapper: 'cmd /c',
+    auditClass: 'class2',
+    reason: 'wrapper-write',
+    script: 'set-content-src.cmd',
+  },
+  {
+    id: 'bash-script-deny',
+    command: `bash "${wrapperFixture('sh-write.sh')}"`,
+    expect: 'deny',
+    wrapper: 'bash',
+    auditClass: 'class1',
+    reason: 'wrapper-write',
+    script: 'sh-write.sh',
+  },
+  {
+    id: 'utf16-bom-deny',
+    command: `pwsh -File "${wrapperFixture('utf16-openfeel.ps1')}"`,
+    expect: 'deny',
+    wrapper: 'pwsh -File',
+    auditClass: 'class1',
+    reason: 'wrapper-write',
+    script: 'utf16-openfeel.ps1',
+  },
+  {
+    id: 'inline-bash-c-deny',
+    command: 'bash -c "openfeel flow advance --stage v1-stage-1"',
+    expect: 'deny',
+    reason: 'shell-openfeel-write',
+  },
+  {
+    id: 'inline-node-e-deny',
+    command: `node -e "require('fs').writeFileSync('src/x.ts','')"`,
+    expect: 'deny',
+    detailMatcher: /嵌套解释器|编码执行/,
+  },
+  {
+    id: 'readonly-allow',
+    command: `pwsh -File "${wrapperFixture('readonly.ps1')}"`,
+    expect: 'allow',
+    wrapper: 'pwsh -File',
+    auditClass: 'none',
+    script: 'readonly.ps1',
+  },
+  {
+    id: 'build-allow',
+    command: `pwsh -File "${wrapperFixture('build.ps1')}"`,
+    expect: 'allow',
+    wrapper: 'pwsh -File',
+    auditClass: 'none',
+    script: 'build.ps1',
+  },
+  {
+    id: 'node-inline-readonly-allow',
+    command: 'node -e "console.log(1)"',
+    expect: 'allow-no-audit',
+  },
+  {
+    id: 'gbk-undecidable',
+    command: `pwsh -File "${wrapperFixture('gbk-write.cmd')}"`,
+    expect: 'warn',
+    wrapper: 'pwsh -File',
+    auditClass: 'undecidable',
+    script: 'gbk-write.cmd',
+    detailReason: /unknown-encoding/,
+  },
+  {
+    id: 'cmd-gbk-undecidable',
+    command: `cmd /c "${wrapperFixture('gbk-write.cmd')}"`,
+    expect: 'warn',
+    wrapper: 'cmd /c',
+    auditClass: 'undecidable',
+    script: 'gbk-write.cmd',
+    detailReason: /unknown-encoding/,
+  },
+  {
+    id: 'bin-undecidable',
+    command: `pwsh -File "${wrapperFixture('bin.dat')}"`,
+    expect: 'warn',
+    wrapper: 'pwsh -File',
+    auditClass: 'undecidable',
+    script: 'bin.dat',
+  },
+  {
+    id: 'missing-undecidable',
+    command: `pwsh -File "${join(wrapperFixtureDir, 'missing.ps1')}"`,
+    expect: 'warn',
+    wrapper: 'pwsh -File',
+    auditClass: 'undecidable',
+    script: 'missing.ps1',
+  },
+  // ── v1.7.0 fix 1：补齐 wrapper 形态（位置参数 / `-File:` / cmd 前置开关 / source / `.`）──
+  {
+    id: 'ps1-positional-deny',
+    command: `pwsh "${wrapperFixture('write-openfeel.ps1')}"`,
+    expect: 'deny',
+    wrapper: 'pwsh',
+    auditClass: 'class1',
+    reason: 'wrapper-write',
+    script: 'write-openfeel.ps1',
+  },
+  {
+    id: 'ps1-file-colon-deny',
+    command: `pwsh "-File:${wrapperFixture('write-openfeel.ps1')}"`,
+    expect: 'deny',
+    wrapper: 'pwsh -File',
+    auditClass: 'class1',
+    reason: 'wrapper-write',
+    script: 'write-openfeel.ps1',
+  },
+  {
+    // 回归：`pwsh <开关值> -File <脚本>`（值里不是路径）不得提前 break 掉 -File。
+    id: 'ps1-switch-value-deny',
+    command: `pwsh -ExecutionPolicy Bypass -File "${wrapperFixture('write-openfeel.ps1')}"`,
+    expect: 'deny',
+    wrapper: 'pwsh -File',
+    auditClass: 'class1',
+    reason: 'wrapper-write',
+    script: 'write-openfeel.ps1',
+  },
+  {
+    id: 'cmd-preswitch-deny',
+    command: `cmd /d /c "${wrapperFixture('set-content-src.cmd')}"`,
+    expect: 'deny',
+    wrapper: 'cmd /c',
+    auditClass: 'class2',
+    reason: 'wrapper-write',
+    script: 'set-content-src.cmd',
+  },
+  {
+    id: 'source-deny',
+    command: `source "${wrapperFixture('sh-write.sh')}"`,
+    expect: 'deny',
+    wrapper: 'source',
+    auditClass: 'class1',
+    reason: 'wrapper-write',
+    script: 'sh-write.sh',
+  },
+  {
+    id: 'dot-source-deny',
+    command: `. "${wrapperFixture('sh-write.sh')}"`,
+    expect: 'deny',
+    wrapper: '.',
+    auditClass: 'class1',
+    reason: 'wrapper-write',
+    script: 'sh-write.sh',
+  },
+  // ── v1.7.0 fix 3：`.cmd` 正文按 cmd 语义（copy/move 只算目标；del/ren 全算）──
+  {
+    id: 'cmd-copy-move-allow',
+    command: `cmd /c "${wrapperFixture('cmd-copy-move.cmd')}"`,
+    expect: 'allow',
+    wrapper: 'cmd /c',
+    auditClass: 'class2',
+    script: 'cmd-copy-move.cmd',
+  },
+  {
+    id: 'cmd-del-ren-deny',
+    command: `cmd /c "${wrapperFixture('cmd-del-ren.cmd')}"`,
+    expect: 'deny',
+    wrapper: 'cmd /c',
+    auditClass: 'class2',
+    reason: 'wrapper-write',
+    script: 'cmd-del-ren.cmd',
+  },
+];
+
+check('A67.4：用例数与 fixture 数量断言（≥6 条用例；fixture 清单固定）', () => {
+  assert.ok(A67_CASES.length >= 6, `A67 用例数 ${A67_CASES.length} 应 ≥6`);
+  const files = readdirSync(wrapperFixtureDir).sort();
+  assert.deepEqual(files, WRAPPER_FIXTURE_FILES, `fixture 清单不一致：${files.join(', ')}`);
+});
+
+check('A67.1：包装脚本正文命中 → 1/2 类拒 + 审计 detail（wrapper/scriptPath/class/reason）', () => {
+  for (const testCase of A67_CASES.filter((entry) => entry.expect === 'deny')) {
+    const cwd = project(`a67-deny-${testCase.id}`, planFlow);
+    const reason = projectOnly(shellExec('bash', cwd, testCase.command));
+    assert.equal(typeof reason, 'string', testCase.command);
+    const row = readAudit(cwd).at(-1);
+    assert.equal(row.event, 'guard_deny', testCase.id);
+    assert.equal(row.decision, 'deny', testCase.id);
+    if (testCase.auditClass !== undefined) assert.equal(row.kind, testCase.auditClass, testCase.id);
+    if (testCase.reason !== undefined) assert.equal(row.reason, testCase.reason, testCase.id);
+    if (testCase.detailMatcher !== undefined) assert.match(String(reason), testCase.detailMatcher, testCase.id);
+    if (testCase.wrapper !== undefined) {
+      assert.equal(row.detail?.wrapper, testCase.wrapper, testCase.id);
+      assert.equal(typeof row.detail?.scriptPath, 'string', testCase.id);
+      assert.ok(row.detail.scriptPath.length > 0, testCase.id);
+      assert.equal(basename(row.detail.scriptPath), testCase.script, testCase.id);
+      assert.ok(String(row.detail?.reason ?? '').length > 0, testCase.id);
+    }
+  }
+});
+
+check('A67.2：普通 wrapper 放行且不写 deny 审计（readonly.ps1 / build.ps1 / node -e console.log）', () => {
+  for (const testCase of A67_CASES.filter((entry) => entry.expect === 'allow' || entry.expect === 'allow-no-audit')) {
+    const cwd = project(`a67-allow-${testCase.id}`, planFlow);
+    assert.equal(projectOnly(shellExec('bash', cwd, testCase.command)), undefined, testCase.command);
+    if (testCase.expect === 'allow-no-audit') {
+      assert.equal(existsSync(join(cwd, '.openfeel', 'log', 'guard-audit.jsonl')), false, testCase.id);
+      continue;
+    }
+    const rows = readAudit(cwd);
+    assert.equal(rows.some((row) => row.event === 'guard_deny'), false, testCase.id);
+    const row = rows.at(-1);
+    assert.equal(row.event, 'guard_allow', testCase.id);
+    assert.equal(row.kind, testCase.auditClass, testCase.id);
+    assert.equal(row.detail?.wrapper, testCase.wrapper, testCase.id);
+    assert.equal(basename(row.detail.scriptPath), testCase.script, testCase.id);
+  }
+});
+
+check('A67.3：不可读/超限/编码不明 → 第 4 类 warn + 审计 detail（wrapper/scriptPath/reason）；strict 下 deny', () => {
+  for (const testCase of A67_CASES.filter((entry) => entry.expect === 'warn')) {
+    const cwd = project(`a67-warn-${testCase.id}`, planFlow);
+    // 第 4 类缺省是 warn 放行（不是 deny，也不是静默）。
+    assert.equal(projectOnly(shellExec('bash', cwd, testCase.command)), undefined, testCase.command);
+    const row = readAudit(cwd).at(-1);
+    assert.equal(row.event, 'guard_shell_unresolved', testCase.id);
+    assert.equal(row.decision, 'warn', testCase.id);
+    assert.equal(row.kind, 'undecidable', testCase.id);
+    assert.equal(row.detail?.wrapper, testCase.wrapper, testCase.id);
+    assert.equal(typeof row.detail?.scriptPath, 'string', testCase.id);
+    assert.equal(basename(row.detail.scriptPath), testCase.script, testCase.id);
+    assert.ok(String(row.detail?.reason ?? '').length > 0, testCase.id);
+    if (testCase.detailReason !== undefined) assert.match(String(row.detail.reason), testCase.detailReason, testCase.id);
+    // strict：第 4 类也拒（档位语义不变）
+    const strict = guardWithShellGate('strict');
+    assert.equal(typeof strict(shellExec('bash', cwd, testCase.command)), 'string', `${testCase.id} strict`);
+    const strictRow = readAudit(cwd).at(-1);
+    assert.equal(strictRow.event, 'guard_deny', `${testCase.id} strict`);
+    assert.equal(strictRow.kind, 'undecidable', `${testCase.id} strict`);
+    assert.equal(strictRow.detail?.wrapper, testCase.wrapper, `${testCase.id} strict`);
+  }
+});
+
+check('A67.3：超过 MAX_SCRIPT_BYTES（64KB）的脚本 → undecidable（不部分读取）', () => {
+  const cwd = project('a67-oversize', planFlow);
+  const big = join(cwd, 'big.ps1');
+  writeFileSync(big, `# ${'x'.repeat(70 * 1024)}\n`, 'utf8');
+  assert.equal(projectOnly(shellExec('bash', cwd, `pwsh -File "${big}"`)), undefined);
+  const row = readAudit(cwd).at(-1);
+  assert.equal(row.kind, 'undecidable');
+  assert.equal(row.detail?.wrapper, 'pwsh -File');
+  assert.equal(row.detail?.scriptPath, big);
+  assert.match(String(row.detail?.reason), /script-too-large/);
+});
+
+check('A67.5（fix 2）：node 脚本按路径决定是否读内容（scripts/** 强制读；其它不读 → 不误杀）', () => {
+  const cwd = project('a67-node-script-inspect', planFlow);
+  mkdirSync(join(cwd, 'scripts'), { recursive: true });
+  writeFileSync(join(cwd, 'scripts', 'release.mjs'), [
+    '#!/usr/bin/env node',
+    "import { execFileSync } from 'node:child_process';",
+    "execFileSync('npm', ['publish', '--access', 'public']);",
+  ].join('\n'), 'utf8');
+  // 选择：**deny**（不是 warn）—— 正文是 JS，按 shell 语义不可判定；而发布/提交类脚本的
+  // 真实动作就在正文里，「判不了就 warn 放行」等于把发布通道敞开。要求人工在外部终端执行。
+  assert.equal(
+    typeof projectOnly(shellExec('bash', cwd, 'node scripts/release.mjs --publish')),
+    'string',
+  );
+  const denied = readAudit(cwd).at(-1);
+  assert.equal(denied.event, 'guard_deny');
+  assert.equal(denied.decision, 'deny');
+  assert.equal(denied.kind, 'class1');
+  assert.equal(denied.detail?.wrapper, 'node');
+  assert.equal(basename(denied.detail.scriptPath), 'release.mjs');
+  assert.equal(denied.detail.reason, 'node-script-high-risk-undecidable');
+
+  // 文件名含 release/publish/commit 同样强制读内容（不在 scripts/ 下也命中）
+  writeFileSync(join(cwd, 'publish-notes.mjs'), "execFileSync('npm', ['publish']);\n", 'utf8');
+  assert.equal(typeof projectOnly(shellExec('bash', cwd, 'node publish-notes.mjs')), 'string');
+  assert.equal(readAudit(cwd).at(-1).kind, 'class1');
+
+  // 其它 node 脚本保持**不读**：正文里带 openfeel 写命令也不误杀（第 4 类 warn + 审计原因可追溯）
+  mkdirSync(join(cwd, 'test'), { recursive: true });
+  writeFileSync(join(cwd, 'test', 'guard.js'), 'openfeel flow advance --stage v1-stage-1\n', 'utf8');
+  assert.equal(projectOnly(shellExec('bash', cwd, 'node test/guard.js')), undefined);
+  const warned = readAudit(cwd).at(-1);
+  assert.equal(warned.event, 'guard_shell_unresolved');
+  assert.equal(warned.decision, 'warn');
+  assert.equal(warned.kind, 'undecidable');
+  assert.equal(warned.detail?.wrapper, 'node');
+  assert.equal(basename(warned.detail.scriptPath), 'guard.js');
+  assert.equal(warned.detail.reason, 'node-script-content-not-inspected');
+});
+
+check('A67.6（fix 3）：`.cmd` 正文按 cmd 语义分类（copy/move 只算目标；del/ren 全算；`>` 重定向算写）', () => {
+  const cwd = project('a67-cmd-semantics', planFlow);
+  const fixtureCommand = (file) => `cmd /c "${wrapperFixture(file)}"`;
+  const classify = (file) => classifyShellCommand({
+    command: fixtureCommand(file),
+    baseDir: cwd,
+    shell: 'pwsh',
+  });
+  // copy/move：只有目标 `dist/out.ts` 算写；源 `src/generated.ts` 只被读（不计入 targets）
+  const copyMove = classify('cmd-copy-move.cmd');
+  assert.equal(copyMove.wrapper?.class, 'class2');
+  assert.deepEqual([...new Set(copyMove.targets.map((path) => basename(path)))], ['out.ts']);
+  assert.equal(projectOnly(shellExec('pwsh', cwd, fixtureCommand('cmd-copy-move.cmd'))), undefined);
+  // del/ren：全部位置参数算写（含源 → 受保护路径）
+  const delRen = classify('cmd-del-ren.cmd');
+  assert.deepEqual(
+    [...new Set(delRen.targets.map((path) => basename(path)))].sort(),
+    ['generated.bak', 'generated.ts'],
+  );
+  assert.equal(typeof projectOnly(shellExec('pwsh', cwd, fixtureCommand('cmd-del-ren.cmd'))), 'string');
+  // `>` 重定向算写（`echo` 本身只读，targets 只来自重定向）
+  const redirect = classify('set-content-src.cmd');
+  assert.deepEqual(redirect.targets.map((path) => basename(path)), ['generated.ts']);
+});
+
+check('A67 审计：header 提供 origin/delegationDepth 时写入，缺失时省略（不伪造）', () => {
+  const cwd = project('a67-origin', planFlow);
+  const withOrigin = {
+    name: 'write',
+    arguments: { path: 'docs/notes.md' },
+    agent: { session: { header: { cwd, origin: 'delegated', delegationDepth: 2 } } },
+  };
+  assert.equal(projectOnly(withOrigin), undefined);
+  const row = readAudit(cwd).at(-1);
+  assert.equal(row.origin, 'delegated');
+  assert.equal(row.delegationDepth, 2);
+  // 无 origin / delegationDepth 的 header → 两个键都不出现
+  const plainCwd = project('a67-origin-absent', planFlow);
+  assert.equal(projectOnly(execution('write', plainCwd, { path: 'docs/notes.md' })), undefined);
+  const plainRow = readAudit(plainCwd).at(-1);
+  assert.equal('origin' in plainRow, false);
+  assert.equal('delegationDepth' in plainRow, false);
 });
 
 // V4：真实宿主 marker 与真实全局目录未被本测试改写（loaded_hash 变 → FAIL；仅时间/条目变 → skip）。

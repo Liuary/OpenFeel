@@ -5,11 +5,11 @@
 > **日期**：2026-10-17 ｜ **基线**：OpenFeel `1.2.3` / DSH `0.2.0-rc.2`
 > **权威契约**：[`../docs/json-contract.md`](../docs/json-contract.md)
 >
-> **一句话**（v1.6.0 更新）：A1~A5 已全部交付，适配器工具面扩到 **15 个**（新增 `feel_dispatch` / `feel_dev`），并新增「主会话只调度」硬规则。§3~§7 是历史需求单存档（交付记录），**现行契约以 §0 与 `docs/json-contract.md` 为准**。
+> **一句话**（v1.7.0 更新）：A1~A5 已全部交付；适配器工具面 **15 个**（v1.6.0 新增 `feel_dispatch` / `feel_dev`，v1.7.0 只加 action：`feel_dispatch finish` / `feel_verify adherence`），并新增「主会话只调度」硬规则。§3~§7 是历史需求单存档（交付记录），**现行契约以 §0 与 `docs/json-contract.md` 为准**。
 
 ---
 
-## 0. v1.6.0 硬规则（现行，优先于下文存档）
+## 0. v1.7.0 硬规则（现行，优先于下文存档）
 
 ### 0.1 主会话只调度 —— 必须派发子 Agent
 
@@ -18,9 +18,9 @@
 - 每次派发先调 `feel_dispatch` 记账（写 `.openfeel/dev/dispatch.jsonl`，受 guard 保护）：
 
   ```text
-  feel_dispatch stage=v1.6.0-stage-132 phase=exec_running
+  feel_dispatch stage=v1.7.0-stage-133 phase=exec_running
     targetAgent=openfeel-executor role=executor
-    goal="T13 文档对账：docs/json-contract.md 计数改 46/47，并通过 npm run build"
+    goal="E13 文档对账：docs/json-contract.md 计数改 51/52，并通过 npm run build"
     files=["docs/json-contract.md","CHANGELOG.md"]
     returnFormat="≤10 行：结论/改动文件/验证/阻塞"
   ```
@@ -40,6 +40,15 @@
 - `general` 需求 / 零关联阶段的 `fast`·`full` 需求：`→in_progress` 前必须有写实计划（`REQ_PLAN_GATE`）；`→done` 前计划被改动须写实 `## 偏差与回写`（`REQ_PLAN_DEVIATION`）。
 - `general` 的**阶段级**转移表仍为空（阶段级 general 在写入面即被拒）；强制链落在**需求生命周期**——三种模式都要求「计划 → 执行 → 审查」，区别只在阶段级是否裁剪 scheme/test。
 - `--force` 只做**留痕放行**（`gate_overrides` / waiver + 审计），**不能**绕过 done 门（review + verify）、blocking REV 门与版本归档判据。
+
+### 0.4 v1.7.0 增量（REQ-061~067）
+
+- **工具面仍 15 个**（计 `tools.length === 15` 不变；新增的是 action）：`feel_dispatch action=finish`（按 `dispatchId` 原地补写 `closing{status,artifacts,durationMs,summary}` + 顶层 `closedAt`，幂等）；`feel_verify action=adherence`（调 `lint adherence --json`，四指标 `{value,definition}`）；`feel_req action=body`（`text` 走 `os.tmpdir()` 临时文件 + `--file`，多行 / CRLF 字节保真）。**适配器暂无 `action=plan` / `body --from`**：需求级计划用 CLI `openfeel req plan <id> [--force]`（出口 #50，已存在默认拒绝、`--force` 返回 `replaced:true`），多节导入用 `openfeel req body <id> --from <md>`。
+- **派发台账 schema v2**：v1.6.0 十三键零改动；闭环追加可选 `closing`（恰 4 键）与行顶层 `closedAt`。`feel_status.dispatch` = `{required,total,sincePhase,open[],closedRatio,missingRoles,records[]}`——`open[]` = 当前 stage 未闭环派发；`closedRatio` = `closing.status==='done'` 数 / `total`（空台账 → `null`）；`missingRoles` **改按 `closing.status==='done'`** 判定（旧「有 record 即算」作废）。
+- **遵守率四指标**（`feel_verify action=adherence`，只读、恒 exit 0）：`main_write_ratio` = `origin=root` 写调用 /（root + `subagent|delegated` + **`origin` 缺失计 unknown 且进分母**）；`subagent_per_req` = `role=executor` 且 `closing.status='done'` 的派发数 / `in_progress` 需求数；`sync_gap` = 现在 − `.sync.json.last_sync`（分钟，缺失 → null）；`violation_rate` = `deny` / 全部 guard 决策。每键带 `definition`（分子/分母 + 样本窗口），样本不足 `value:null`、绝不 NaN。
+- **guard wrapper 静态分类（REQ-067）**：`pwsh -File` / `cmd /c` / `bash <脚本>` 读脚本内容（≤64KB）按同一套 `classifyShellCommand` 递归判定；UTF-16LE+BOM 解码后命中 deny；**GBK 等编码不解码 → `undecidable`**（默认 warn + 审计含 `wrapper` / `scriptPath` / `reason`，`strict` 仍拒）；`node` 脚本不读内容 → `undecidable`；`readonly.ps1` / `build.ps1` 等普通脚本不误杀。
+- **审后文档 / 夹具白名单（REQ-062）**：`review_passed` / `test_passed` 相位允许改 `docs/**`、根级 `*.md`、`test/fixtures/**`、`dsh/test/fixtures/**`（`reason:'doc-asset-phase'`）；`src/**` 与 `test/core/**` 仍拒；豁免只在相位层、不扩散到源码树。
+- **JSON 契约**：51 成功出口 / 52 注册选项（#47~#51）；`release` 脚本的 `--json` 不进 CLI 出口表；错误码表 20 行。
 
 ---
 
@@ -63,8 +72,8 @@
 
 | 项 | 值 |
 |---|---|
-| OpenFeel 版本 | `1.2.3`（存档基线；现行 1.6.0） |
-| 成功 `--json` 出口 | **33**（存档；现行 **46**，注册选项 **47**） |
+| OpenFeel 版本 | `1.2.3`（存档基线；现行 1.7.0） |
+| 成功 `--json` 出口 | **33**（存档；现行 **51**，注册选项 **52**） |
 | 适配器已消费 | **25** 个出口（存档；现行按工具实现，不按出口总数折算） |
 | 适配器文本回显 | **8** 处（存档；现行仅 `dev status` 与 `instructions` XML 默认形态） |
 | 适配器验证 | 存档 110 断言；现行 contract 53 / verify 129 / guard 180 / integration 10 |

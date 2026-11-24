@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.5.8 快照** | 更新日期：2026-11-01
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.7.0 快照** | 更新日期：2026-11-25
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -25,7 +25,7 @@
 
 **全局 `--project` 边界（v1.2.2）**：`runCli` argv 预扫描后 `process.chdir` 单点注入；多值且不一致 → `INVALID_ARGUMENT`（exit 1），路径不存在或非目录 → `PROJECT_NOT_FOUND`（exit 1）；命令输出语言按**目标项目**解析，而 `--help` 语言按原始 cwd（`applyHelpI18n` 于 chdir 前执行）；`--log-file` 相对路径按**原始 cwd**；`knowledge dedup` 保留其本地 `--project <path>` 声明（语法零变化，经 `optsWithGlobals()` + 单点解析读取）；CLI 为单进程单命令，`chdir` 每进程至多一次。
 
-**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 46 个成功出口、也不计入 47 个注册选项**。
+**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 51 个成功出口、也不计入 52 个注册选项**。
 
 ## 错误封装（v1.2.2）
 
@@ -78,7 +78,7 @@
 | `2` | 并发写冲突 | `refusal` | 保留 `EXIT_CONCURRENT`；可重试 |
 | `3` | 内部错误 | `internal` | **v1.2.2 新增**；既有 0/1/2 语义零改动 |
 
-### `code → kind → exitCode`（15 行，与契约 §3 同源）
+### `code → kind → exitCode`（20 行，与契约 §3 同源）
 
 | code | kind | exitCode |
 |------|------|:--:|
@@ -97,8 +97,13 @@
 | `ARCHIVE_EXISTS` | refusal | 1（v1.2.4 A1：已有归档且未 `--force`；零写盘） |
 | `STAGE_PLAN_GATE` | refusal | 1（v1.6.0 / REQ-056：进入 `exec_running` 前阶段计划/在办需求计划缺失或未写实；零写盘） |
 | `DEV_SYNC_STALE` | refusal | 1（v1.6.0 / REQ-059：`archiving → done` 前账本同步失败；零写盘） |
+| `REQ_BODY_GATE` | refusal | 1（v1.7.0 / REQ-063 A63.3：需求正文空壳；`req claim/advance/complete --json` 的 envelope 码） |
+| `REQ_PLAN_GATE` | refusal | 1（v1.7.0 / REQ-063 A63.3：需求级计划缺失或未写实） |
+| `REQ_PLAN_DEVIATION` | refusal | 1（v1.7.0 / REQ-063 A63.3：`→done` 前计划被改动且未写实 `## 偏差与回写`） |
+| `REQ_REVIEW_REQUIRED` | refusal | 1（v1.7.0 / REQ-063 A63.2：`review_pending → done` 缺通过的审查记录） |
+| `REQ_VERIFY_REQUIRED` | refusal | 1（v1.7.0 / REQ-063 A63.2：`review_pending → done` 缺通过的验证记录） |
 
-> v1.6.0 的 `REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` **未进本表**：`req claim` / `advance` / `complete` 无 `--json`，三类拒绝以「i18n 文案 + exit 1」呈现（零写盘）；已知契约缺口，见 [json-contract.md](json-contract.md) §17.3。
+> v1.7.0 / REQ-063 起，`REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED` **已进本表**（共 20 行）：`req claim` / `advance` / `complete` 的 `--json` 失败走 envelope（`error.code` 为稳定码），不再只能靠 i18n 文案取证；**无 `REQ_REVIEW_GATE`**（REV-P02）。
 
 ### 迁移边界
 
@@ -329,10 +334,10 @@ openfeel flow advance --stage <stage-id> --to <phase> [--op <op-id>] [--review-t
 | `--stage <stage-id>` | 阶段 ID（**必填**，可用短名或完整名） |
 | `--to <phase>` | 目标阶段（必填）。合法 phase 与转移表见 `openfeel flow phases` |
 | `--op <op-id>` | 操作 ID（**可选**，仅用于日志/展示） |
-| `--reason <text>` | 返工原因（v1.3.3）：仅当本步为 `review_passed → exec_running` 时写入审计键 `rework_reason`；其它推进忽略并提示 |
+| `--reason <text>` | 原因（v1.3.3 / v1.7.0）：① 本步为 `review_passed → exec_running` 时写入审计键 `rework_reason`；② `--force` 留痕放行时作为 `detail.reason`（缺省 `manual`，与 `gate_overrides` 平铺同层）；其它推进忽略并提示 |
 | `--review-tier <tier>` | 审查档位（`full` / `lean` / `skip`；**缺省 `full`**——未显式传时生效档位恒 `full`，展示值按模式派生（见 `flow phases --json.reviewTier` / `displayReviewTier`）；仅显式声明时裁剪审查关，**不可绕过 REV 阻塞检查**）。三档语义：`full` 零裁剪 / `lean` 裁 `scheme_review` / `skip` 裁 `plan_review` + `scheme_review`（代码审查关 / 测试关 / 归档关恒保留）。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进；「**进入**被裁剪关」仍不可达。显式 `lean` / `skip` 打印一行非阻断警告；值域非法 → exit 1 零写盘。**注**：源码 help 文案已于 v1.2.3 订正为「缺省=full（零裁剪）」，与本节 / 契约 §12.3 一致 |
 | `--dry-run` | 仅验证不修改（预览输出）；**字节级不写盘**（`revision`/phase 不变） |
-| `--force` | **留痕放行**（v1.6.0 起语义收敛）：只跳过非法 phase / 阶段跳跃检查，并把 `allowGateOverride` 传给核心层写 `flow.json.log` 的 `gate_overrides` / `gate_missing` 快照。**不可绕过**：blocking open REV 门、`archiving → done` 的完成必验门（`stage verify` + 关联需求全 done）、版本归档判据 |
+| `--force` | **留痕放行**（v1.6.0 起语义收敛，v1.7.0 统一 schema）：只跳过非法 phase / 阶段跳跃检查，并把 `allowGateOverride` 传给核心层写 `flow.json.log` 的 `gate_overrides` / `gate_missing` 快照。v1.7.0 起与 `flow stage reset --force` 共用**同一份 `GateOverride` 审计**（键集在 `detail` 上**平铺**）：`{gate_overrides, gate_missing?, by, reason, from, to, at}`（**`from`/`to` 必填**，`gate_missing` 仅计划门有结构化缺项时出现）。**不可绕过**：blocking open REV 门、`archiving → done` 的完成必验门（`stage verify` + 关联需求全 done）、版本归档判据 |
 | `--json` | 错误封装开关（v1.2.2）：**仅失败时**在 JSON 模式下输出错误 envelope；成功仍输出人类文本，**不计入成功出口** |
 
 支持的阶段（phase）：`plan_pending`、`plan_review`、`plan_passed`、`scheme_pending`、`scheme_review`、`scheme_passed`、`exec_running`、`review_pending`、`review_failed`、`review_passed`、`test_pending`、`test_failed`、`test_passed`、`archiving`、`done`（以运行时 `pipeline.yaml` 为准，用 `openfeel flow phases` 查看）
@@ -378,14 +383,15 @@ openfeel flow stage remove <stageId> [--force] [--dry-run] [--purge]
 **精准复位**阶段 phase（v1.1.4-stage-65）。允许**回退**（不受正向 `transitions` 限制），受**合法 phase 值域**与 `to=done` 的**阻塞 REV 检查**约束；写 `phase` 后按 `mapPhaseToStageStatus` 投影同步 `status`，审计 `reset_stage_phase`，不触发归档 commit、不写 checkpoint 快照。
 
 ```bash
-openfeel flow stage reset <stageId> --to <phase> [--dry-run] [--force]
+openfeel flow stage reset <stageId> --to <phase> [--dry-run] [--force] [--reason <text>]
 ```
 
 | 选项 | 说明 |
 |------|------|
 | `--to <phase>` | 目标 phase（**必填**，须为合法 phase，如 `review_pending` / `test_pending` / `done`；合法值见 `openfeel flow phases`） |
 | `--dry-run` | 仅预览（零写盘），打印 `阶段: from → to`（含投影 `status`） |
-| `--force` | **v1.6.0**：复位到 `exec_running` 时越过计划门——与 `flow advance` 同口径，放行并在 `flow.json.log` 的 `reset_stage_phase` 条目记 `detail.gate_overrides=['plan']` + `detail.gate_missing` 快照；**不加则拒绝**（`STAGE_PLAN_GATE`，零写盘）并提示两条出路（补计划文件 / 加 `--force`） |
+| `--force` | **v1.6.0 / v1.7.0**：复位到 `exec_running` 时越过计划门——与 `flow advance` **同一份 `GateOverride` 审计**，放行并在 `flow.json.log` 的 `reset_stage_phase` 条目 `detail` 上**平铺**记 `{gate_overrides, gate_missing?, by, reason, from, to, at}`（含 `from`/`to`）；**不加则拒绝**（`STAGE_PLAN_GATE`，零写盘）并提示两条出路（补计划文件 / 加 `--force`） |
+| `--reason <text>` | v1.7.0：`--force` 留痕原因（写入 `detail.reason`；缺省 `manual`）；无 `--force` 时忽略 |
 
 > `flow advance` 是正向推进，`flow stage reset` 是其**对称复位**能力（可回退）；`to=done` 时同样受 blocking open REV 拦截。**复位不是绕过口**：`--to exec_running` 复检与 exec 门**同一谓词**（`describeStagePlanGate`），无隐式放行。
 
@@ -891,19 +897,20 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 | `req add <title>` | 创建需求（ID 自动分配；**单调计数器** `meta.last_req_seq`，归档后不复用） | `--target-version <version>`、`--priority <P0\|P1\|P2>`、`--workflow-mode <full\|fast\|general>`、**`--claim` / `--stage <stageId>` / `--start`（v1.5.23/v1.5.25：一次开单+认领+关联+进入 in_progress）** |
 | `req list` | 列出需求 | `--status <status>`、`--target-version <version>`、`--owner <owner>`、`--include-archived`、`--json` |
 | `req show <id>` | 查看需求详情（已归档需求回退读归档文件，标注 `archived`） | `--json` |
-| `req claim <id>` | 认领需求（占用校验；**不校验正文**——认领 ≠ 开工，正文门只在 `→scheduled` / `→in_progress` / `→done` 流转时触发） | `--owner <owner>`、`--force`（**兼容保留、当前无实际作用**；正文门放行请用 `req advance` / `req complete --force`） |
+| `req claim <id>` | 认领需求（占用校验；**不校验正文**——认领 ≠ 开工，正文门只在 `→scheduled` / `→in_progress` / `→done` 流转时触发） | `--owner <owner>`、`--force`（**兼容保留、当前无实际作用**；正文门放行请用 `req advance` / `req complete --force`）、`--json`（v1.7.0 / 出口 #47） |
 | `req release <id>` | 释放认领（未认领为 no-op 成功） | — |
 | `req set <id>` | 更新需求字段（白名单） | `--status` / `--title` / `--target-version` / `--priority` / `--workflow-mode` |
 | `req link` | 关联需求到阶段（**一个阶段可挂多个需求**） / 解绑（单个或全部） | `--stage <stageId>`、`--requirement <id>`、`--unlink` |
-| `req advance <id>` | 显式推进需求状态（**v1.6.0 起受正文门 / 计划门 / 偏差门**） | `--to <status>`、`--force`（写 waiver / `plan.deviations+1` + 审计，文件仍须补写） |
-| **`req body <id>`** | **正文唯一业务小节写入口（v1.6.0 / REQ-055）**：替换 / 追加指定小节，元信息小节受保护，每次写入追加 `## 变更记录` | `--section <name>`（**必填**）、`--text <md>` \| `--file <path>`（恰一）、`--append` \| `--replace`（互斥，缺省替换）、`--json`（出口 #45） |
+| `req advance <id>` | 显式推进需求状态（**v1.6.0 起受正文门 / 计划门 / 偏差门**；**v1.7.0 起经 `review_pending`**——合法链 `in_progress → review_pending → done`，旧 `in_progress → done` 直连移除） | `--to <status>`、`--force`（写 waiver / `plan.deviations+1` + `--reason` 留痕审计；文件仍须补写）、`--json`（v1.7.0 / 出口 #48） |
+| **`req body <id>`** | **正文唯一业务小节写入口（v1.6.0 / REQ-055）**：替换 / 追加指定小节，元信息小节受保护，每次写入追加 `## 变更记录`；**v1.7.0 / REQ-064 新增 `--from <md>`**：按 `##` 一次导入多节（元信息小节跳过并在 stderr 报告） | `--section <name>`（与 `--from` 二选一）、`--from <path>`（v1.7.0：一次导入多节）、`--text <md>` \| `--file <path>`（恰一）、`--append` \| `--replace`（互斥，缺省替换；`--from` 恒整节替换、禁与二者同用）、`--json`（出口 #45；`--from` 时为 `{schemaVersion,id,sections}`） |
+| **`req plan <id>`** | **需求级计划生成（v1.7.0 / REQ-064 A64.1，出口 #50）**：四节骨架 + `## 变更记录` 写入固定路径 `.openfeel/plan/reqs/REQ-NNN.plan.md`；写实判据复用 `isRequirementPlanFilled`；已存在默认拒绝（零写盘），`--force` 才覆盖并返回 `replaced:true` | `--force`、`--json` |
 | `req review <id>` | 记录需求审查（**v1.5.8 完成必审**：done 门要求 `review.result=pass`） | `--result <pass\|fail>`、**`--by <who>`（v1.5.23 可省；v1.5.24 起缺省 = 项目用户 `.info.json user`）**、`--note <text>`、`--independent` / `--self` |
 | `req verify <id>` | 记录需求验证（**v1.5.8 完成必验**：done 门要求 `verification.result=pass`） | `--result <pass\|fail>`、`--kind <test\|manual\|build>`、`--by <who>`（同上可省）、`--note <text>`、`--evidence <path>` |
-| **`req complete <id>`** | **一次收口（v1.5.23 / REQ-043；v1.5.24 / REQ-051 支持从 draft/scheduled 起）**：必要时自动补 `scheduled → in_progress`，再 review + verify + advance(done)；复用既有判据单点，任一步失败**零写盘** | `--result`、`--note`、`--kind`（缺省 manual）、`--evidence`、`--by`、`--independent` / `--self`、`--force`（v1.6.0 门留痕放行） |
+| **`req complete <id>`** | **一次收口（v1.5.23 / REQ-043；v1.5.24 / REQ-051 支持从 draft/scheduled 起）**：必要时自动补 `scheduled → in_progress`，再 review + verify + advance(done)；**v1.7.0 起收口链经 `review_pending`**；复用既有判据单点，任一步失败**零写盘** | `--result`、`--note`、`--kind`（缺省 manual）、`--evidence`、`--by`、`--independent` / `--self`、`--force`（v1.6.0 门留痕放行）、`--json`（v1.7.0 / 出口 #49） |
 | **`req waive <id>`** | **显式豁免（v1.5.23 / REQ-043）**：阶段 done 门不再计入该需求，记录谁/何时/为何放弃（与 `cancelled` 区分） | `--reason <text>`、`--by`、`--revoke` |
 | **`req trivial <id>`** | **免审验标记（v1.5.23 / REQ-043）**：done 门跳过 review/verification（docs/文案/测试注释类；相位门与聚合门不变） | `--reason <text>`、`--by`、`--revoke` |
 | `req split <id>` | 拆分需求为若干子需求（**拆分即发布**：子需求入 `scheduled`） | `--into <title>`（**可重复**，至少一项）、`--json` |
-| `req board` | 需求看板（7 组固定顺序） | `--target-version <version>`、`--json` |
+| `req board` | 需求看板（**v1.7.0 起 8 组**固定顺序：新增 `review_pending` 一档，插在 `in_progress` 与 `done` 之间，旧 7 键一个不删） | `--target-version <version>`、`--json` |
 | `req next` | 推荐下一个可接取需求 | `--owner <owner>`、`--json` |
 | `req release-check <version>` | **发布门（软，只读）**：列出该版本 已完成 / 未完成 / 其它需求；退出码恒 0 | `--json` |
 | `req rollover` | **顺延**未完成需求到新版本（改写 `target_version` + 追加 `carried_from`） | `--from <version>`、`--to <version>`、`--id <REQ>` \| `--all`（互斥且必选其一） |
@@ -915,14 +922,16 @@ openfeel archive <stage> [--json] [--force] [--skill <slug>]
 - **`req rollover`**（v1.5.8 / REQ-030）：`--from` 来源版本、`--to` 目标版本（归一后必须不同）；`--id`（只顺延该需求，须属于 `--from` 且非终态）与 `--all`（顺延该版本全部未完成需求）**互斥且必选其一**。写语义：`target_version = to`、`carried_from` 去重保序追加来源版本、刷新 `updated_at`，审计一条 `requirement_rollover`（detail `{from,to,ids,count}`）；无候选 → no-op 成功（不写盘）。
 
 - **正文门（v1.6.0 / REQ-055）**：`→scheduled` / `→in_progress` / `→done` 前，要求正文 `## 摘要` 与 `## 目标与验收` **写实**（`isRequirementBodyFilled`，单点 `src/core/plan/filled.ts`）。空壳 → exit 1 专用文案（提示用 `req body <id> --section 摘要 --text "…"` 补写），**零写盘**；`--force` 由 `req advance` / `req complete` 写 `body_waiver={at,by,reason}` + `flow.json.log` 审计 `requirement_body_forced`（`gate: advance|complete`），**再次流转不再拦**。**`req claim` 不在此门内**（认领 ≠ 开工；其 `--force` 无实际作用）。`draft` / `blocked` / `cancelled` / `rejected` 不受此门；对 `general` 与零关联阶段的需求**同样生效**；**不进** `requirementDoneBlocker`，因此阶段 done 门与版本归档判据不受影响（存量 48 份空壳可经 `--force` 留痕放行）。
-- **需求级计划门 / 偏差门（v1.6.0 / REQ-056 / REQ-058）**：无阶段兜底的需求（`general`，或 `fast`/`full` 且关联阶段数 **0**）在 `→in_progress` 前必须有**写实**的 `.openfeel/plan/reqs/REQ-NNN.plan.md`（全局固定路径，`REQ_PLAN_GATE`）；`→done` 前计划文件 sha256 须与执行前盖章一致，否则须写实 `## 偏差与回写`（`REQ_PLAN_DEVIATION`）。有阶段的 `full`/`fast` 需求由阶段 exec 门覆盖，本门**不重复判**。判定顺序：正文门 → 计划门 → done 门（review + verify）→ 偏差门；`REQ_*` 三码目前只有 i18n 文案 + exit 1（`req` 写命令无 `--json`，见 [json-contract.md](json-contract.md) §17.3）。
+- **需求级计划门 / 偏差门（v1.6.0 / REQ-056 / REQ-058）**：无阶段兜底的需求（`general`，或 `fast`/`full` 且关联阶段数 **0**）在 `→in_progress` 前必须有**写实**的 `.openfeel/plan/reqs/REQ-NNN.plan.md`（全局固定路径，`REQ_PLAN_GATE`）；`→done` 前计划文件 sha256 须与执行前盖章一致，否则须写实 `## 偏差与回写`（`REQ_PLAN_DEVIATION`）。有阶段的 `full`/`fast` 需求由阶段 exec 门覆盖，本门**不重复判**。判定顺序：正文门 → 计划门 → done 门（review + verify）→ 偏差门；**v1.7.0 / REQ-063 起**五类拒绝经 `req claim/advance/complete --json` 输出稳定 envelope 码（`REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` / `REQ_REVIEW_REQUIRED` / `REQ_VERIFY_REQUIRED`），不再只能靠 i18n 文案取证。
+- **需求审查相位（v1.7.0 / REQ-063 A63.1）**：`REQ_STATUSES` 新增 `review_pending`（`in_progress` 之后、`done` 之前）；合法链 `in_progress → review_pending → done`，回退 `review_pending → in_progress` 合法；**旧 `in_progress → done` 直连移除**（exit 1 且文案含 `review_pending`），只能 `--force` 跳链并留痕 `detail.gate_override.gate_overrides=['req_review']`；`review_pending → done` 缺通过审查 → `REQ_REVIEW_REQUIRED`、缺通过验证 → `REQ_VERIFY_REQUIRED`（均 exit 1、零写盘）。`req board` / `dashboard` 的分组键只增 `review_pending` 一档，旧 7 键零改动。
+- **`req plan <id>`（v1.7.0 / REQ-064 A64.1）**：需求级计划的唯一生成器——固定路径 `.openfeel/plan/reqs/REQ-NNN.plan.md`，四节（`## 目标` / `## 任务拆解` / `## 验收判据` / `## 偏差与回写`）+ `## 变更记录`，内容从需求正文派生；写后复用 `isRequirementPlanFilled` 自检（未过只 stderr 提示，不改退出码）。已存在默认拒绝且**字节不变**，`--force` 覆盖并在 `--json` 末位追加 `replaced:true`。与 `lint fill --fix-plan` 同源（都只生成骨架，不覆盖手写内容）。
 - **`req body` 写实判据**：`## 摘要` / `## 目标与验收` 各需 ≥40 个非空白字符（`MIN_FILLED_CHARS`），且 `## 目标与验收` 至少一行判据（以 `-` / `*` / `A1` / `验收` 开头）；占位行（`- [ ] 待补充` / `（待补充）` / `TODO` 等）整行剔除后计数。元信息小节（`状态` / `变更记录` 等）**不可写**（legacy `protected_section`）。
 
 - **`req link` 多值语义（v1.5.8 / REQ-028）**：`flow.json` 的 `stages[*].requirements[]` 是**权威**关联面（元素 `{id, role?, order?}`），一个阶段可挂多个需求，一个需求也可被多个阶段引用；同一需求重复链接为**幂等 no-op**。写路径**不再写**旧单值键 `stage.requirement_id`（旧数据读取仍兼容：`requirements` 缺省 / 空集时回落到 `requirement_id`；首次追加链接时把旧单值迁移进 `requirements[]` 并清空旧键，防双真源）。解绑三分支：`--requirement <id>` 关联 ｜ `--unlink --requirement <id>` **只解绑该需求** ｜ `--unlink`（无 requirement）**清空该阶段全部关联**；两者都不给 → 参数错误 exit 1。`req show` / `req list --json` 的 `linkedStages`、`flow status` 的 `requirementId`（取首个关联需求）与归档摘要的「已完成需求 / 关联需求」均经单点 `stageRequirementIds` 派生。
-- **退出码**：`0` 成功 ｜ `1` 校验 / 占用 / 存在性失败（经 `process.exitCode`；错误码 分流 `not_found` / `stage_not_found` / `already_claimed` / `invalid_field` / `invalid_status` / `general_mode_conflict`，v1.6.0 另有门禁拒绝 `body_empty` / `plan_missing` / `plan_deviation`——文案 + exit 1）｜ `2` 并发写冲突（共享单点）。
-- **`--json` 契约**：**7 命令（5 读 + `split` + `body`）**——五读命令（`list` / `show` / `board` / `next` / `release-check`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；`split` 成功 `{ schemaVersion, parent, children }`；**`body`（v1.6.0，出口 #45）** 成功 `{ schemaVersion, id, section, path, lines, created }`。失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。**`req list`（v1.2.2）**：`requirements[]` 元素**末位**追加 `linkedStages[]{id,phase}` / `progress{done,total}`（零关联 `[]` + `{0,0}`；既有字段顺序/值不变）；`--include-archived` 时归档需求再末位追加 `archived`。失败 envelope / legacy `errorKind` 判别见上「错误封装（v1.2.2）」。
+- **退出码**：`0` 成功 ｜ `1` 校验 / 占用 / 存在性失败（经 `process.exitCode`；错误码分流 `not_found` / `stage_not_found` / `already_claimed` / `invalid_field` / `invalid_status` / `general_mode_conflict`，v1.6.0 另有门禁拒绝 `body_empty` / `plan_missing` / `plan_deviation`，v1.7.0 另有两码 `review_required` / `verification_required`——`--json` 下分别为 `REQ_*` envelope 码）｜ `2` 并发写冲突（共享单点）。
+- **`--json` 契约**：**9 命令（5 读 + `split` + `body` + `plan` + 三个写命令 `claim` / `advance` / `complete`）**——五读命令（`list` / `show` / `board` / `next` / `release-check`）成功 = stdout 纯 JSON 单文档（含 `schemaVersion`）；`split` 成功 `{ schemaVersion, parent, children }`；**`body`（v1.6.0，出口 #45）** 成功 `{ schemaVersion, id, section, path, lines, created }`（`--from` 时 `{schemaVersion,id,sections}`）；**`plan`（v1.7.0，出口 #50）** 成功 `{schemaVersion,id,path,created,overwritten,lines}`（`--force` 覆盖时末位 `replaced:true`）；**`claim` / `advance` / `complete`（v1.7.0，出口 #47~#49）** 成功 5 键固定序 `{schemaVersion,id,from,to,status}`，`gates` 为末位条件键（仅 `--force` 实际放行过门时出现）。失败 = 纯 JSON 单文档含 `error` 码 + exit 1；stderr 零输出。**`req list`（v1.2.2）**：`requirements[]` 元素**末位**追加 `linkedStages[]{id,phase}` / `progress{done,total}`（零关联 `[]` + `{0,0}`；既有字段顺序/值不变）；`--include-archived` 时归档需求再末位追加 `archived`。失败 envelope / legacy `errorKind` 判别见上「错误封装（v1.2.2）」。
 - **`--workflow-mode`（v1.2.1-stage-90 起）**：值域 `full` / `fast` / `general`；**`general`（无流水线）仅需求级合法**——阶段级 / 部署级写入面拒绝（`general_mode_conflict` 亦在需求与阶段关联时触发：`general` 需求不接受阶段关联）。**done 门（v1.5.7 / REQ-023 重定义）**：**阶段 = 版本容器**（长期保持在 `exec_running`），**需求 = 工作单元**，可在阶段仍开启时完成。① **零关联阶段**的需求可直接显式完成；② **有关联阶段**时，每个关联阶段只需已进入 `exec_running` 及之后相位（`exec_running` / `review_*` / `test_*` / `archiving` / `done`）即可完成；仍有阶段处于 `plan_pending` / `plan_review` / `plan_passed` / `scheme_pending` / `scheme_review` / `scheme_passed` 时拒绝并输出专用文案（`req.err.doneGateTmpl`）。**注意**：聚合**自动收口**仍要求全部关联阶段 done（`aggregate.ts` 空集守卫不变）；显式完成不等于自动收口。
-- **完成必审验（v1.5.8 / REQ-027）**：需求 `done` 门在上述相位判据之上**追加**两条硬门——`review.result === 'pass'` 且 `verification.result === 'pass'`（缺任一即 `invalid_status`，**无 force 逃生口**）。命令层按判据分流文案：未审 → `req.err.reviewRequiredTmpl`、未验 → `req.err.verificationRequiredTmpl`、阶段相位 → 既有 `req.err.doneGateTmpl`。记录写路径：`req review <id>`（`--independent` 独立审查 / `--self` 自我审查，自我审查在归档摘要标注 `self-review`）与 `req verify <id>`（`--kind test|manual|build`，`--evidence` 可选）。两者写 `flow.json` 的 `requirements[*].review` / `.verification` 并各留一条审计（`requirement_review` / `requirement_verification`）；终态需求拒绝补记（`invalid_status`）。
+- **完成必审验（v1.5.8 / REQ-027；v1.7.0 / REQ-063 码化）**：需求 `done` 门在上述相位判据之上**追加**两条硬门——`review.result === 'pass'` 且 `verification.result === 'pass'`（缺任一即拒绝，**无 force 逃生口**）。命令层按判据分流：未审 → `REQ_REVIEW_REQUIRED`（json）/ `req.err.reviewRequiredTmpl`（human）、未验 → `REQ_VERIFY_REQUIRED` / `req.err.verificationRequiredTmpl`、阶段相位 → 既有 `req.err.doneGateTmpl`。记录写路径：`req review <id>`（`--independent` 独立审查 / `--self` 自我审查，自我审查在归档摘要标注 `self-review`）与 `req verify <id>`（`--kind test|manual|build`，`--evidence` 可选）。两者写 `flow.json` 的 `requirements[*].review` / `.verification` 并各留一条审计（`requirement_review` / `requirement_verification`）；终态需求拒绝补记（`invalid_status`）。
 - **预检受门命令（v1.5.8 起）**：10 个写命令（`add` / `claim` / `release` / `set` / `link` / `advance` / `split` / `review` / `verify` / `rollover`）全部受 preflight 门。
 - **`--owner` 三级链**：`--owner` 参数 → `.openfeel/.info.json` 的 `user` → `git config user.name`（`user` 为空/`unknown` 时回落 git；v1.5.15）。
 - **`req claim` 只改身份字段、不改 `status`、也不校验正文**（v1.5.16 明确；v1.6.0 / REV-013 定义正文门边界）：写入 `owner` / `claimed_at` / `updated_at` + 一条 `requirement_claim` 审计；状态流转用 `req advance <id> --to <status>`（`scheduled → in_progress → done`）。历史需求若显示 `in_progress`，是当时显式 `advance` 的结果，不是 claim 的副作用。
@@ -1063,16 +1072,19 @@ openfeel knowledge dedup [content] [--project <path>] [--category <name>] [--thr
 openfeel lint i18n [--json]   # i18n 键对称性校验（zh/en 三向比对 + 空值检测）
 openfeel lint kb [--json]     # kb 过期引用检测（扫描 kb 文件中的路径引用是否存在）
 openfeel lint req [--json]    # 需求正文命令名存在性（真实命令树 + 剥 openfeel 前缀）
-openfeel lint fill [--json]   # 空壳需求正文 / 缺需求级计划 / 空阶段文档（v1.6.0，advisory）
+openfeel lint fill [--fix-plan] [--json]   # 空壳需求正文 / 缺需求级计划 / 空阶段文档（v1.6.0，advisory）
+openfeel lint adherence [--json]           # 遵守率四指标（v1.7.0，只读观测；feel_verify action=adherence 的数据源）
 ```
 
 **`lint i18n|kb --json`（v1.2.4 A4）**：`{schemaVersion,target,ok,issues}`；`target ∈ {i18n,kb}`；`issues[]{path,message}`（i18n = 语言源文件相对路径；kb = `.openfeel/kb/<file>`）；`ok = issues.length === 0`。`ok:false` 仍输出成功文档并保持既有 exit 1 门禁语义；结构化 issues 与人类行同源（人类输出逐字不变）。`lint kb` 无 KB 目录 → `ok:true,issues:[]`。
 
 **`lint req --json`（v1.5.6 #41；v1.6.0 末位加 `fill`）**：`{schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount,fill}`（**恒 8 键**，`target:'req'`）；比其它 lint 出口多 `suspects` / `unknownCount` / `suspectCount` / `fill` 四键——**A 类**（首 token 是根命令、解析在某处断裂，**且断点父命令未声明位置参数**，`unknown-command`）进 `issues`，驱动 `ok:false` + **exit 1**；**B 类**（`suspect-command-group`）进 `suspects`，`ok` 不受影响、**exit 0**（advisory），来源有两种：① 首 token 非根且尾 token 已注册（`op create`）；② **参数起点歧义**——父命令声明了位置参数而下一 token 又命中命令名（`archive create` / `knowledge search lint`）。反过来，带位置参数的合法写法直接通过（`stage set stage-01` / `config get workflow_mode` / `archive v1.2.0`）。`ok = issues.length === 0`（与 #38/#39 一致）。`fill{emptyBody[],emptyPlan[]}` 与 `lint fill` 同源、**advisory**（不参与 `ok` / 退出码）；人类输出在全绿时多一行 `fill: OK`。只扫 `.openfeel/requirements/*.md`（一层、不跟随符号链接）；抑制标记两档（`<!-- lint-req:ignore -->` 行内 / `ignore-start` … `ignore-end` 区间），**只用于正文按定义要引用错误命令名的场景**；未闭合区间只走 **stderr 警告**（不改退出码、不进 JSON），抑制行数只进人类输出。**不给近似纠错建议**（A 类只报「无法解析为命令路径 + 断点位置」）。详见 [json-contract.md](json-contract.md) §16 / §17.2。
 
-**`lint fill --json`（v1.6.0 #46）**：`{schemaVersion,target,ok,checked,empty,missingPlan,stageDocs}`（**恒 7 键**，`target:'fill'`）；`empty[]{id,emptySections}`（空壳正文）、`missingPlan[]{id}`（缺需求级计划）、`stageDocs{overviewEmpty[]{stageId},planEmpty[]{stageId}}`（存在但未写实的阶段文档）；`checked` = 扫描的需求正文文件数；`ok` = 四组清单全空。**退出码口径与 i18n/kb/req 刻意不同：恒 exit 0**（advisory 清单，存量空壳不得让 `lint` 恒红；`ok:false` 只在 JSON 里供 CI 消费）。人类输出：全绿一行 `fill: OK（已检查 N 个需求文件；阶段文档无空壳）`，否则四组逐条列出（每组最多 20 条 + 其余计数）。判据单点 `src/core/plan/body-lint.ts` + `src/core/plan/filled.ts`。
+**`lint fill --json`（v1.6.0 #46；v1.7.0 增 `--fix-plan`）**：`{schemaVersion,target,ok,checked,empty,missingPlan,stageDocs}`（**恒 7 键**，`target:'fill'`）；`empty[]{id,emptySections}`（空壳正文）、`missingPlan[]{id}`（缺需求级计划）、`stageDocs{overviewEmpty[]{stageId},planEmpty[]{stageId}}`（存在但未写实的阶段文档）；`checked` = 扫描的需求正文文件数；`ok` = 四组清单全空。**`--fix-plan`（v1.7.0 / REQ-064 A64.3）**：只为「计划文件不存在」的需求生成四节骨架（复用 `req plan` 同一 `plan-file.ts`，不覆盖、不编内容）；`--json` **末位追加**条件键 `created[]`（本次新建的 ID）与 `skipped[]{id,reason}`（`reason:'exists'` 含空壳计划 → 字节不变）；重复执行 `created:[]`（幂等）。**退出码口径与 i18n/kb/req 刻意不同：恒 exit 0**（advisory 清单，`--fix-plan` 亦不改变；`ok:false` 只在 JSON 里供 CI 消费）。人类输出：全绿一行 `fill: OK（已检查 N 个需求文件；阶段文档无空壳）`，否则四组逐条列出（每组最多 20 条 + 其余计数）；`--fix-plan` 额外一行 `plan-fix: 新建 N 个需求计划 / 跳过 M 个`。判据单点 `src/core/plan/body-lint.ts` + `src/core/plan/filled.ts`。
 
-**退出码（门禁语义，v1.1.2）**：发现问题时**非 0 退出**（对齐 `flow health`），使 CI/脚本可直接以其作为门禁；无问题 `exit 0`。`lint req` 仅 **A 类**（命令路径无法解析）非 0，**B 类**（疑似命令组 / 参数写成命令名）不改退出码，**未闭合区间**仅 stderr 警告、不改退出码。**未提供** `--warn-only`/`--no-fail` 逃生阀——若需忽略结果，请由调用方显式表达（如 `openfeel lint kb || true`）。
+**`lint adherence --json`（v1.7.0 #51 / REQ-066 A66.3）**：`{schemaVersion,target,ok,main_write_ratio,subagent_per_req,sync_gap,violation_rate}`（**恒 7 键**，`target:'adherence'`、`ok` 恒 `true`）；四个指标各为 `{value,definition}`（恰 2 键）——`value` 为 number 或 `null`（**分母为 0 / 数据缺失 → null**，绝不 NaN），`definition` 非空且复述分子/分母 + 样本窗口。口径（单点 `src/core/adherence.ts`）：`main_write_ratio` = `origin=root` 写调用 /（root + 子 Agent 派生 + origin 缺失计 unknown），窗口 = `.openfeel/log/guard-audit.jsonl` 全量；`subagent_per_req` = `role=executor` 且 `closing.status='done'` 的派发数 / `status='in_progress'` 需求数，窗口 = 台账 24h/200 行 + 当前 `flow.json`；`sync_gap` = 现在 − `.sync.json` 的 `last_sync`（毫秒 ÷ 60000，取整分钟，缺失 → null）；`violation_rate` = `decision='deny'` / 全部 guard 决策（`allow|deny|warn`）。**只读观测：恒 exit 0**（低遵守率不是门禁、不产生 deny）；DSH 侧只经 `feel_verify action=adherence` 暴露，不新增工具。
+
+**退出码（门禁语义，v1.1.2）**：发现问题时**非 0 退出**（对齐 `flow health`），使 CI/脚本可直接以其作为门禁；无问题 `exit 0`。`lint req` 仅 **A 类**（命令路径无法解析）非 0，**B 类**（疑似命令组 / 参数写成命令名）不改退出码，**未闭合区间**仅 stderr 警告、不改退出码；`lint fill` 与 `lint adherence` **恒 exit 0**（advisory / 只读观测，不是门禁）。**未提供** `--warn-only`/`--no-fail` 逃生阀——若需忽略结果，请由调用方显式表达（如 `openfeel lint kb || true`）。
 
 ## stage — 阶段状态
 
@@ -1223,9 +1235,9 @@ openfeel dashboard --json             # stdout 恰好一个 JSON 文档（不写
 - **退出码**：`0` 成功（含空数据、含 `health.ok=false`、含 `--open` 拉起失败）；`1` 参数拒绝（`INVALID_ARGUMENT`）/ 未初始化（`NO_INIT`）；`3` 建目录或写盘失败（`INTERNAL_ERROR`）。**无 2**（零 `flow.json` 写、不加锁）。
 - 完整 JSON 契约见 [json-contract.md](json-contract.md) §5 #43。
 
-## JSON 出口一览（v1.6.0 快照：#44 `dev clean` 补登；#45 `req body` / #46 `lint fill` 新增）
+## JSON 出口一览（v1.7.0 快照：#47~#49 `req claim/advance/complete`、#50 `req plan`、#51 `lint adherence` 新增）
 
-> 计数口径：**46 个成功出口 / 47 个注册 `--json` 选项**（46 + `flow advance --json` 错误模式开关 1 个；v1.5.6 新增 #41 `lint req`；v1.5.8 / REQ-030 新增 #42 `req release-check`；v1.5.10 新增 #43 `dashboard`；v1.6.0 补登 #44 `dev clean`、新增 #45 `req body` / #46 `lint fill`）。`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。
+> 计数口径：**51 个成功出口 / 52 个注册 `--json` 选项**（51 + `flow advance --json` 错误模式开关 1 个；v1.5.6 新增 #41 `lint req`；v1.5.8 / REQ-030 新增 #42 `req release-check`；v1.5.10 新增 #43 `dashboard`；v1.6.0 补登 #44 `dev clean`、新增 #45 `req body` / #46 `lint fill`；v1.7.0 新增 #47 `req claim` / #48 `req advance` / #49 `req complete` / #50 `req plan` / #51 `lint adherence`）。`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）；**`npm run release --json` 也不计入**（`scripts/release.mjs` 的脚本自有输出，不是 CLI 子命令）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。
 
 | # | 出口 | 命令面 | 顶层键序 |
 |:-:|------|--------|----------|
@@ -1274,10 +1286,39 @@ openfeel dashboard --json             # stdout 恰好一个 JSON 文档（不写
 | 43 | `dashboard` | `dashboard [--out <file>] [--open] [--json]` | `schemaVersion,generatedAt,generator,project,requirements,stages,releases,blockingReviews,health,metrics` |
 | 44 | `dev clean` | `dev clean [--legacy] [--include-archive] [--yes] [--dry-run] --json` | `schemaVersion,gitRepository,gitignore,removed,dryRun,legacy` |
 | 45 | `req body` | `req body <id> --section <name> (--text <md> \| --file <path>) [--append\|--replace] --json` | `schemaVersion,id,section,path,lines,created` |
-| 46 | `lint fill` | `lint fill --json` | `schemaVersion,target,ok,checked,empty,missingPlan,stageDocs` |
-| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 46 / 47**） |
+| 46 | `lint fill` | `lint fill [--fix-plan] --json` | `schemaVersion,target,ok,checked,empty,missingPlan,stageDocs`（`--fix-plan` 末位追加 `created,skipped`） |
+| 47 | `req claim` | `req claim <id> --json` | `schemaVersion,id,from,to,status`（`gates` 末位条件键） |
+| 48 | `req advance` | `req advance <id> --to <status> --json` | `schemaVersion,id,from,to,status`（`gates` 末位条件键） |
+| 49 | `req complete` | `req complete <id> --json` | `schemaVersion,id,from,to,status`（`gates` 末位条件键） |
+| 50 | `req plan` | `req plan <id> [--force] --json` | `schemaVersion,id,path,created,overwritten,lines`（`--force` 覆盖时末位追加 `replaced`） |
+| 51 | `lint adherence` | `lint adherence --json` | `schemaVersion,target,ok,main_write_ratio,subagent_per_req,sync_gap,violation_rate` |
+| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 51 / 52**） |
 
-> 说明：以上为 **v1.6.0 快照**（46 个成功出口；v1.5.6 #41 → v1.5.8 #42 → v1.5.10 #43 → v1.6.0 #44 补登 + #45/#46）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 **v1.7.0 快照**（51 个成功出口；v1.5.6 #41 → v1.5.8 #42 → v1.5.10 #43 → v1.6.0 #44 补登 + #45/#46 → v1.7.0 #47~#51）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+
+## release — 发布链路（v1.7.0 / REQ-061；`npm run release`，非 CLI 子命令）
+
+`scripts/release.mjs` 把发版收成**一条命令**，六步固定序：`version` → `build` → `publish` → `market` → `archive-commit` → `tag`（`--json` 的 `steps[].id` 逐字等于该数组）。它是 `package.json` 启动的独立脚本，**不是 `openfeel` CLI 子命令**，因此其 `--json` **不计入** CLI JSON 出口表（形状锁在 `test/scripts/release.test.ts`）。
+
+```bash
+npm run release -- [<version>] [--dry-run | --publish] [--skip-build] [--with-market]
+                   [--notes-only [--write-notes]] [--commit-archive] [--tag] [--json]
+```
+
+| 开关 | 语义 |
+|------|------|
+| `<version>`（位置参数） | 目标版本（缺省 = `package.json.version`，可带 `v` 前缀）；非 `--notes-only` 时必须与两个 `package.json` + `CHANGELOG.md` 顶部 `## [x.y.z]` 一致，否则 `version` 步骤 `failed` / exit 1 且后续步骤全 `skipped`（差异逐条打印，无独立错误码）。`--notes-only` 只校验两个 `package.json` 的 lockstep（草稿本就写给尚未发布的版本） |
+| `--dry-run` | 安全预演**整条六步链**：publish 子步执行 `npm publish --dry-run --access public`（双包各一次，`publishMode='dry-run'`，不查 `npm whoami`），**不真发**；`market` / `archive-commit` / `tag` 记 `planned`（不是 `skipped`），分别给出将执行的 `cmd`、`archive-commit` 的归档产物 `paths`、`tag` 的 tag 名；不真提交、不打 tag。与 `--publish` **互斥**（同给 → exit 1） |
+| `--publish` | **唯一真实发布开关**：先 `npm whoami`，失败 → exit 1 早停（后续全 `skipped`）、提示 `npm login`、**绝不打印 token**；成功才 `npm publish --access public` 两个包（根包 + `dsh/`） |
+| `--skip-build` | 跳过 `npm run build`（`build` 步骤记 `skipped`） |
+| `--with-market` | 即使安全预演也执行 `npm run market:index`（真实发布时本就执行）；缺省预演下 `market` 记 `planned` |
+| `--notes-only` | 只从 `.openfeel/flow-archive/<version>.json` 的需求标题 + stage 摘要（`.openfeel/log/archive-<stage>.md`）的 REV 结论生成 CHANGELOG 草稿并打印到 stdout；**默认零写盘**——`CHANGELOG.md` 字节不变、不写 `docs/releases/`，其余五步全 `skipped` |
+| `--write-notes` | 必须与 `--notes-only` 同用（单独给 → 参数非法 exit 1）：把草稿写入 `docs/releases/<version>.md`；**已存在不覆盖**（`docs/releases/v<version>.md` 也算已存在，草稿仍打印）；`--dry-run` 下仍不写盘。人工确认后手工合并进 `CHANGELOG.md` |
+| `--commit-archive` | 只 `git add` 归档产物白名单（单点常量 `ARCHIVE_ARTIFACTS`，**7 项**：`.openfeel/log/archive-*.md`、`docs/releases/*.md`、`.openfeel/checkpoints/*.json`、`.openfeel/flow-archive/*.json`、`CHANGELOG.md`、`docs/VERSIONS.md`、`docs/market/index.json`）后 `git commit -m "chore(release): <版本>"`；**不 push、不打 tag**；无匹配产物 → `skipped`（不空提交） |
+| `--tag` | 打 `v<version>` tag（不 push）；缺省不打记 `skipped`，`--dry-run` 下记 `planned` 并给出 tag 名 |
+| `--json` | 脚本自有机器可读输出 `{ok, exitCode, version, mode, steps[{id,status,cmd,substeps,…}], draft, draftPath, draftWritten}`；`steps[].status` ∈ {`pending`, `ok`, `failed`, `skipped`, `planned`}（`planned`/`ok` 可带 `paths`/`tag`/`substeps`/`reason`/`note`）；**不进 CLI 出口表** |
+
+> **默认语义**：既无 `--publish` 也无 `--dry-run` → `publish` 步骤 `skipped`（`cmd` 仅作说明书，**零真实 `npm publish`**）；任何前序步骤失败 → exit 1 且 `publish/market/archive-commit/tag` 全 `skipped`（不进入后续步骤）。发版提交发生在 `done` 相位，脚本**由人类在外部终端执行**；agent 只交付脚本与 `--dry-run` / `--notes-only` 取证。
 
 ## update — 更新适配文件
 

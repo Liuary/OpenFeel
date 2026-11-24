@@ -69,9 +69,10 @@ describe('v1.5.23 / REQ-043：trivial', () => {
     // 未标记：缺审验 → blocker 报 review
     expect(requirementDoneBlocker(data, getRequirement(data, 'REQ-001')!)).toBe('review');
     expect(canCompleteRequirement(data, getRequirement(data, 'REQ-001')!)).toBe(false);
-    // 标记 trivial → 放行
+    // 标记 trivial → 放行（v1.7.0 / REQ-063 A63.1：完成链必经 review_pending；trivial 只免审验证据）
     expect(markRequirementTrivial(data, 'REQ-001', { reason: 'docs 文案', by: 'alice' }).ok).toBe(true);
     expect(canCompleteRequirement(data, getRequirement(data, 'REQ-001')!)).toBe(true);
+    expect(advanceRequirement(data, 'REQ-001', 'review_pending').ok).toBe(true);
     expect(advanceRequirement(data, 'REQ-001', 'done').ok).toBe(true);
     expect(getRequirement(data, 'REQ-001')!.status).toBe('done');
   });

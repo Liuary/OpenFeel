@@ -399,6 +399,23 @@
 
 | 日期 | 操作 | 描述 |
 |------|------|------|
+| 2026-11-24 | patterns | [REV-017] [blocking] A5 盖章路径零测试，真实仓 6 需求只会走 plan_unstamped 放行 |
+| 2026-11-24 | patterns | [REV-016] [blocking] A2/A2c/A8 判据两处都未落地：无 envelope 码也无计划回写 |
+| 2026-11-24 | patterns | [REV-015] [blocking] A1/T12 未取证：6 份需求正文仍是骨架，lint fill 仍报 emptyBody |
+| 2026-11-24 | patterns | [REV-014] [blocking] --force 单跳可跳过 exec_running，计划门不触发且无审计 |
+| 2026-11-24 | patterns | [REV-013] [blocking] req add --claim/--start 未传 projectPath，正文/计划门 fail-open |
+| 2026-11-24 | patterns | [REV-012] [major] op-004 缺 types.ts plan_waiver；op-006/007 争 ADAPTER.md 写者；T14 无承接 |
+| 2026-11-24 | patterns | [REV-011] [blocking] op-007 用 shell 写 requirements 正文，guard 必拒且与自身步骤矛盾 |
+| 2026-11-24 | patterns | [REV-010] [blocking] op-001 body-lint 依赖 T5 才建的 findRequirementPlanPath，构建必红 |
+| 2026-11-24 | patterns | [REV-009] [minor] A9 账本门正常路径不可复现；DSH 预算/guard schema/未验证项需补注 |
+| 2026-11-24 | patterns | [REV-008] [major] 阶段计划门只校验存在性，与「必须写实」不一致，缺占位拒绝用例 |
+| 2026-11-24 | patterns | [REV-007] [major] --json 出口编号三处互斥；实际应为 45 成功/46 注册、出口 #45 |
+| 2026-11-24 | patterns | [REV-006] [blocking] i18n 路径写错：实为 src/core/i18n-data/，照单派发找不到文件 |
+| 2026-11-24 | patterns | [REV-005] [blocking] flow stage reset 无 --force，复位门成为不可放行的硬门 |
+| 2026-11-24 | patterns | [REV-004] [blocking] EMPTY_TEMPLATE 正则失锚（无 m），多行骨架会被误判为空/非空 |
+| 2026-11-24 | patterns | [REV-003] [blocking] claimRequirement 不经 applyStatusChange，「未写实不得认领」无判据 |
+| 2026-11-24 | patterns | [REV-002] [blocking] applyStatusChange 只返回 boolean，新门错误码无法 surface |
+| 2026-11-24 | patterns | [REV-001] [blocking] 偏差门挂在需求不存在的 targetStatus=review_pending，判据是死代码 |
 | 2026-11-01 | patterns | [REV-001] [self-review] v1.5.9 批次：v1.5.7 归档补齐 + 文档快照 v1.5.8 + eslint 清零 + sessions.stage 修复；tsc/lint/vitest 2321 全绿 |
 | 2026-11-01 | patterns | [REV-005] [self-review] v1.5.8 批次：归档官增强 / 多需求编排 / 多会话 P0 / 完成必审验 / 需求归档与发布门；tsc + vitest 2321 + dsh 46/109/58 全绿 |
 | 2026-11-01 | patterns | [REV-004] self-review: stage-123 通过——4 处缺陷执行期已修，6 个负例全拦，1 项未验证已披露 |

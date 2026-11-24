@@ -29,6 +29,21 @@
  *   `.openfeel/` 之外另有 `PROTECTED_WORKSPACE_PATHS`（`dsh/cordis.patch.yml` 的门禁开关行）；
  * - `.openfeel/` 外的源码/文档要求存在 `exec_running` 阶段（或 general 需求例外）；
  *   **代码目录**（`CODE_DIRECTORIES`）内任何扩展名都不享受 doc/asset 豁免（D-126-06）；
+ *   v1.7.0 / REQ-062 A62.1 起 `review_passed` / `test_passed` 只额外放行**文档类**
+ *   目标（`isDocAssetWritePath`：`docs/**`、根级 `*.md`、`test/fixtures/**` 与
+ *   `dsh/test/fixtures/**`），`src/**` 与测试代码仍按源码门禁；
+ * - v1.7.0 / REQ-067 A67.1—A67.4（wrapper 静态分类）：`pwsh|powershell -File|-f <脚本>`、
+ *   `cmd /c|/k <脚本>`、`bash|sh <脚本>` 会**读脚本内容**（≤`MAX_SCRIPT_BYTES`）并按
+ *   同一套 `classifyShellCommand` 递归分类（`WRAPPER_MAX_DEPTH` 触顶即不可判定）：
+ *   内容命中 openfeel 写动词 → 1 类拒；内容可解析出写目标（受保护/相位不允许）→ 2 类拒；
+ *   审计行带 `detail:{wrapper, scriptPath, class, reason}`（`reason:'wrapper-write'`）。
+ *   **读不到 / 超限 / 非 UTF 编码 → 第 4 类**（默认 warn + 审计 `detail`），不静默放行；
+ *   `strict` 档下照样拒。编码口径：只接受 UTF-8（含 BOM）与 UTF-16（BOM 或 NUL 启发式），
+ *   GBK 等双字节编码**不解码**（同一字节串解错会给出假安全）→ 一律 `undecidable`。
+ *   `node <脚本>` 只解析路径、不读内容（读 JS 会把 `node test/guard.js` 这类含 openfeel
+ *   字面量的测试脚本误杀）→ 恒为第 4 类并留审计；内联 `node -e` / `bash -c` 仍走原递归。
+ * - 审计条目（v1.7.0 / R7）：`execution.agent.session.header` 提供 `origin` /
+ *   `delegationDepth` 时原样写入（缺失即省略，**不伪造**），`detail` 仅在包装器判定时出现；
  * - 判定顺序：受保护路径 → 未初始化/bootstrap → 内部路径早返回 → 研究闸 →
  *   无阶段/chore/doc-asset → 相位判定；
  * - 无 `.openfeel/` 时：`always` 拒绝全部写文件，`project`/`off` 放行；
@@ -41,7 +56,7 @@ import { execFileSync } from 'node:child_process';
 import {
   appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, statSync,
 } from 'node:fs';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 
 import { globalGuardAuditPath, writeGuardState } from './adapters/guard-state.js';
 import { lookupSessionCwd } from './adapters/session-cwd-registry.js';
@@ -449,6 +464,69 @@ export function isExemptPath(absolute, cwd) {
 }
 
 /**
+ * 审后相位可写「文档/夹具」的相位集（v1.7.0 / REQ-062 A62.1）。
+ *
+ * 语义：`review_passed` / `test_passed` 不再要求为改一句文档/测试夹具而 `--force` 回退
+ * `exec_running`；**源码（`src/**` 及代码目录内任何文件）仍拒** —— 相位层只放开
+ * {@link isDocAssetWritePath} 命中的目标，不改 `exec_running` 才可写源码的规则。
+ *
+ * 说明：`exec_running` 已在相位判定里**全量**放行（含源码），不需要出现在本表；
+ * 单独列出它只会让「哪些相位需要白名单」的语义变含糊。
+ */
+export const DOC_WRITE_PHASES = Object.freeze(['review_passed', 'test_passed']);
+
+/**
+ * 是否为**测试夹具**路径（v1.7.0 / REQ-062 A62.1）：只认工作区根级
+ * `test/fixtures/**` 与 `dsh/test/fixtures/**`。
+ *
+ * 刻意**不含** `test/core/**`、`test/commands/**` —— 夹具 ≠ 测试代码：
+ * 把 `test/**` 整体当夹具等于在审后放开测试代码改写（A62.1 负例）。
+ * @param {string} absolute 已归一化绝对路径
+ * @param {string} cwd 已归一化工作区
+ * @returns {boolean}
+ */
+export function isFixturePath(absolute, cwd) {
+  const segments = workspaceRelativeSegments(absolute, cwd);
+  if (segments === null) return false;
+  const lower = segments.map((segment) => segment.toLowerCase());
+  if (lower[0] === 'test' && lower[1] === 'fixtures') return true;
+  if (lower[0] === 'dsh' && lower[1] === 'test' && lower[2] === 'fixtures') return true;
+  return false;
+}
+
+/**
+ * 是否为工作区**根级** Markdown（`README*.md` / `CHANGELOG.md` / 其它根 `*.md`）。
+ * @param {string} absolute 已归一化绝对路径
+ * @param {string} cwd 已归一化工作区
+ * @returns {boolean}
+ */
+function isRootMarkdownFile(absolute, cwd) {
+  const segments = workspaceRelativeSegments(absolute, cwd);
+  if (segments === null || segments.length !== 1) return false;
+  return segments[0].toLowerCase().endsWith('.md');
+}
+
+/**
+ * **单一判据**：审后相位可写的「文档类」目标（v1.7.0 / REQ-062 A62.1）。
+ *
+ * 命中（任一）：
+ * - 测试夹具（{@link isFixturePath}，代码目录内唯一例外）；
+ * - 工作区根级 `*.md`（`README*` / `CHANGELOG` / 其它根 md）；
+ * - 非代码目录下的文档（`docs/**`、doc 扩展名）与根级人读文件（`LICENSE` 等）。
+ *
+ * 代码目录内（`src/**`、`test/core/**` …）除夹具外一律 false —— 判据顺序保持
+ * 「先判代码目录，再判扩展名」，与 {@link isExemptPath} 同一纪律。
+ * @param {string} absolute 已归一化绝对路径
+ * @param {string} cwd 已归一化工作区
+ * @returns {boolean}
+ */
+export function isDocAssetWritePath(absolute, cwd) {
+  if (isFixturePath(absolute, cwd)) return true;
+  if (isCodeDirectoryPath(absolute, cwd)) return false;
+  return isRootMarkdownFile(absolute, cwd) || isRootDocFile(absolute, cwd) || isDocPath(absolute, cwd);
+}
+
+/**
  * 审计里的命令片段（v1.5.11 D-126-02）：折叠空白并截断到 500 字符。
  *
  * v1.5.14 / stage-129 OF-08.1：上限 200 → 500。`lastDecision`
@@ -475,8 +553,14 @@ function truncateCommand(command, limit = 500) {
  * 每行必须带 `cwdSource`（验收 14）与 `decision`（allow|deny|warn）；shell 行
  * 额外带 `command`（截断 ≤500 字符，v1.5.14 / stage-129 OF-08.1），否则「门禁是否真的拦过」无法自证。
  *
+ * v1.7.0 / REQ-067（R7）：
+ * - `detail`：包装器（wrapper 脚本）判定的结构化证据，如
+ *   `{wrapper:'pwsh -File', scriptPath:'<绝对路径>', class:'class1', reason:'wrapper-write'}`；
+ * - `origin` / `delegationDepth`：来自 `execution.agent.session.header`，**有则写、无则省略**，
+ *   绝不伪造默认值（伪造会让「谁写的」审计失真）。
+ *
  * @param {string | null} cwd 已归一化工作区（null = 不可解析）
- * @param {{ event?: 'guard_allow'|'guard_deny'|'guard_shell_unresolved'|'guard_shell_downgraded'|'guard_shell_allowlisted', decision?: 'allow'|'deny'|'warn', tool: string, reason: string, phase: string, paths: string[], cwdSource?: string, command?: string }} event
+ * @param {{ event?: 'guard_allow'|'guard_deny'|'guard_shell_unresolved'|'guard_shell_downgraded'|'guard_shell_allowlisted', decision?: 'allow'|'deny'|'warn', tool: string, reason: string, phase: string, paths: string[], cwdSource?: string, command?: string, kind?: string, detail?: Record<string, unknown>, origin?: string, delegationDepth?: number }} event
  */
 function recordGuardAudit(cwd, event) {
   const entry = {
@@ -495,6 +579,14 @@ function recordGuardAudit(cwd, event) {
   // op-005 / P0-1：shell 行必须能区分「确认只读（none）」与「无法判定（undecidable）」，
   // 否则审计会把一次静默放行记成「没有写」。
   if (typeof event.kind === 'string' && event.kind !== '') entry.kind = event.kind;
+  // v1.7.0 / R7：包装器脚本证据（字段由分类结果给出，不在这里编造）。
+  if (event.detail !== undefined && event.detail !== null && typeof event.detail === 'object') {
+    const detail = /** @type {Record<string, unknown>} */ (event.detail);
+    if (Object.keys(detail).length > 0) entry.detail = detail;
+  }
+  // v1.7.0 / R7：会话来源与委派深度 —— 只有 header 真的给了才写（缺省省略）。
+  if (typeof event.origin === 'string' && event.origin !== '') entry.origin = event.origin;
+  if (Number.isInteger(event.delegationDepth)) entry.delegationDepth = event.delegationDepth;
 
   const hasWorkspace = typeof cwd === 'string' && cwd !== '';
   const file = hasWorkspace ? join(cwd, '.openfeel', 'log', 'guard-audit.jsonl') : globalGuardAuditPath();
@@ -1064,8 +1156,36 @@ const PS_WRITE_SPECS = new Map([
   ['sed', 'sed'],
 ]);
 
-/** PowerShell 里表示「目标路径」的具名参数。 */
-const PS_PATH_PARAMS = new Set(['path', 'filepath', 'literalpath', 'destination', 'target', 'outputfile']);
+/**
+ * **cmd 语义**的写命令表（v1.7.0 fix 3；只用于 `.cmd` / `.bat` 的正文分类）。
+ *
+ * 与 PowerShell 表的差异是**刻意**的（cmd 的 `copy`/`move` 源不是被写对象）：
+ * - `copy` / `move`：只有**目标**（最后一个位置参数）算写 —— 把源算进去会误杀
+ *   `copy src\a.ts dist\`（源在 `src/**` 里，但它只被读）；
+ * - `del` / `erase` / `ren` / `rename` / `rd` / `rmdir` / `rm`：全部位置参数都算写；
+ * - `xcopy` / `robocopy`：第二个位置参数是目标；
+ * - `mkdir` / `md`：创建目录，全部算写。
+ *
+ * `.cmd` 正文里的 `>` / `>>` 重定向由 `scanShellRedirections` 统一收集（与分析器无关），
+ * 所以 `echo x > src\generated.ts` 在 cmd 语义下同样命中第 2 类。
+ */
+const CMD_WRITE_SPECS = new Map([
+  ['copy', 'dest'],
+  ['move', 'dest'],
+  ['xcopy', 'dest2'],
+  ['robocopy', 'dest2'],
+  ['del', 'all'],
+  ['erase', 'all'],
+  ['ren', 'all'],
+  ['rename', 'all'],
+  ['rm', 'all'],
+  ['rd', 'all'],
+  ['rmdir', 'all'],
+  ['mkdir', 'all'],
+  ['md', 'all'],
+]);
+
+/** PowerShell 里表示「目标路径」的具名参数。 */const PS_PATH_PARAMS = new Set(['path', 'filepath', 'literalpath', 'destination', 'target', 'outputfile']);
 /** PowerShell 里表示「只读源路径」的具名参数（`Copy-Item -Path src -Destination dst`）。 */
 const PS_SOURCE_PARAMS = new Set(['path', 'filepath', 'literalpath']);
 /** PowerShell 开关参数（不消费下一个 token）。 */
@@ -1188,7 +1308,7 @@ const HARD_INDIRECT_PATTERNS = Object.freeze([
   [/(?:^|\s)-(?:enc|ec)\b/i, '-EncodedCommand'],
   [/\b(?:iex|Invoke-Expression)\b/i, 'Invoke-Expression'],
   [/(?:^|[|&]\s*)eval\s/i, 'eval'],
-  [/(?:^|[|&]\s*)(?:cmd(?:\.exe)?\s+\/[ck]\b)/i, 'cmd /c'],
+  [/(?:^|[|&]\s*)(?:cmd(?:\.exe)?\s+(?:\/[a-z]+(?::[a-z]+)?\s+)*\/[ck]\b)/i, 'cmd /c'],
   [/\bNew-Object\s+(?:System\.)?IO\.(?:StreamWriter|FileStream|BinaryWriter|DirectoryInfo|FileInfo)\b/i, 'New-Object 写对象'],
   [/\bAdd-Type\b/i, 'Add-Type 动态编译'],
 ]);
@@ -1248,6 +1368,44 @@ const INDIRECT_WRITE_PATTERNS = Object.freeze([
 
 /** 递归深度上限（防构造 `bash -c 'bash -c …'` 无限套娃）。 */
 const WRAPPER_MAX_DEPTH = 4;
+
+/**
+ * v1.7.0 / REQ-067 A67：脚本文件读取上限（64KB）。
+ * 超限不做部分读取 —— 半截内容分类会给出假的「只读」结论，一律 undecidable。
+ */
+const MAX_SCRIPT_BYTES = 64 * 1024;
+
+/**
+ * 可读内容分类的脚本载体扩展名 → 内容按哪种 shell 解析。
+ *
+ * v1.7.0 fix 3：`.cmd` / `.bat` 的内容是 **cmd** 语义（`copy`/`move` 只把目标算写，
+ * `del`/`ren` 全部算写，`>` 重定向算写），不再拿 PowerShell 语义硬套 ——
+ * 否则 `move src\x.ts dist\` 会把源也算成写目标（误杀），而 `ren` 完全识别不出。
+ */
+const WRAPPER_SCRIPT_EXTENSIONS = new Map([
+  ['.ps1', 'pwsh'], ['.psm1', 'pwsh'], ['.cmd', 'cmd'], ['.bat', 'cmd'],
+  ['.sh', 'bash'], ['.bash', 'bash'],
+]);
+
+/** PowerShell 读文件执行的旗标（`-File` 及其别名 `-f`）。 */
+const PS_FILE_FLAGS = new Set(['file', 'f']);
+
+/** PowerShell 内联执行旗标：命中即交给 `extractWrapperPayload` / 内联解释器分支。 */
+const PS_INLINE_FLAGS = new Set(['command', 'c', 'commandwithargs', 'encodedcommand', 'e', 'ec']);
+
+/** cmd 读文件执行的旗标（`/c` / `/k`）。 */
+const CMD_SCRIPT_FLAGS = new Set(['c', 'k']);
+
+/**
+ * cmd 的**前置开关**（出现在 `/c` 之前，不改变「读文件执行」语义）：
+ * `cmd /d /c x.cmd`、`cmd /q /d /c x.cmd`、`cmd /e:on /c x.cmd`。
+ * 旧实现遇到第一个 `/` 开关就 `break`，于是 `cmd /d /c 脚本` 整条落到第 4 类
+ * （warn 放行）—— 这是 v1.7.0 fix 1 要封的绕过面。
+ */
+const CMD_PRE_SWITCHES = new Set(['a', 'd', 'e', 'f', 'q', 's', 'u', 'v']);
+
+/** 解释器内联旗标（`node -e` / `--eval` / `-p` / `-i`）。 */
+const INTERPRETER_INLINE_FLAGS = /^(?:-e|--eval|-p|--print|-i|--interactive|-c|--check)$/i;
 
 /**
  * 同一命令内「一次字面量赋值」：`$f='src/x.ts'` / `F=src/x.ts` / `export F=x`。
@@ -1565,6 +1723,314 @@ function payloadIsUnresolvable(payload) {
 }
 
 /**
+ * 位置参数形式的脚本载体判定（v1.7.0 fix 1）：已知脚本扩展名，或带路径分隔符。
+ *
+ * `pwsh build` / `pwsh foo` 这种「一个裸词」不猜是文件（可能只是开关值/参数），
+ * 保持第 4 类；`pwsh ./x.ps1` / `pwsh scripts/x.ps1` 才算载体。
+ * @param {string} token
+ * @returns {boolean}
+ */
+function looksLikeScriptPath(token) {
+  const text = String(token);
+  if (text === '') return false;
+  if (WRAPPER_SCRIPT_EXTENSIONS.has(extname(text).toLowerCase())) return true;
+  return /[\\/]/.test(text);
+}
+
+/**
+ * 识别「读脚本文件执行」的包装器（v1.7.0 / REQ-067 A67.1—A67.3）。
+ *
+ * 覆盖形态（都是**内容在文件里、命令文本只看得见路径**）：
+ * - `pwsh|powershell -File|-f <脚本>`，以及 `-File:<脚本>`（同 token 冒号写法）；
+ * - `pwsh|powershell <脚本>`（**位置参数**，无 `-File`；fix 1）；
+ * - `cmd [/d|/q|/e:on 等前置开关] [/c|/k] <脚本>`（fix 1：前置开关不丢载体）；
+ * - `bash|sh|zsh|dash|fish|ksh <脚本>`（第一个非旗标参数；`-c` 形态不在此列）；
+ * - `source <脚本>` / `. <脚本>`（命令位；fix 1）；
+ * - `node <脚本>`：**只解析路径不读内容**（`inspect:false`）—— 是否强制读取内容
+ *   由 `resolveWrapperScript` 按路径判定（`scripts/**` 或名字含 release/publish/commit）。
+ *
+ * 用 token 而非原文 offset：`"pwsh" -File "x.ps1"` 同样识别。
+ *
+ * @param {string} statement
+ * @returns {{ wrapper: string, scriptPath: string, shell: 'bash'|'pwsh'|'cmd', inspect?: boolean } | null}
+ */
+function matchWrapperScriptTarget(statement) {
+  const tokens = tokenizeShell(statement);
+  for (let index = 0; index < tokens.length; index += 1) {
+    const name = commandNameOf(tokens[index]);
+    const args = [];
+    for (let cursor = index + 1; cursor < tokens.length && tokens[cursor] !== '|'; cursor += 1) args.push(tokens[cursor]);
+    if (args.length === 0) continue;
+
+    if (/^(?:bash|sh|zsh|dash|fish|ksh)$/.test(name)) {
+      const flags = [];
+      let candidate = null;
+      for (const token of args) {
+        if (token.startsWith('-') && token.length > 1) { flags.push(token); continue; }
+        candidate = token;
+        break;
+      }
+      // `-c` / `-lc` 是内联形态，由 extractWrapperPayload 递归处理，不在这里读文件。
+      if (candidate === null || flags.some((flag) => /^-[a-zA-Z]*c$/i.test(flag))) continue;
+      return { wrapper: name === 'sh' ? 'sh' : 'bash', scriptPath: candidate, shell: 'bash' };
+    }
+
+    // v1.7.0 fix 1：`source x.sh` / `. x.sh` —— 被 source 的脚本正文同样是执行面。
+    // 只认**命令位**（句首 / 管道后）：否则 `rg source x.sh` 的参数会被误当载体。
+    if ((name === 'source' || name === '.')
+      && (index === 0 || tokens[index - 1] === '|')) {
+      const candidate = args.find((token) => !token.startsWith('-'));
+      if (candidate === undefined || candidate === '') continue;
+      const extShell = WRAPPER_SCRIPT_EXTENSIONS.get(extname(candidate).toLowerCase());
+      // 只认已知脚本扩展名：`source /etc/os-release` 这类配置文件不读（保持第 4 类）。
+      if (extShell === undefined) continue;
+      return { wrapper: name, scriptPath: candidate, shell: extShell };
+    }
+
+    if (/^(?:powershell|pwsh)$/.test(name)) {
+      let file = null;
+      let fileFlag = false;
+      let inline = false;
+      let positional = null;
+      for (let cursor = 0; cursor < args.length; cursor += 1) {
+        const token = args[cursor];
+        // 位置参数形式（v1.7.0 fix 1）：`pwsh ./x.ps1` / `powershell build.ps1`。
+        // **不 break**：`pwsh -ExecutionPolicy Bypass -File x.ps1` 中间夹着开关值，
+        // 提前 break 会漏掉后面的 `-File`（比旧实现更松）。只收「像脚本」的位置参数，
+        // 开关值（`Bypass` / `Text`）不会被当成载体。
+        if (!token.startsWith('-') && !token.startsWith('/')) {
+          if (positional === null && looksLikeScriptPath(token)) positional = token;
+          continue;
+        }
+        const raw = token.replace(/^[-/]+/, '');
+        const colon = raw.indexOf(':');
+        const flag = (colon === -1 ? raw : raw.slice(0, colon)).toLowerCase();
+        if (PS_INLINE_FLAGS.has(flag)) { inline = true; break; }
+        if (PS_FILE_FLAGS.has(flag)) {
+          // 同 token 里的 `-File:x.ps1`（fix 1）与分离写法 `-File x.ps1` 都要认。
+          file = colon === -1 ? (args[cursor + 1] ?? null) : raw.slice(colon + 1);
+          fileFlag = true;
+          break;
+        }
+      }
+      // `-Command` / `-EncodedCommand` 是内联形态，不在这里读文件。
+      if (inline) continue;
+      if (!fileFlag) {
+        if (positional === null) continue;
+        file = positional;
+      }
+      if (file === null || file === '') continue;
+      return { wrapper: fileFlag ? 'pwsh -File' : 'pwsh', scriptPath: file, shell: 'pwsh' };
+    }
+
+    if (/^cmd(?:\.exe)?$/.test(name)) {
+      let candidate = null;
+      let sawFlag = false;
+      for (let cursor = 0; cursor < args.length; cursor += 1) {
+        const token = args[cursor];
+        if (token.startsWith('-')) continue;
+        if (!token.startsWith('/')) break;
+        const raw = token.slice(1);
+        const colon = raw.indexOf(':');
+        const flag = (colon === -1 ? raw : raw.slice(0, colon)).toLowerCase();
+        if (CMD_SCRIPT_FLAGS.has(flag)) {
+          // `/c:x.cmd` 这种同 token 写法也认（fix 1）。
+          candidate = colon === -1 ? (args[cursor + 1] ?? null) : raw.slice(colon + 1);
+          sawFlag = true;
+          break;
+        }
+        // v1.7.0 fix 1：`/d` `/q` `/e:on` 等前置开关不改变「读文件执行」语义，
+        // 继续往后找 `/c`；旧实现遇到它们就 break → `cmd /d /c 脚本` 落到第 4 类。
+        if (CMD_PRE_SWITCHES.has(flag)) continue;
+        break;
+      }
+      if (!sawFlag || candidate === null || candidate === '') continue;
+      // 只把「像脚本文件」的目标当载体：否则 `cmd /c "echo 1 > src/x.ts"` 会被误当脚本，
+      // 丢掉既有的「cmd /c 内容不可见 → 1 类硬拒」判定。带空白/重定向/元字符的一律不是路径。
+      if (/[\s<>&|;$`'"]/.test(candidate)) continue;
+      const ext = extname(candidate).toLowerCase();
+      if (!WRAPPER_SCRIPT_EXTENSIONS.has(ext) && !/[\\/]/.test(candidate)) continue;
+      return { wrapper: 'cmd /c', scriptPath: candidate, shell: 'pwsh' };
+    }
+
+    if (name === 'node') {
+      if (args.some((token) => INTERPRETER_INLINE_FLAGS.test(token))) continue;
+      let candidate = null;
+      for (const token of args) {
+        if (token.startsWith('-')) continue;
+        candidate = token;
+        break;
+      }
+      if (candidate === null) continue;
+      // 默认**不读**内容（`node test/guard.js` 正文里带 openfeel 字面量，读内容会误杀）；
+      // 是否强制读取由 `resolveWrapperScript` 按路径判定（scripts/** / release|publish|commit）。
+      return { wrapper: 'node', scriptPath: candidate, shell: 'bash', inspect: false };
+    }
+  }
+  return null;
+}
+
+/**
+ * UTF-16 字节序互换（BE → LE 视图）。
+ * @param {Buffer} buffer
+ * @returns {Buffer}
+ */
+function swapUtf16Bytes(buffer) {
+  const copy = Buffer.from(buffer);
+  for (let index = 0; index + 1 < copy.length; index += 2) {
+    const high = copy[index];
+    copy[index] = copy[index + 1];
+    copy[index + 1] = high;
+  }
+  return copy;
+}
+
+/**
+ * 无 BOM 的 UTF-16 粗判：UTF-16 文本在奇/偶字节位置有大量 0x00，GBK/UTF-8 没有。
+ * 只在「一侧近半数为 0、另一侧几乎没有 0」时成立，避免把二进制误当文本。
+ * @param {Buffer} buffer
+ * @returns {{ text: string, charset: string } | null}
+ */
+function sniffUtf16(buffer) {
+  if (buffer.length < 4 || buffer.length % 2 !== 0) return null;
+  const pairs = Math.min(Math.floor(buffer.length / 2), 1024);
+  let evenZero = 0;
+  let oddZero = 0;
+  for (let index = 0; index < pairs; index += 1) {
+    if (buffer[index * 2] === 0) evenZero += 1;
+    if (buffer[index * 2 + 1] === 0) oddZero += 1;
+  }
+  if (oddZero / pairs > 0.5 && evenZero / pairs < 0.1) {
+    return { text: buffer.toString('utf16le'), charset: 'utf-16le' };
+  }
+  if (evenZero / pairs > 0.5 && oddZero / pairs < 0.1) {
+    return { text: swapUtf16Bytes(buffer).toString('utf16le'), charset: 'utf-16be' };
+  }
+  return null;
+}
+
+/**
+ * 脚本正文的「可执行语句视图」（v1.7.0 / R7，仅用于分类，不改写文件）。
+ *
+ * 脚本里的整行注释（`#` / shebang）、cmd 的 `rem` / `::` 不是命令；cmd 行首 `@`
+ * （`@echo off`）也不是命令名。不清洗的话每条带注释的普通脚本都会被打成
+ * 「未识别的命令 #」→ 第 4 类，A67.2 的「普通脚本 allow」就不成立了。
+ *
+ * @param {string} content
+ * @returns {string}
+ */
+function normalizeScriptStatements(content) {
+  const lines = [];
+  for (const raw of String(content).split(/\r?\n/)) {
+    const line = raw.trim().replace(/^@+/, '').trim();
+    if (line === '') continue;
+    if (line.startsWith('#') || line.startsWith('::')) continue;
+    if (/^rem(?:\s|$)/i.test(line)) continue;
+    lines.push(line);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * 解码脚本内容（v1.7.0 / REQ-067 A67.3 编码口径，零外部依赖）。
+ *
+ * 只接受 **UTF-8**（含 BOM，严格校验）与 **UTF-16**（BOM 或 NUL 启发式）。
+ * **GBK 等双字节编码刻意不解码**：同一串字节按 GBK 解很可能得到「看起来只读」的
+ * 乱码文本 → 假安全；保守判 `null`（undecidable），默认 warn + 审计。
+ *
+ * @param {Buffer} buffer
+ * @returns {{ text: string, charset: string } | null}
+ */
+function decodeScriptText(buffer) {
+  if (buffer.length === 0) return { text: '', charset: 'utf-8' };
+  if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) {
+    try {
+      return { text: new TextDecoder('utf-8', { fatal: true }).decode(buffer.subarray(3)), charset: 'utf-8-bom' };
+    } catch {
+      return null;
+    }
+  }
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return { text: buffer.subarray(2).toString('utf16le'), charset: 'utf-16le-bom' };
+  }
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+    return { text: swapUtf16Bytes(buffer.subarray(2)).toString('utf16le'), charset: 'utf-16be-bom' };
+  }
+  const sniffed = sniffUtf16(buffer);
+  if (sniffed !== null) return sniffed;
+  try {
+    return { text: new TextDecoder('utf-8', { fatal: true }).decode(buffer), charset: 'utf-8' };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `node <脚本>` 是否**必须**读内容分类（v1.7.0 fix 2）。
+ *
+ * 默认不读：`node test/guard.js` 这类测试脚本正文里本来就带 openfeel 命令字面量，
+ * 一律读内容会误杀日常测试（A67.2「不误杀」）。
+ * 但下面两类是「命令文本只看得见路径、真实动作在正文里」的高风险载体，必须读：
+ * - 路径落在 `scripts/**`（发布/构建脚本的惯例目录）；
+ * - 文件名含 `release` / `publish` / `commit`（`scripts` 之外的同类脚本）。
+ *
+ * @param {string} scriptPath 已解析的绝对路径
+ * @param {string} baseDir 命令基准目录
+ * @returns {boolean}
+ */
+function nodeScriptNeedsInspection(scriptPath, baseDir) {
+  const rel = relative(baseDir, scriptPath).replace(/\\/g, '/');
+  if (/(?:^|\/)scripts\//i.test(rel)) return true;
+  return /release|publish|commit/i.test(basename(scriptPath));
+}
+
+/**
+ * 解析包装器背后的脚本文件并读取内容（v1.7.0 / REQ-067 A67）。
+ *
+ * 返回值三态（调用方据此判 1/2 类或第 4 类）：
+ * - `null`：不是「读文件执行」形态（含内联 `-c` / `-e`、`cmd /c` 内联 payload）；
+ * - `{ scriptPath, content, shell, charset, wrapper }`：可读取，交给内容分类；
+ * - `{ scriptPath, undecidable: true, reason, wrapper }`：不存在 / 非文件 / 超限 /
+ *   编码非 UTF / node 默认不读 → **不可判定**（绝不当作安全）。
+ *
+ * `highRisk:true`（仅 node 且命中 `nodeScriptNeedsInspection`）：内容已读取，
+ * 若正文不可判定，调用方按第 1 类拒绝（发布类脚本不允许「未知 → warn 放行」）。
+ *
+ * @param {string} statement
+ * @param {string} baseDir 已归一化的命令基准目录
+ * @returns {{ wrapper: string, scriptPath: string, content?: string, charset?: string, shell?: 'bash'|'pwsh'|'cmd', highRisk?: boolean, undecidable?: boolean, reason?: string } | null}
+ */
+function resolveWrapperScript(statement, baseDir) {
+  const candidate = matchWrapperScriptTarget(statement);
+  if (candidate === null) return null;
+  const scriptPath = resolve(baseDir, candidate.scriptPath);
+  const base = { wrapper: candidate.wrapper, scriptPath };
+  if (candidate.inspect === false && !nodeScriptNeedsInspection(scriptPath, baseDir)) {
+    return { ...base, undecidable: true, reason: 'node-script-content-not-inspected' };
+  }
+  try {
+    const stat = statSync(scriptPath);
+    if (!stat.isFile()) return { ...base, undecidable: true, reason: 'script-not-a-file' };
+    if (stat.size > MAX_SCRIPT_BYTES) {
+      return { ...base, undecidable: true, reason: `script-too-large（>${MAX_SCRIPT_BYTES} bytes）` };
+    }
+    const decoded = decodeScriptText(readFileSync(scriptPath));
+    if (decoded === null) return { ...base, undecidable: true, reason: 'unknown-encoding（非 UTF-8/UTF-16）' };
+    const ext = extname(scriptPath).toLowerCase();
+    return {
+      ...base,
+      content: normalizeScriptStatements(decoded.text),
+      charset: decoded.charset,
+      // 内容语义按**扩展名**判定（`.cmd` 用 cmd 语义），扩展名未知时才回落到启动器。
+      shell: WRAPPER_SCRIPT_EXTENSIONS.get(ext) ?? candidate.shell ?? 'bash',
+      ...(candidate.inspect === false ? { highRisk: true } : {}),
+    };
+  } catch {
+    return { ...base, undecidable: true, reason: 'script-unreadable（不存在或不可读）' };
+  }
+}
+
+/**
  * 判断 shell 命令里的 `openfeel …` 是否是写子命令（第 1 类）。
  * @param {string[]} args `openfeel` 之后的 token
  * @returns {boolean}
@@ -1736,6 +2202,41 @@ function parsePowerShellWrite(command, tokens, start) {
     return { targets, undecidable: true, detail: `${command} 缺少目标（只有源）` };
   }
   return { targets };
+}
+
+/**
+ * 解析 **cmd 语义**写命令的目标（v1.7.0 fix 3；只用于 `.cmd` / `.bat` 正文）。
+ *
+ * `copy a b` / `move a b`：只有目标（最后一个位置参数）算写 —— 源是读；
+ * `del` / `ren` / `rmdir` 等：全部位置参数都算写。
+ * `/y`、`/q`、`-y`、`/f` 之类的开关不消费下一个 token（cmd 开关不带值），
+ * 所以这里只按「非开关位置参数」取目标。
+ *
+ * @param {string} command 已小写的命令名
+ * @param {string[]} tokens
+ * @param {number} start
+ * @returns {{ targets: string[], undecidable?: boolean, detail?: string } | null}
+ */
+function parseCmdWrite(command, tokens, start) {
+  const spec = CMD_WRITE_SPECS.get(command);
+  if (spec === undefined) return null;
+  const positionals = [];
+  for (let index = start + 1; index < tokens.length && tokens[index] !== '|'; index += 1) {
+    const token = tokens[index];
+    if (token.startsWith('/') || token.startsWith('-')) continue;
+    if (token === '') continue;
+    positionals.push(token);
+  }
+  if (spec === 'dest') {
+    if (positionals.length >= 2) return { targets: [positionals[positionals.length - 1]] };
+    if (positionals.length === 1) return { targets: [], undecidable: true, detail: `${command} 缺少目标（只有源）` };
+    return { targets: [] };
+  }
+  if (spec === 'dest2') {
+    if (positionals.length >= 2) return { targets: [positionals[1]] };
+    return { targets: [], undecidable: true, detail: `${command} 缺少目标（只有源）` };
+  }
+  return { targets: positionals };
 }
 
 /**
@@ -2354,7 +2855,7 @@ function classifyGitCommand(tokens, start, baseDir) {
  * `undecidable = true`（第 4 类），**不再**静默按「没有写」放行。
  *
  * @param {string} statement
- * @param {'bash'|'pwsh'} shell
+ * @param {'bash'|'pwsh'|'cmd'} shell `cmd` 只用于 `.cmd` / `.bat` 正文（v1.7.0 fix 3）
  * @param {string} baseDir
  * @returns {{ targets: string[], wholeTree?: string, wholeTreePhases?: string[], wholeTreeGitSubcommand?: string, wholeTreeRepoOverride?: boolean, wholeTreeGitConfig?: boolean, blockedGit?: string, undecidable: boolean, detail: string }}
  */
@@ -2499,7 +3000,11 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
     // 误判成「没有写」。合并 POSIX spec 后目标仍能取到；两类 spec 是保守并集
     // （多出来的目标只会更严，不会更松）。
     const parsed = [];
-    if (shell === 'pwsh') {
+    if (shell === 'cmd') {
+      // v1.7.0 fix 3：`.cmd` / `.bat` 正文按 **cmd 语义**判定，不并入 PowerShell/POSIX 表
+      // （`move` 在 PS 表里是 `all`，会把只被读的源也算成写目标 → 误杀 `copy/move src …`）。
+      parsed.push(parseCmdWrite(name, tokens, cursor));
+    } else if (shell === 'pwsh') {
       parsed.push(parsePowerShellWrite(name, tokens, cursor), parsePosixWrite(name, tokens, cursor, baseDir));
     } else {
       parsed.push(parsePosixWrite(name, tokens, cursor, baseDir), parsePowerShellWrite(name, tokens, cursor));
@@ -2548,14 +3053,21 @@ function analyzeShellStatement(statement, shell, baseDir, vars = new Map()) {
  * 分类一条 shell 命令（四类判定；不读 flow，不判定相位）。
  *
  * op-002b 精化：
- * - `-EncodedCommand` / `iex` / `Invoke-Expression` / `eval` / `cmd /c` → 第 1 类硬拒（内容不可见）；
+ * - `-EncodedCommand` / `iex` / `Invoke-Expression` / `eval` → 第 1 类硬拒（内容不可见）；
+ *   `cmd /c` 若解析得出脚本文件则改走「读内容分类」（R7），解析不出（内联 payload）仍硬拒；
  * - `node -e` / `python -c` / `perl -e` / `ruby -e` / `php -r` → **先扫 payload**：
  *   含写 API 才拒，纯只读诊断（`node -e "console.log(…)"`）放行且不审计（`readonly-interpreter`）；
  * - `bash|sh -c` / `powershell|pwsh -Command` → **递归解析内层命令**（同一判定器），
  *   内层可判定按内层判；内层为空/不可判定 → 第 4 类（`undecidable`）。
+ * - v1.7.0 / REQ-067 A67：`pwsh -File` / `cmd /c` / `bash <脚本>` / `source <脚本>` /
+ *   `pwsh <脚本>` → **读脚本内容递归分类**；`.cmd`/`.bat` 用 cmd 语义（fix 3）；
+ *   `node <scripts/**>` 或名字含 release|publish|commit 的脚本也读内容，
+ *   正文判不了按第 1 类拒绝（fix 2）；
+ *   结果带 `wrapper:{wrapper, scriptPath, class:'class1'|'class2'|'undecidable'|'none', reason}`
+ *   （1/2 类命中时 class 为 1/2；不可判定时 class 为 `undecidable`；确认只读为 `none`）。
  *
- * @param {{ command: string, baseDir: string, shell: 'bash'|'pwsh', depth?: number }} input
- * @returns {{ kind: 'indirect'|'openfeel-write'|'whole-tree'|'targets'|'undecidable'|'none'|'readonly-interpreter', detail: string, targets: string[], undecidable: boolean, phases?: string[], gitSubcommand?: string, repoOverride?: boolean, gitConfig?: boolean }}
+ * @param {{ command: string, baseDir: string, shell: 'bash'|'pwsh'|'cmd', depth?: number }} input
+ * @returns {{ kind: 'indirect'|'openfeel-write'|'whole-tree'|'targets'|'undecidable'|'none'|'readonly-interpreter', detail: string, targets: string[], undecidable: boolean, phases?: string[], gitSubcommand?: string, repoOverride?: boolean, gitConfig?: boolean, wrapper?: { wrapper: string, scriptPath: string, class: string, reason: string } }}
  */
 export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
   const statements = splitShellStatements(command);
@@ -2566,6 +3078,8 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
   let undecidable = false;
   let detail = '';
   let readonlyInterpreter = false;
+  /** 包装器脚本证据（R7）：{wrapper, scriptPath, class, reason}；无则为 null。 */
+  let wrapper = null;
 
   /** 记录一个目标（字面量 → 绝对路径；变量/派生 → 第 4 类）。 */
   const pushTarget = (raw) => {
@@ -2587,9 +3101,21 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
   };
 
   for (const statement of statements) {
-    // 第 1 类：内容不可见的形态 → 硬拒
+    // 第 1 类：内容不可见的形态 → 硬拒。
+    // v1.7.0 / R7 例外：`cmd /c <脚本文件>` 以前一律硬拒；现在能解析出脚本文件时改走
+    // 「读内容分类」（否则普通 `cmd /c build.cmd` 会被一并误杀，A67.2）。解析不出
+    // 脚本文件（内联 payload，如 `cmd /c "echo 1 > src/x.ts"`）仍保持硬拒。
+    const scriptInvocation = depth < WRAPPER_MAX_DEPTH ? resolveWrapperScript(statement, baseDir) : null;
     const hard = matchHardIndirect(statement);
-    if (hard !== null) return { kind: 'indirect', detail: hard, targets: [], undecidable: false };
+    if (hard !== null) {
+      // `cmd /c <脚本>` 只要解析出脚本路径就走「读内容分类」：可读 → 1/2 类判定；
+      // 不可读/超限/编码不明 → 第 4 类 warn + 审计（A67.3 对 `.cmd` 的 GBK 用例同样是
+      // undecidable，不能因为 `cmd /c` 的旧硬拒把它变成「内容不可见」的假通过）。
+      const scriptCarrier = hard === 'cmd /c' && scriptInvocation !== null;
+      if (!scriptCarrier) {
+        return { kind: 'indirect', detail: hard, targets: [], undecidable: false };
+      }
+    }
 
     // 第 1 类：shell 跑 openfeel 写子命令
     const openfeel = matchOpenFeelWrite(statement);
@@ -2633,6 +3159,94 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
         }
         continue;
       }
+    }
+
+    // v1.7.0 / REQ-067 A67（R7）：`pwsh -File` / `cmd /c` / `bash <脚本>` 读文件执行 ——
+    // 命令文本里只有路径，写操作在文件正文里，旧实现整条落到第 4 类（warn 放行）。
+    // 这里静态读取脚本内容，交给**同一份** `classifyShellCommand` 递归分类：
+    // 内容命中 openfeel 写动词/间接执行 → 1 类；内容解析出写目标 → 2 类（交给相位判定）；
+    // 内容不可判定 → 第 4 类（把 wrapper/scriptPath 放进 detail，审计可见）。
+    if (scriptInvocation !== null) {
+      // 外层重定向（`pwsh -File x.ps1 > src/x.ts`）同样算写入。
+      for (const raw of scanShellRedirections(statement).targets) pushTarget(raw);
+      if (scriptInvocation.undecidable === true) {
+        undecidable = true;
+        detail = detail || `wrapper ${scriptInvocation.wrapper}（${scriptInvocation.scriptPath}）：${scriptInvocation.reason}`;
+        wrapper = {
+          wrapper: scriptInvocation.wrapper,
+          scriptPath: scriptInvocation.scriptPath,
+          class: 'undecidable',
+          reason: scriptInvocation.reason ?? 'script-undecidable',
+        };
+        continue;
+      }
+      const nested = classifyShellCommand({
+        command: scriptInvocation.content ?? '',
+        baseDir,
+        shell: scriptInvocation.shell ?? 'bash',
+        depth: depth + 1,
+      });
+      if (nested.kind === 'indirect' || nested.kind === 'openfeel-write' || nested.kind === 'whole-tree') {
+        wrapper = {
+          wrapper: scriptInvocation.wrapper,
+          scriptPath: scriptInvocation.scriptPath,
+          class: 'class1',
+          reason: 'wrapper-write',
+        };
+        return { ...nested, wrapper };
+      }
+      if (nested.targets.length > 0) {
+        targets.push(...nested.targets);
+        if (nested.undecidable) {
+          undecidable = true;
+          detail = detail || nested.detail || '脚本内写目标不可判定';
+        }
+        wrapper = {
+          wrapper: scriptInvocation.wrapper,
+          scriptPath: scriptInvocation.scriptPath,
+          class: 'class2',
+          reason: 'wrapper-write',
+        };
+        continue;
+      }
+      // v1.7.0 fix 2：`node <scripts/**>` / 名字含 release|publish|commit 的脚本（highRisk）。
+      // 这类脚本的真实动作（npm publish / git commit）只在正文里；正文按 shell 语义拿不到
+      // 确定结论时**不能**继续 warn 放行 —— 那等于发布通道敞开。按第 1 类拒绝。
+      if (scriptInvocation.highRisk === true
+        && (nested.undecidable || nested.kind === 'undecidable')) {
+        wrapper = {
+          wrapper: scriptInvocation.wrapper,
+          scriptPath: scriptInvocation.scriptPath,
+          class: 'class1',
+          reason: 'node-script-high-risk-undecidable',
+        };
+        return {
+          kind: 'indirect',
+          detail: `node 高风险脚本（${scriptInvocation.scriptPath}）内容不可判定：${nested.detail || '未知'}；按第 1 类拒绝（发布/提交类脚本要求人工在外部终端执行）`,
+          targets: [],
+          undecidable: false,
+          wrapper,
+        };
+      }
+      if (nested.undecidable || nested.kind === 'undecidable') {
+        undecidable = true;
+        detail = detail || nested.detail || `wrapper ${scriptInvocation.wrapper}（${scriptInvocation.scriptPath}）内容不可判定`;
+        wrapper = {
+          wrapper: scriptInvocation.wrapper,
+          scriptPath: scriptInvocation.scriptPath,
+          class: 'undecidable',
+          reason: 'wrapper-content-undecidable',
+        };
+        continue;
+      }
+      // 内容确认只读（`readonly.ps1` / `build.ps1`）：放行，但审计留下 wrapper 证据。
+      wrapper = {
+        wrapper: scriptInvocation.wrapper,
+        scriptPath: scriptInvocation.scriptPath,
+        class: 'none',
+        reason: 'wrapper-readonly',
+      };
+      continue;
     }
 
     // 命令替换 / 反引号的内层命令在 `analyzeShellStatement` 里**叠加**判定为第 4 类
@@ -2679,10 +3293,12 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
     }
     // 第 4 类（op-005 / P0-1）：**没有正面证据**证明「这条命令不写」→ undecidable，
     // 不再返回 `none` 静默放行。审计的 `kind` 因此能区分 no-write 与 undecidable。
-    if (undecidable) return { kind: 'undecidable', detail: detail || '命令写入意图无法判定', targets, undecidable };
-    return { kind: 'none', detail, targets, undecidable };
+    if (undecidable) {
+      return { kind: 'undecidable', detail: detail || '命令写入意图无法判定', targets, undecidable, ...(wrapper === null ? {} : { wrapper }) };
+    }
+    return { kind: 'none', detail, targets, undecidable, ...(wrapper === null ? {} : { wrapper }) };
   }
-  return { kind: 'targets', targets, undecidable, detail };
+  return { kind: 'targets', targets, undecidable, detail, ...(wrapper === null ? {} : { wrapper }) };
 }
 
 /**
@@ -2799,7 +3415,7 @@ function formatActivePhases(active) {
  * `.openfeel/**` 任意相位可写会让 agent 手写 `chore.json` / `.preflight.json` 自提权。
  *
  * @param {{ t: (zh: string, en: string) => string, enforce: 'off'|'project'|'always', allowGeneral: boolean, bootstrapHinted: Set<string> }} context
- * @param {{ name: string, targets: string[], patchEntries?: Array<{ path: string, kind: string }> | null, resolvedCwd: string, normalizedCwd: string, cwdSource: string, audit?: boolean }} request
+ * @param {{ name: string, targets: string[], patchEntries?: Array<{ path: string, kind: string }> | null, resolvedCwd: string, normalizedCwd: string, cwdSource: string, audit?: boolean, auditExtra?: Record<string, unknown> }} request
  * @returns {{ decision: 'allow'|'deny', reason: string, message?: string }}
  */
 function decideForTargets(context, request) {
@@ -2812,6 +3428,8 @@ function decideForTargets(context, request) {
       tool: name,
       cwdSource,
       paths: targets,
+      // v1.7.0 / R7：origin / delegationDepth 由调用方按 header 传入（无则空对象）。
+      ...(request.auditExtra ?? {}),
       ...event,
     });
   };
@@ -2927,7 +3545,14 @@ function decideForTargets(context, request) {
   }
 
   if (active.some((stage) => stage.phase === 'exec_running')) return { decision: 'allow', reason: 'exec-running' };
-  // P0-4/v1.4.0：非 exec 相位仍允许 doc/note 与静态展示资源（研究记录、设计文档、UI 资源等）；源码仍严格。
+  // v1.7.0 / REQ-062 A62.1：审后相位（review_passed / test_passed）允许写文档与测试夹具，
+  // **源码仍拒**。判据单点 = isDocAssetWritePath（夹具/根 md/docs/**），不在这里散落名单。
+  const docWritePhase = active.some((stage) => DOC_WRITE_PHASES.includes(stage.phase));
+  if (docWritePhase && targets.every((target) => isDocAssetWritePath(target, normalizedCwd))) {
+    recordAudit({ reason: 'doc-asset-phase', phase: formatActivePhases(active) });
+    return { decision: 'allow', reason: 'doc-asset-phase' };
+  }
+  // P0-4/v1.4.0：其余非 exec 相位仍允许 doc/note 与静态展示资源（研究记录、设计文档、UI 资源等）；源码仍严格。
   if (targets.every((target) => isExemptPath(target, normalizedCwd))) {
     recordAudit({ reason: 'doc-asset', phase: formatActivePhases(active) });
     return { decision: 'allow', reason: 'doc-asset' };
@@ -2937,8 +3562,8 @@ function decideForTargets(context, request) {
     decision: 'deny',
     reason: 'phase',
     message: t(
-      `OpenFeel 写入门禁：活跃阶段当前不在 exec_running（${formatActivePhases(active)}），不能修改源码/文档。请先 feel_flow action=advance 推进到 exec_running。`,
-      `OpenFeel write guard: active stage(s) are not in exec_running (${formatActivePhases(active)}), so source/docs are read-only. Advance to exec_running with feel_flow action=advance.`,
+      `OpenFeel 写入门禁：活跃阶段当前不在 exec_running（${formatActivePhases(active)}），且目标不是文档/测试夹具，不能修改源码/文档。文档与测试夹具可在 review_passed / test_passed 写；改源码请先 feel_flow action=advance 推进到 exec_running。`,
+      `OpenFeel write guard: active stage(s) are not in exec_running (${formatActivePhases(active)}) and the targets are not docs/test fixtures, so source is read-only. Docs and test fixtures may be written in review_passed / test_passed; advance to exec_running with feel_flow action=advance to change source.`,
     ),
   };
 }
@@ -3241,6 +3866,17 @@ export function createOpenFeelGuard(options = {}) {
     const normalizedCwd = resolvedCwd === null ? null : normalizeTarget(resolvedCwd, '.');
     const degraded = resolution.degraded;
     const shellCommand = isShell ? extractShellCommand(execution?.arguments).command : undefined;
+    // v1.7.0 / REQ-067（R7）：审计补 `origin` / `delegationDepth` —— **header 提供了才写**，
+    // 缺失即省略（伪造会让「谁写的」审计失真）。
+    const sessionHeader = execution?.agent?.session?.header ?? {};
+    const auditOrigin = {
+      ...(typeof sessionHeader.origin === 'string' && sessionHeader.origin.trim() !== ''
+        ? { origin: sessionHeader.origin.trim() }
+        : {}),
+      ...(Number.isInteger(sessionHeader.delegationDepth)
+        ? { delegationDepth: sessionHeader.delegationDepth }
+        : {}),
+    };
 
     /** 判定结论落盘（D-126-04）：每次放行/拒绝/告警都更新 lastDecision。 */
     const recordDecision = (decision, { reason, paths = [], command = shellCommand }) => {
@@ -3304,6 +3940,7 @@ export function createOpenFeelGuard(options = {}) {
         paths: [],
         cwdSource: 'unresolved',
         command: shellCommand,
+        ...auditOrigin,
       });
       return message;
     }
@@ -3334,12 +3971,21 @@ export function createOpenFeelGuard(options = {}) {
       // 先分类：审计的 `kind` 要能区分 `no-write`（确认只读）与 `undecidable`
       // （无法判定，op-005 / P0-1）。
       const classification = classifyShellCommand({ command, baseDir, shell: name });
+      // v1.7.0 / REQ-067 A67.1—A67.3：包装器脚本证据。命中 1/2 类时审计 `kind` 用
+      // `class1`/`class2`（A67.1 的取证口径），其余仍用原分类 kind（none/undecidable/…）。
+      const wrapperDetail = classification.wrapper ?? null;
+      const auditKind = wrapperDetail !== null
+        && (wrapperDetail.class === 'class1' || wrapperDetail.class === 'class2')
+        ? wrapperDetail.class
+        : classification.kind;
       const recordShellAudit = (event) => recordGuardAudit(normalizedCwd, {
         tool: name,
         cwdSource,
         command,
         phase: phaseSummary(),
-        kind: classification.kind,
+        kind: auditKind,
+        ...(wrapperDetail === null ? {} : { detail: wrapperDetail }),
+        ...auditOrigin,
         ...event,
       });
       const warnLine = (zh, en) => process.stderr.write(`${t(zh, en)}\n`);
@@ -3392,6 +4038,15 @@ export function createOpenFeelGuard(options = {}) {
         return undefined;
       };
 
+      // v1.7.0 / REQ-067 A67.1（class 1）：包装器脚本**正文**命中 openfeel 写动词 /
+      // 嵌套解释器 / 间接执行 → 拒绝。审计 `kind:'class1'` + `detail:{wrapper,scriptPath,…}`。
+      if (wrapperDetail !== null && wrapperDetail.class === 'class1') {
+        const target = `${wrapperDetail.wrapper} ${wrapperDetail.scriptPath}`;
+        return denyDecidable('wrapper-write', t(
+          `OpenFeel 写入门禁：禁止用包装脚本执行写操作（${target}；脚本内容命中「${classification.detail}」）。脚本正文里的 openfeel 写命令/嵌套解释器与直接写在 shell 工具里同等对待 —— 请改用 feel_flow / feel_stage / feel_req 等工具；只读脚本不受影响。`,
+          `OpenFeel write guard: executing write operations through a wrapper script is not allowed (${target}; script content matched "${classification.detail}"). openfeel write commands / nested interpreters inside the script are treated the same as typing them in the shell tool: use feel_flow / feel_stage / feel_req; read-only scripts are unaffected.`,
+        ), []);
+      }
       // 第 1 类：编码/间接执行形态（含「内联解释器 payload 里有写 API」）
       if (classification.kind === 'indirect') {
         return denyDecidable('shell-indirect-exec', t(
@@ -3525,12 +4180,16 @@ export function createOpenFeelGuard(options = {}) {
       }
 
       const shellPaths = classification.targets;
+      // v1.7.0 / REQ-067 A67.1（class 2）：包装器脚本内容可解析出写目标时，拒绝原因统一
+      // 记为 `wrapper-write`（`detail` 已带 wrapper/scriptPath），但判定仍走同一套目标逻辑
+      // （受保护路径 / 相位 / doc-asset），不另立一份表达式。
+      const wrapperClass2 = wrapperDetail !== null && wrapperDetail.class === 'class2';
       // 第 1 类（写入目标维度）：受保护路径，文案与文件工具完全一致
       const protectedHits = shellPaths
         .map((target) => matchProtectedPath(target, normalizedCwd))
         .filter((hit) => hit !== null);
       if (protectedHits.length > 0) {
-        return denyDecidable('shell-protected', protectedDenialMessage(protectedHits, t), shellPaths);
+        return denyDecidable(wrapperClass2 ? 'wrapper-write' : 'shell-protected', protectedDenialMessage(protectedHits, t), shellPaths);
       }
       // 第 3 类：构建/测试产物豁免；必须**全部**命中才放行，混合目标从严
       const decidableTargets = shellPaths.filter((target) => !isBuildArtifactPath(target, normalizedCwd));
@@ -3546,8 +4205,11 @@ export function createOpenFeelGuard(options = {}) {
         normalizedCwd,
         cwdSource,
         audit: false,
+        auditExtra: auditOrigin,
       });
-      if (decided.decision === 'deny') return denyDecidable(decided.reason, decided.message, decidableTargets);
+      if (decided.decision === 'deny') {
+        return denyDecidable(wrapperClass2 ? 'wrapper-write' : decided.reason, decided.message, decidableTargets);
+      }
       if (classification.undecidable) return undecidableShell(classification.detail, shellPaths);
       return allowShell(decided.reason, decidableTargets);
     }
@@ -3594,6 +4256,7 @@ export function createOpenFeelGuard(options = {}) {
       resolvedCwd,
       normalizedCwd,
       cwdSource,
+      auditExtra: auditOrigin,
     });
     if (decision.decision === 'allow') {
       recordDecision('allow', { reason: decision.reason, paths: targets });

@@ -19,7 +19,7 @@ import {
   getAllowedNextStatuses, recordRequirementReview, recordRequirementVerification,
   requirementDoneBlocker, requirementPlanDeviationBlocker, forceRequirementPlanDeviation,
   requirementBodyBlocker, requirementBodyEmptySections, requirementPlanBlocker,
-  forceRequirementPlanWaiver,
+  forceRequirementPlanWaiver, markRequirementTrivial,
   allocateRequirementId, requirementSeqFloor, releaseCheckRequirements, rolloverRequirements,
 } from '../../src/core/req/requirement-ops.js';
 import {
@@ -316,6 +316,10 @@ describe('需求原语 — T5.4a 状态流转', () => {
   const successCases: Array<[RequirementStatus, RequirementStatus]> = [
     ['draft', 'scheduled'],
     ['scheduled', 'in_progress'],
+    // v1.7.0 / REQ-063 A63.1：审查相位（in_progress → review_pending → done）+ 回退
+    ['in_progress', 'review_pending'],
+    ['review_pending', 'done'],
+    ['review_pending', 'in_progress'],
     ['in_progress', 'blocked'],
     ['blocked', 'scheduled'],
     ['blocked', 'in_progress'],
@@ -334,24 +338,26 @@ describe('需求原语 — T5.4a 状态流转', () => {
     });
   }
 
-  it('done 门：in_progress + 全部关联阶段 done → advance done 成功', () => {
+  // v1.7.0 / REQ-063 A63.1：done 门的前置状态改为 `review_pending`（`in_progress → done` 直连已移除，
+  // 判据本体 `requirementDoneBlocker` 一字未动——只换夹具状态，断言与语义零改动）
+  it('done 门：review_pending + 全部关联阶段 done → advance done 成功', () => {
     const data = makeFlowData({
       'vX-stage-01': makeStage({ phase: 'done', requirement_id: 'REQ-001' }),
       'vX-stage-02': makeStage({ phase: 'done', requirement_id: 'REQ-001' }),
     });
-    data.requirements = [makeReq('REQ-001', 'in_progress')];
+    data.requirements = [makeReq('REQ-001', 'review_pending')];
     expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
     expect(data.requirements![0].status).toBe('done');
   });
 
   it('done 门：零关联 → 允许显式完成（v1.5.7 解耦；聚合仍 null 不误自动收口）', () => {
     const data = makeFlowData();
-    data.requirements = [makeReq('REQ-001', 'in_progress')];
+    data.requirements = [makeReq('REQ-001', 'review_pending')];
     expect(computeRequirementAggregate(data, 'REQ-001').aggregate).toBeNull();   // 零关联空集守卫（不误自动完成）
     expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
     expect(data.requirements![0].status).toBe('done');
     expect(lastLog(data).action).toBe('requirement_status');                     // 审计在位
-    expect(lastLog(data).detail).toEqual({ id: 'REQ-001', from: 'in_progress', to: 'done' });
+    expect(lastLog(data).detail).toEqual({ id: 'REQ-001', from: 'review_pending', to: 'done' });
     expect(computeRequirementAggregate(data, 'REQ-001').aggregate).toBeNull();   // 显式完成 ≠ 聚合 done
   });
 
@@ -364,7 +370,7 @@ describe('需求原语 — T5.4a 状态流转', () => {
       const data = makeFlowData({
         'vX-stage-01': makeStage({ phase, requirement_id: 'REQ-001' }),
       });
-      data.requirements = [makeReq('REQ-001', 'in_progress')];
+      data.requirements = [makeReq('REQ-001', 'review_pending')];
       expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
       expect(data.requirements![0].status).toBe('done');
     }
@@ -380,10 +386,10 @@ describe('需求原语 — T5.4a 状态流转', () => {
         'vX-stage-01': makeStage({ phase: 'exec_running', requirement_id: 'REQ-001' }),
         'vX-stage-02': makeStage({ phase, requirement_id: 'REQ-001' }),
       });
-      data.requirements = [makeReq('REQ-001', 'in_progress')];
+      data.requirements = [makeReq('REQ-001', 'review_pending')];
       const n = data.log.length;
       expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
-      expect(data.requirements![0].status).toBe('in_progress');
+      expect(data.requirements![0].status).toBe('review_pending');
       expect(data.log.length).toBe(n);
     }
   });
@@ -393,6 +399,8 @@ describe('需求原语 — T5.4a 状态流转', () => {
     ['draft', 'done'],
     ['scheduled', 'done'],
     ['scheduled', 'draft'],
+    // v1.7.0 / REQ-063 A63.1：旧直连 in_progress → done 已移除（走 review_pending 或 --force 跳链留痕）
+    ['in_progress', 'done'],
     ['done', 'in_progress'],
   ];
 
@@ -804,14 +812,20 @@ describe('需求原语 — T5.7 承接回归（stage-82）', () => {
     }
   });
 
-  it('getAllowedNextStatuses：7 状态全表（含 blocked 两出口补全）', () => {
+  it('getAllowedNextStatuses：8 状态全表（含 blocked 两出口补全 + v1.7.0 review_pending）', () => {
     expect(getAllowedNextStatuses('draft')).toEqual(['scheduled', 'blocked', 'cancelled', 'rejected']);
     expect(getAllowedNextStatuses('scheduled')).toEqual(['in_progress', 'blocked', 'cancelled', 'rejected']);
-    expect(getAllowedNextStatuses('in_progress')).toEqual(['done', 'blocked', 'cancelled', 'rejected']);
+    // v1.7.0 / REQ-063 A63.1：in_progress **不再直连 done**；review_pending 含 done 与回退 in_progress
+    expect(getAllowedNextStatuses('in_progress')).toEqual(['review_pending', 'blocked', 'cancelled', 'rejected']);
+    expect(getAllowedNextStatuses('review_pending')).toEqual(['done', 'in_progress', 'blocked', 'cancelled', 'rejected']);
     expect(getAllowedNextStatuses('blocked')).toEqual(['scheduled', 'in_progress', 'cancelled', 'rejected']);
     expect(getAllowedNextStatuses('done')).toEqual([]);
     expect(getAllowedNextStatuses('cancelled')).toEqual([]);
     expect(getAllowedNextStatuses('rejected')).toEqual([]);
+    // 值域声明序（board / dashboard 分组键序单源）：review_pending 插在 in_progress 与 done 之间
+    expect([...REQ_STATUSES]).toEqual([
+      'draft', 'scheduled', 'in_progress', 'review_pending', 'done', 'blocked', 'cancelled', 'rejected',
+    ]);
   });
 
   it('getAllowedNextStatuses：域外状态 → []（不崩）', () => {
@@ -1588,12 +1602,14 @@ describe('stage-90 op-002 需求级模式属性（引擎）', () => {
 // allLinkedStagesDone 仍是聚合 done 判定单源（语义不变）。
 // ═══════════════════════════════════════
 describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
-  it('T93.1：general 需求全链可显式完成（draft → scheduled → in_progress → done ok:true + 审计在位）', () => {
+  it('T93.1：general 需求全链可显式完成（draft → scheduled → in_progress → review_pending → done ok:true + 审计在位）', () => {
     const data = makeFlowData();
     const req = addRequirement(data, { title: '通用工作者需求', workflow_mode: 'general' });
     expect(req.workflow_mode).toBe('general');
     expect(advanceRequirement(data, req.id, 'scheduled')).toEqual({ ok: true, changed: true });
     expect(advanceRequirement(data, req.id, 'in_progress')).toEqual({ ok: true, changed: true });
+    // v1.7.0 / REQ-063 A63.1：审查相位（in_progress → review_pending）不可跳过
+    expect(advanceRequirement(data, req.id, 'review_pending')).toEqual({ ok: true, changed: true });
     // v1.5.8 / REQ-027：done 门要求审查 + 验证均 pass
     expect(recordRequirementReview(data, req.id, { result: 'pass', by: 'reviewer', note: 'ok', independent: true }))
       .toEqual({ ok: true, changed: true });
@@ -1603,12 +1619,12 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     expect(getRequirement(data, req.id)!.status).toBe('done');
     const last = lastLog(data);
     expect(last.action).toBe('requirement_status');                                  // 审计在位
-    expect(last.detail).toMatchObject({ id: req.id, from: 'in_progress', to: 'done' });
+    expect(last.detail).toMatchObject({ id: req.id, from: 'review_pending', to: 'done' });
   });
 
   it('T93.2：v1.5.7 解耦——零关联允 / plan 相位拒 / exec_running 允 / 全 done 允（零变更零审计）', () => {
     // 零关联（无阶段）→ 允（显式完成；聚合仍 null，不误自动收口）
-    const noLink = aggData({}, [makeReq('REQ-001', 'in_progress')]);
+    const noLink = aggData({}, [makeReq('REQ-001', 'review_pending')]);
     expect(computeRequirementAggregate(noLink, 'REQ-001').aggregate).toBeNull();
     expect(advanceRequirement(noLink, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
     expect(noLink.requirements![0].status).toBe('done');
@@ -1618,17 +1634,17 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     // 有链接但尚有阶段在计划相位 → 拒（零变更零审计）
     const partial = aggData(
       { 'stage-01': linkedStage('REQ-001', 'exec_running'), 'stage-02': linkedStage('REQ-001', 'plan_pending') },
-      [makeReq('REQ-001', 'in_progress')],
+      [makeReq('REQ-001', 'review_pending')],
     );
     const n = partial.log.length;
     expect(advanceRequirement(partial, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
-    expect(partial.requirements![0].status).toBe('in_progress');
+    expect(partial.requirements![0].status).toBe('review_pending');
     expect(partial.log.length).toBe(n);
 
     // 有链接且阶段仍开启（exec_running）→ 允
     const openStage = aggData(
       { 'stage-01': linkedStage('REQ-001', 'exec_running') },
-      [makeReq('REQ-001', 'in_progress')],
+      [makeReq('REQ-001', 'review_pending')],
     );
     expect(advanceRequirement(openStage, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
     expect(openStage.requirements![0].status).toBe('done');
@@ -1636,7 +1652,7 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     // 有链接且全 done → 允（既有语义保留）
     const allDone = aggData(
       { 'stage-01': linkedStage('REQ-001', 'done'), 'stage-02': linkedStage('REQ-001', 'done') },
-      [makeReq('REQ-001', 'in_progress')],
+      [makeReq('REQ-001', 'review_pending')],
     );
     expect(advanceRequirement(allDone, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
     expect(allDone.requirements![0].status).toBe('done');
@@ -1645,13 +1661,13 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
   it('T93.3：v1.5.7 起完成门只看相位——general 且有链接（损坏态）按相位判（plan 拒 / done 允）', () => {
     const broken = aggData(
       { 'stage-01': linkedStage('REQ-001', 'plan_pending') },
-      [makeReq('REQ-001', 'in_progress', { workflow_mode: 'general' })],
+      [makeReq('REQ-001', 'review_pending', { workflow_mode: 'general' })],
     );
     expect(advanceRequirement(broken, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
 
     const brokenDone = aggData(
       { 'stage-01': linkedStage('REQ-001', 'done') },
-      [makeReq('REQ-001', 'in_progress', { workflow_mode: 'general' })],
+      [makeReq('REQ-001', 'review_pending', { workflow_mode: 'general' })],
     );
     expect(advanceRequirement(brokenDone, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
   });
@@ -1661,6 +1677,7 @@ describe('stage-93 op-001 BUG-002 完成路径（engine）', () => {
     const req = addRequirement(data, { title: 'g', workflow_mode: 'general' });
     advanceRequirement(data, req.id, 'scheduled');
     advanceRequirement(data, req.id, 'in_progress');
+    advanceRequirement(data, req.id, 'review_pending');   // v1.7.0 / REQ-063 A63.1：审查相位
     // v1.5.8 / REQ-027：done 门前置（审查 + 验证）
     recordRequirementReview(data, req.id, { result: 'pass', by: 'reviewer', note: 'ok', independent: true });
     recordRequirementVerification(data, req.id, { result: 'pass', kind: 'test', by: 'tester', note: 'ok' });
@@ -1721,14 +1738,95 @@ describe('REQ-97-006 命令层过滤单点化', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// v1.7.0 / REQ-063 A63.1—A63.2：审查相位（review_pending）+ done 门码化
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('v1.7.0 / REQ-063 审查相位（需求层）', () => {
+  /** 零关联 + 审验齐全的 review_pending 需求 */
+  function pendingData(overrides: Partial<RequirementData> = {}): FlowData {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'review_pending', overrides)];
+    return data;
+  }
+
+  it('A63.1 流转矩阵：in_progress → review_pending → done；review_pending → in_progress 回退；in_progress ↛ done', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress')];
+    // 旧直连（无 --force）→ 表外拒绝，零变更零审计
+    expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+    expect(data.requirements![0].status).toBe('in_progress');
+    expect(data.log).toHaveLength(0);
+    // 正向两跳
+    expect(advanceRequirement(data, 'REQ-001', 'review_pending')).toEqual({ ok: true, changed: true });
+    expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].status).toBe('done');
+    // 回退
+    const back = pendingData();
+    expect(advanceRequirement(back, 'REQ-001', 'in_progress')).toEqual({ ok: true, changed: true });
+    expect(back.requirements![0].status).toBe('in_progress');
+  });
+
+  it('A63.1 跳链留痕放行：allowReviewSkip=true → ok + requirement_status 条目附 gate_override（A62.2 同形）', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress')];
+    expect(advanceRequirement(data, 'REQ-001', 'done', {
+      allowReviewSkip: true, by: 'tester', gateReason: 'advance-force',
+    })).toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].status).toBe('done');
+    const last = lastLog(data);
+    expect(last.action).toBe('requirement_status');
+    expect(last.detail).toMatchObject({ id: 'REQ-001', from: 'in_progress', to: 'done' });
+    const audit = (last.detail as { gate_override: Record<string, unknown> }).gate_override;
+    // 键集与 flow 侧 GateOverride 审计逐字同形（含 from / to；A62.2）
+    expect(Object.keys(audit)).toEqual(['gate_overrides', 'by', 'reason', 'from', 'to', 'at']);
+    expect(audit.gate_overrides).toEqual(['req_review']);
+    expect(audit).toMatchObject({ by: 'tester', reason: 'advance-force', from: 'in_progress', to: 'done' });
+  });
+
+  it('A63.2 review_pending 三态：缺审 → review_required / 缺验 → verification_required / 齐全 → 放行', () => {
+    const noReview = pendingData({ review: undefined });
+    expect(advanceRequirement(noReview, 'REQ-001', 'done')).toEqual({ ok: false, code: 'review_required' });
+    expect(noReview.requirements![0].status).toBe('review_pending');
+    expect(noReview.log).toHaveLength(0);
+
+    const noVerify = pendingData({ verification: undefined });
+    expect(advanceRequirement(noVerify, 'REQ-001', 'done')).toEqual({ ok: false, code: 'verification_required' });
+    expect(noVerify.requirements![0].status).toBe('review_pending');
+
+    const full = pendingData();
+    expect(advanceRequirement(full, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+  });
+
+  it('A63.2 阶段相位仍 invalid_status（不冒充未审/未验）；判据顺序 stage_phase → review → verification 不变', () => {
+    const data = makeFlowData({ 'stage-01': makeStage({ phase: 'plan_pending', requirement_id: 'REQ-001' }) });
+    data.requirements = [makeReq('REQ-001', 'review_pending', { review: undefined, verification: undefined })];
+    expect(requirementDoneBlocker(data, data.requirements![0])).toBe('stage_phase');
+    expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+  });
+
+  it('A63.1 trivial 仍免审验，但相位跳链不因 trivial 自动放行（表外拒绝）', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress', { review: undefined, verification: undefined })];
+    markRequirementTrivial(data, 'REQ-001', { reason: 'docs', by: 'alice' });    // trivial 只免 done 门的 review/verification 两项，不放行流转表
+    expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+    expect(advanceRequirement(data, 'REQ-001', 'review_pending')).toEqual({ ok: true, changed: true });
+    expect(advanceRequirement(data, 'REQ-001', 'done')).toEqual({ ok: true, changed: true });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // v1.5.8 / REQ-027「完成必审验」：需求 done 门三态 + 审查/验证记录写路径
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('REQ-027 完成必审验（需求层）', () => {
-  /** 零关联 + 缺记录的需求（负向基线） */
+  /**
+   * 零关联 + 缺记录的需求（负向基线）。
+   * v1.7.0 / REQ-063 A63.1：done 门现在挂在 `review_pending` 之后（`in_progress → done` 直连已移除），
+   * 夹具状态随之改为 review_pending；**三态语义（review / verification / null）一字未改**。
+   */
   function bareData(overrides: Partial<RequirementData> = {}): FlowData {
     const data = makeFlowData();
-    data.requirements = [makeReq('REQ-001', 'in_progress', { review: undefined, verification: undefined, ...overrides })];
+    data.requirements = [makeReq('REQ-001', 'review_pending', { review: undefined, verification: undefined, ...overrides })];
     return data;
   }
 
@@ -1738,8 +1836,9 @@ describe('REQ-027 完成必审验（需求层）', () => {
       verification: { result: 'pass', kind: 'test', by: 't', at: '2026-01-01T00:00:00.000Z', note: 'ok' },
     });
     expect(requirementDoneBlocker(noReview, noReview.requirements![0])).toBe('review');
-    expect(advanceRequirement(noReview, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
-    expect(noReview.requirements![0].status).toBe('in_progress');           // 零变更
+    // v1.7.0 / REQ-063 A63.2：done 门失败**码化**（判据仍单源 requirementDoneBlocker）
+    expect(advanceRequirement(noReview, 'REQ-001', 'done')).toEqual({ ok: false, code: 'review_required' });
+    expect(noReview.requirements![0].status).toBe('review_pending');       // 零变更
     expect(noReview.log.length).toBe(0);                                    // 零审计
 
     // ② 无验证（有审查）
@@ -1747,7 +1846,7 @@ describe('REQ-027 完成必审验（需求层）', () => {
       review: { result: 'pass', by: 'r', at: '2026-01-01T00:00:00.000Z', note: 'ok', independent: true },
     });
     expect(requirementDoneBlocker(noVerify, noVerify.requirements![0])).toBe('verification');
-    expect(advanceRequirement(noVerify, 'REQ-001', 'done')).toEqual({ ok: false, code: 'invalid_status' });
+    expect(advanceRequirement(noVerify, 'REQ-001', 'done')).toEqual({ ok: false, code: 'verification_required' });
 
     // ③ 齐全且均 pass → 放行
     const full = bareData({
@@ -2065,10 +2164,10 @@ describe('REQ-056 T6 计划偏差门（需求层）', () => {
   function sha12(content: string): string {
     return createHash('sha256').update(content, 'utf-8').digest('hex').slice(0, 12);
   }
-  /** 已盖章（sha = 给定内容）+ done 门齐全的在办需求 */
+  /** 已盖章（sha = 给定内容）+ done 门齐全的在办需求（v1.7.0：done 门前置状态 = review_pending） */
   function stampedData(planContent: string): FlowData {
     const data = makeFlowData();
-    data.requirements = [makeReq('REQ-001', 'in_progress', {
+    data.requirements = [makeReq('REQ-001', 'review_pending', {
       plan: { path: PLAN_REL, sha256: sha12(planContent), recorded_at: '2026-11-24T00:00:00.000Z' },
     })];
     return data;
@@ -2082,7 +2181,7 @@ describe('REQ-056 T6 计划偏差门（需求层）', () => {
     expect(requirementPlanDeviationBlocker(data.requirements![0], tmpDir)).toBe('plan_deviation');
     expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
       .toEqual({ ok: false, code: 'plan_deviation' });
-    expect(data.requirements![0].status).toBe('in_progress');   // 零变更
+    expect(data.requirements![0].status).toBe('review_pending');   // 零变更
     expect(data.log).toHaveLength(0);                            // 零审计
   });
 
@@ -2124,7 +2223,7 @@ describe('REQ-056 T6 计划偏差门（需求层）', () => {
 
   it('T6.4 未盖章历史需求 → 放行 + 标记记录 plan_unstamped:true（兼容存量，不阻塞）', () => {
     const data = makeFlowData();
-    data.requirements = [makeReq('REQ-001', 'in_progress')];      // 无 `plan` 字段
+    data.requirements = [makeReq('REQ-001', 'review_pending')];      // 无 `plan` 字段
     expect(requirementPlanDeviationBlocker(data.requirements![0], tmpDir)).toBeNull();
     expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
       .toEqual({ ok: true, changed: true });
@@ -2132,20 +2231,21 @@ describe('REQ-056 T6 计划偏差门（需求层）', () => {
     // 标记记录（done 时的独立审计条目；requirement_status 条目形状逐字不变）
     const marker = data.log.find((e) => e.action === 'requirement_plan_unstamped');
     expect(marker).toBeDefined();
-    expect(marker!.detail).toMatchObject({ id: 'REQ-001', from: 'in_progress', to: 'done', plan_unstamped: true });
+    expect(marker!.detail).toMatchObject({ id: 'REQ-001', from: 'review_pending', to: 'done', plan_unstamped: true });
     // 既有 done 审计条目形状不变（lastLog 仍为 requirement_status）
     expect(lastLog(data).action).toBe('requirement_status');
-    expect(lastLog(data).detail).toEqual({ id: 'REQ-001', from: 'in_progress', to: 'done' });
+    expect(lastLog(data).detail).toEqual({ id: 'REQ-001', from: 'review_pending', to: 'done' });
   });
 
-  it('T6.5 done 门先于偏差门（REV-001）：缺 review → invalid_status，不是 plan_deviation', () => {
+  it('T6.5 done 门先于偏差门（REV-001）：缺 review → review_required（非 plan_deviation）', () => {
     writePlan(BASE_PLAN);
     const data = stampedData(BASE_PLAN);
     delete data.requirements![0].review;
     writePlan(BASE_PLAN + '\n\n## 执行补充\n- 执行中改了计划。');   // 偏差同时存在
+    // v1.7.0 / REQ-063 A63.2：done 门失败码化（原 invalid_status → review_required），顺序约束不变
     expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
-      .toEqual({ ok: false, code: 'invalid_status' });
-    expect(data.requirements![0].status).toBe('in_progress');
+      .toEqual({ ok: false, code: 'review_required' });
+    expect(data.requirements![0].status).toBe('review_pending');
     expect(data.log).toHaveLength(0);
   });
 
@@ -2311,10 +2411,10 @@ describe('v1.6.0-stage-132 T4 正文门 / T7 需求级计划门（需求层）',
       .toEqual({ ok: false, code: 'body_empty' });
   });
 
-  it('T4.5 正文门不进 done 门：缺审仍返回 invalid_status（T027.1 语境逐字不变）', () => {
+  it('T4.5 正文门不进 done 门：缺审仍返回 review_required（T027.1 语境；A63.2 码化）', () => {
     writeBody(FILLED_BODY);
     const data = dataWith({
-      status: 'in_progress',
+      status: 'review_pending',
       body_path: BODY_REL,
       review: undefined,
       verification: undefined,
@@ -2322,7 +2422,7 @@ describe('v1.6.0-stage-132 T4 正文门 / T7 需求级计划门（需求层）',
     // 正文已写实 → 正文门放行；done 门（review）仍按既有口径拒绝
     expect(requirementDoneBlocker(data, data.requirements![0])).toBe('review');
     expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
-      .toEqual({ ok: false, code: 'invalid_status' });
+      .toEqual({ ok: false, code: 'review_required' });
   });
 
   it('T7.1 general 需求：无计划 / 占位计划 → plan_missing；写实计划 → 放行（A8）', () => {

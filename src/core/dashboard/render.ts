@@ -49,6 +49,12 @@ const ATTR = {
   sectionBlockingReviews: 'data-i18n="dashboard.html.section.blockingReviews"',
   sectionHealth: 'data-i18n="dashboard.html.section.health"',
   sectionMetrics: 'data-i18n="dashboard.html.section.metrics"',
+  sectionFlowDebt: 'data-i18n="dashboard.html.section.flowDebt"',
+  debtEmptyBody: 'data-i18n="dashboard.html.debt.emptyBody"',
+  debtMissingPlan: 'data-i18n="dashboard.html.debt.missingPlan"',
+  debtUnstamped: 'data-i18n="dashboard.html.debt.unstamped"',
+  debtDevStale: 'data-i18n="dashboard.html.debt.devStale"',
+  debtLastSync: 'data-i18n="dashboard.html.debt.lastSync"',
   thRequirement: 'data-i18n="dashboard.html.th.requirement"',
   thStatus: 'data-i18n="dashboard.html.th.status"',
   thPriority: 'data-i18n="dashboard.html.th.priority"',
@@ -106,6 +112,14 @@ th,td{padding:4px 6px;text-align:left;vertical-align:top;border-bottom:1px solid
 .tag{margin-right:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#57606a}
 .reviews,.health,.metric-list,.foot-list{margin:0;padding:0;list-style:none}
 .reviews li,.health li,.metric-list li{padding:4px 0;border-bottom:1px solid #eaeef2}
+.debt{margin:0;padding:0;list-style:none}
+.debt-group{padding:8px 0;border-bottom:1px solid #eaeef2}
+.debt-label{font-weight:600}
+.debt-count{margin-left:8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#57606a}
+.debt-items{margin:4px 0 0;padding:0;list-style:none;font-size:.85rem}
+.debt-items li{padding:1px 0}
+.debt-detail,.debt-state{margin-left:6px;color:#57606a}
+.debt-none,.debt-more{color:#57606a;font-style:italic}
 .page-foot{margin-top:24px;color:#57606a;font-size:.8rem}
 .page-foot code{word-break:break-all}
 `;
@@ -499,7 +513,96 @@ function renderMetrics(data: DashboardData, lang: Lang): string {
   ].join('\n');
 }
 
-/** ⑧ 页脚：生成时间（唯一时间字段）/ 生成器 / 项目根 / 说明 */
+/** 流程债每组明细的预览上限（A65.2：各前 5 条） */
+const DEBT_PREVIEW_LIMIT = 5;
+
+/** 组内空态行：语义是「无该笔债」而非「无数据」，故复用 `dashboard.html.none`（`—`） */
+function debtNoneNode(lang: Lang): string {
+  return `<li class="debt-none" ${ATTR.none}>${escapeHtml(t('dashboard.html.none', lang))}</li>`;
+}
+
+/** 「其余 N 条」收口行（明细超过 {@link DEBT_PREVIEW_LIMIT} 时；不超出 → 空串，调用方过滤） */
+function debtMoreNode(total: number, shown: number, lang: Lang): string {
+  const rest = total - shown;
+  if (!Number.isFinite(rest) || rest <= 0) {
+    return '';
+  }
+  return `<li class="debt-more">${escapeHtml(t('dashboard.html.debt.moreTmpl', lang, { count: num(rest) }))}</li>`;
+}
+
+/** 单组流程债（计数 + 明细列表；节点文本全部经 escapeHtml，属性值只取 ATTR 常量） */
+function renderDebtGroup(
+  attr: string,
+  labelKey: string,
+  count: number,
+  nodes: string[],
+  lang: Lang,
+): string {
+  const rows = nodes.length === 0
+    ? debtNoneNode(lang)
+    : [...nodes, debtMoreNode(count, nodes.length, lang)].filter((row) => row !== '').join('\n');
+  return [
+    '<li class="debt-group">',
+    `<span class="debt-label" ${attr}>${escapeHtml(t(labelKey, lang))}</span>`,
+    `<span class="debt-count">${num(count)}</span>`,
+    `<ul class="debt-items">\n${rows}\n</ul>`,
+    '</li>',
+  ].join('');
+}
+
+/**
+ * ⑧ 流程债面板（A65.2）：空壳正文 / 缺计划 / 未盖章 / dev 同步过期四组，
+ * 各出计数与前 {@link DEBT_PREVIEW_LIMIT} 条；advisory 快照，不改退出码。
+ */
+function renderFlowDebt(data: DashboardData, lang: Lang): string {
+  const debt = data.flowDebt;
+  const emptyBody = debt?.emptyBody;
+  const missingPlan = debt?.missingPlan;
+  const unstamped = debt?.unstamped;
+  const devStale = debt?.devStale;
+
+  const emptyBodyNodes = (emptyBody?.items ?? []).slice(0, DEBT_PREVIEW_LIMIT).map((item) => {
+    const sections = Array.isArray(item.emptySections) ? item.emptySections : [];
+    const detail = sections.length === 0
+      ? ''
+      : `<span class="debt-detail">${escapeHtml(sections.join(' / '))}</span>`;
+    return `<li><code>${escapeHtml(item.id)}</code>${detail}</li>`;
+  });
+
+  const missingPlanNodes = (missingPlan?.items ?? [])
+    .slice(0, DEBT_PREVIEW_LIMIT)
+    .map((item) => `<li><code>${escapeHtml(item.id)}</code></li>`);
+
+  const unstampedNodes = (unstamped?.items ?? [])
+    .slice(0, DEBT_PREVIEW_LIMIT)
+    .map((item) => `<li><code>${escapeHtml(item.id)}</code><span class="debt-detail">${escapeHtml(item.status)}</span></li>`);
+
+  const devDue = devStale?.due === true;
+  const devNodes = [
+    [
+      '<li>',
+      `<span class="debt-state">${escapeHtml(t(devDue ? 'dashboard.html.debt.due' : 'dashboard.html.debt.fresh', lang))}</span>`,
+      `<span class="chip"><span class="chip-label" ${ATTR.debtLastSync}>${escapeHtml(t('dashboard.html.debt.lastSync', lang))}</span>${textOrDash(devStale?.lastSync)}</span>`,
+      '</li>',
+    ].join(''),
+  ];
+
+  const groups = [
+    renderDebtGroup(ATTR.debtEmptyBody, 'dashboard.html.debt.emptyBody', emptyBody?.count ?? 0, emptyBodyNodes, lang),
+    renderDebtGroup(ATTR.debtMissingPlan, 'dashboard.html.debt.missingPlan', missingPlan?.count ?? 0, missingPlanNodes, lang),
+    renderDebtGroup(ATTR.debtUnstamped, 'dashboard.html.debt.unstamped', unstamped?.count ?? 0, unstampedNodes, lang),
+    renderDebtGroup(ATTR.debtDevStale, 'dashboard.html.debt.devStale', devStale?.count ?? 0, devNodes, lang),
+  ];
+
+  return [
+    '<section class="card" id="flow-debt">',
+    `<h2 ${ATTR.sectionFlowDebt}>${escapeHtml(t('dashboard.html.section.flowDebt', lang))}</h2>`,
+    `<ul class="debt">\n${groups.join('\n')}\n</ul>`,
+    '</section>',
+  ].join('\n');
+}
+
+/** ⑨ 页脚：生成时间（唯一时间字段）/ 生成器 / 项目根 / 说明 */
 function renderFooter(data: DashboardData, lang: Lang): string {
   return [
     '<footer class="page-foot">',
@@ -539,6 +642,7 @@ export function renderDashboardHtml(data: DashboardData, options: { lang: 'zh-CN
     renderStages(data, lang),
     renderReleases(data, lang),
     renderBlockingReviews(data, lang),
+    renderFlowDebt(data, lang),
     renderHealth(data, lang),
     renderMetrics(data, lang),
     '</main>',

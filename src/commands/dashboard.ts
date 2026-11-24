@@ -179,12 +179,21 @@ function runDashboard(options: DashboardOptions): void {
     return;
   }
 
-  // 人类摘要（3 行；恒打印绝对路径）
+  // 人类摘要（4 行；恒打印绝对路径）
+  // v1.7.0 / REQ-065 A65.2：第 2 行后追加「流程债」一行（四组计数 + dev 过期状态与最近同步时间）
+  const flowDebt = dashboard.flowDebt;
   console.log(t('dashboard.title', lang));
   console.log(t('dashboard.statsTmpl', lang, {
     requirements: String(dashboard.requirements.total),
     stages: String(dashboard.stages.counts.total),
     blockingReviews: String(dashboard.blockingReviews.length),
+  }));
+  console.log(t('dashboard.debtTmpl', lang, {
+    emptyBody: String(flowDebt.emptyBody.count),
+    missingPlan: String(flowDebt.missingPlan.count),
+    unstamped: String(flowDebt.unstamped.count),
+    devState: flowDebt.devStale.due ? t('dashboard.debtDue', lang) : t('dashboard.debtFresh', lang),
+    lastSync: flowDebt.devStale.lastSync ?? t('dashboard.debtNever', lang),
   }));
   console.log(t('dashboard.writtenTmpl', lang, { path: outPath }));
 

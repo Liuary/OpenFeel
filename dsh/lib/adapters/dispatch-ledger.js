@@ -1,13 +1,16 @@
 /**
- * 派发台账（v1.6.0 / REQ-057）— DSH 适配器侧
+ * 派发台账（v1.6.0 / REQ-057；v1.7.0 / REQ-066 增闭环 closing）— DSH 适配器侧
  *
  * 文件：`<project>/.openfeel/dev/dispatch.jsonl`（UTF-8 / LF，一行一条 JSON）。
  * 行 schema（plan §5.4）：
  *   { dispatchId, ts, leadSessionId, origin, stage, phase,
  *     targetAgent, role, taskId, goal, files[], returnFormat, dispatchDepth }
+ * 可选闭环字段（v1.7.0 / REQ-066 A66.1，由 `closeDispatch` 原地补写）：
+ *   closing: { status: 'done'|'failed', artifacts: string[], durationMs: number, summary: string }
+ *   closedAt: ISO 时间（**行的顶层字段**——A66.1 要求 closing 恰 4 键，时间戳不进 closing）
  *
- * 职责：把「派给谁、派什么、允许写哪些文件」变成可审计的记录，供
- * `feel_status.dispatch` 汇总（提示级，不做硬拦——用户裁定 ②）。
+ * 职责：把「派给谁、派什么、允许写哪些文件」变成可审计的记录，并在完成后补上
+ * 产物/耗时/失败原因，供 `feel_status.dispatch` 汇总（提示级，不做硬拦——用户裁定 ②）。
  *
  * 纪律：
  * - 只有适配器进程直接 fs 写；该文件在 `PROTECTED_OPENFEEL_PATHS` 里，
@@ -73,12 +76,39 @@ function asStringArray(value) {
 }
 
 /**
+ * 归一化闭环段（v1.7.0 / REQ-066 A66.1）。
+ *
+ * 输出**恰 4 键**且键序固定：`status` / `artifacts` / `durationMs` / `summary`
+ * （`closedAt` 落行的顶层，见文件头注释——A66.1 不允许第 5 键混进 closing）。
+ * 非法输入（非对象 / status 不在闭集）→ `undefined`（读侧丢弃；写侧由调用方报错）。
+ *
+ * @param {unknown} raw
+ * @returns {{ status: 'done'|'failed', artifacts: string[], durationMs: number, summary: string } | undefined}
+ */
+function normalizeClosing(raw) {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const status = raw.status === 'done' ? 'done' : raw.status === 'failed' ? 'failed' : '';
+  if (status === '') return undefined;
+  const durationMs = typeof raw.durationMs === 'number' && Number.isFinite(raw.durationMs) && raw.durationMs >= 0
+    ? Math.round(raw.durationMs)
+    : 0;
+  return {
+    status,
+    artifacts: asStringArray(raw.artifacts),
+    durationMs,
+    summary: asString(raw.summary),
+  };
+}
+
+/**
  * 归一化一条台账记录（字段齐全、类型稳定）。
  * @param {Record<string, unknown>} raw
  * @returns {Record<string, any>}
  */
 function normalizeRecord(raw) {
   const depth = Number.isInteger(raw?.dispatchDepth) && raw.dispatchDepth >= 0 ? raw.dispatchDepth : 1;
+  const closing = normalizeClosing(raw?.closing);
+  const closedAt = asString(raw?.closedAt);
   return {
     dispatchId: asString(raw?.dispatchId),
     ts: asString(raw?.ts),
@@ -93,6 +123,9 @@ function normalizeRecord(raw) {
     files: asStringArray(raw?.files),
     returnFormat: asString(raw?.returnFormat) || DEFAULT_RETURN_FORMAT,
     dispatchDepth: depth,
+    // 可选闭环字段只增不改：未闭环的行不写这两个键（存量行字节不变）
+    ...(closing !== undefined ? { closing } : {}),
+    ...(closedAt !== '' ? { closedAt } : {}),
   };
 }
 
@@ -221,6 +254,99 @@ export function appendDispatch(projectPath, record = {}, options = {}) {
 }
 
 /**
+ * 读台账的**原始行**（不归一化；用于 `closeDispatch` 的原地补写，保证未命中行字节不变）。
+ * @param {string} projectPath
+ * @returns {string[]}
+ */
+function readRawLedgerLines(projectPath) {
+  let text;
+  try {
+    text = readFileSync(dispatchLedgerPath(projectPath), 'utf-8');
+  } catch {
+    return [];
+  }
+  return text.split(/\r?\n/).filter((line) => line.trim() !== '');
+}
+
+/**
+ * 关闭一条派发（v1.7.0 / REQ-066 A66.1）：按 `dispatchId` **原地补写** `closing` + 顶层 `closedAt`。
+ *
+ * 契约：
+ * - **行数 / 行序不变**，未命中的行字节不变（只对目标行 JSON.parse → 补键 → stringify）；
+ * - **幂等**：同 id 重复 finish 且 `status` / `artifacts` / `summary` 相同 → `changed:false`，
+ *   `ts` / `closing` / `closedAt` 都不二次改写（`durationMs` 未显式给出时沿用既有值，
+ *   避免「重复调用 = 耗时变大」）；
+ * - `durationMs` 缺省 = `now - Date.parse(ts)`（非负整数；ts 不可解析 → 0）；
+ * - 未知 id → `{ ok:false, code:'not_found' }` 且**零写盘**；status 非法 → `invalid_closing`。
+ *
+ * @param {string} projectPath
+ * @param {string} dispatchId
+ * @param {{ status?: 'done'|'failed', artifacts?: string[], durationMs?: number, summary?: string }} closing
+ * @param {{ now?: number }} [options] `now` 注入便于单测（缺省 `Date.now()`）
+ * @returns {{ ok: true, dispatchId: string, closedAt: string, changed: boolean, path: string }
+ *   | { ok: false, code: 'not_found'|'invalid_closing', path: string }}
+ */
+export function closeDispatch(projectPath, dispatchId, closing = {}, options = {}) {
+  const file = dispatchLedgerPath(projectPath);
+  const id = asString(dispatchId).trim();
+  if (id === '') return { ok: false, code: 'not_found', path: file };
+
+  const now = Number.isFinite(options.now) ? /** @type {number} */ (options.now) : Date.now();
+  const lines = readRawLedgerLines(projectPath);
+  /** @type {Array<Record<string, any> | null>} */
+  const parsed = [];
+  let targetIndex = -1;
+  for (let index = 0; index < lines.length; index += 1) {
+    let value = null;
+    try {
+      const candidate = JSON.parse(lines[index]);
+      if (candidate !== null && typeof candidate === 'object' && !Array.isArray(candidate)) value = candidate;
+    } catch {
+      // 损坏行保持原样：不因一行坏掉改写整份台账
+    }
+    parsed.push(value);
+    if (targetIndex === -1 && value !== null && value.dispatchId === id) targetIndex = index;
+  }
+  if (targetIndex === -1) return { ok: false, code: 'not_found', path: file };
+
+  const target = /** @type {Record<string, any>} */ (parsed[targetIndex]);
+  const existing = normalizeClosing(target.closing);
+  const existingClosedAt = asString(target.closedAt);
+  const explicitDuration = typeof closing.durationMs === 'number'
+    && Number.isFinite(closing.durationMs)
+    && closing.durationMs >= 0;
+  const tsMs = Date.parse(asString(target.ts));
+  // 幂等关键：未显式给 durationMs 时优先沿用既有值（否则重复调用会因 now 变化而「改写」）。
+  const durationMs = explicitDuration
+    ? Math.round(/** @type {number} */ (closing.durationMs))
+    : existing !== undefined
+      ? existing.durationMs
+      : Number.isFinite(tsMs)
+        ? Math.max(0, Math.round(now - tsMs))
+        : 0;
+  const next = normalizeClosing({ ...closing, durationMs });
+  if (next === undefined) return { ok: false, code: 'invalid_closing', path: file };
+
+  const sameClosing = existing !== undefined && JSON.stringify(existing) === JSON.stringify(next);
+  if (sameClosing && existingClosedAt !== '') {
+    return { ok: true, dispatchId: id, closedAt: existingClosedAt, changed: false, path: file };
+  }
+
+  const closedAt = sameClosing && existingClosedAt !== '' ? existingClosedAt : new Date(now).toISOString();
+  target.closing = next;
+  target.closedAt = closedAt;
+
+  const body = parsed
+    .map((value, index) => (value === null ? lines[index] : JSON.stringify(value)))
+    .join('\n');
+  mkdirSync(dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
+  writeFileSync(tmp, body === '' ? '' : `${body}\n`, 'utf-8');
+  renameSync(tmp, file);
+  return { ok: true, dispatchId: id, closedAt, changed: true, path: file };
+}
+
+/**
  * 清理超龄 / 超上限记录（无变化时不重写文件）。
  * @param {string} projectPath
  * @param {{ now?: number }} [options]
@@ -244,6 +370,10 @@ export const DISPATCH_STATUS_RECENT = 5;
 
 /**
  * 台账里一条记录的摘要（`feel_status.dispatch.records` 的元素）。
+ *
+ * v1.7.0 / REQ-066 A66.2：透出 `closing`（无闭环 → null）与顶层 `closedAt`，
+ * 让「这条派发到底完成没有」在状态快照里可直接读。
+ *
  * @param {Record<string, any>} record 已归一化的台账行
  * @returns {Record<string, any>}
  */
@@ -257,22 +387,27 @@ function summarizeDispatch(record) {
     role: record.role,
     taskId: record.taskId,
     goal: record.goal,
+    closing: record.closing ?? null,
+    closedAt: record.closedAt ?? null,
   };
 }
 
 /**
- * 派发汇总（`feel_status.dispatch` 的数据源）。
+ * 派发汇总（`feel_status.dispatch` 的数据源；v1.7.0 / REQ-066 A66.2 增 `open[]` / `closedRatio`）。
  *
  * - `required`：恒 `true`——**提示级**（用户裁定 ②：只做台账 + 强提示，不做硬拦）；
  * - `total`：台账总行数；
  * - `sincePhase`：当前 `stage` + `phase` 范围内的派发条数；
- * - `missingRoles`：当前 `stage` + `phase` 范围内**尚未出现**的角色
- *   （五个闭集角色，固定顺序）；
- * - `records`：最近 `DISPATCH_STATUS_RECENT` 条派发摘要（A7 的 `records` 证据面）。
+ * - `open[]`：当前 `stage` 范围内**未闭环**的派发（无 `closing` 或 `closing.status!=='done'`；
+ *   跨相位保留——早期相位没做完的派发不该因相位推进而「消失」）；
+ * - `closedRatio`：全台账 `closing.status==='done'` 条数 / `total`（`total===0` → `null`，不出现 NaN）；
+ * - `missingRoles`：当前 `stage` + `phase` 范围内**没有 `closing.status==='done'` 记录**的角色
+ *   （五个闭集角色，固定顺序；v1.6.0 的「有 record 即算」口径已作废——A66.2）；
+ * - `records`：最近 `DISPATCH_STATUS_RECENT` 条派发摘要（含 `closing` / `closedAt`）。
  *
  * @param {string} projectPath
  * @param {{ stage?: string, phase?: string }} [options]
- * @returns {{ required: true, total: number, sincePhase: number, missingRoles: string[], records: Array<Record<string, any>> }}
+ * @returns {{ required: true, total: number, sincePhase: number, open: Array<Record<string, any>>, closedRatio: number | null, missingRoles: string[], records: Array<Record<string, any>> }}
  */
 export function dispatchSummary(projectPath, options = {}) {
   const records = readAllDispatches(projectPath);
@@ -281,13 +416,17 @@ export function dispatchSummary(projectPath, options = {}) {
 
   const stageScoped = stage === '' ? records : records.filter((record) => record.stage === stage);
   const phaseScoped = phase === '' ? stageScoped : stageScoped.filter((record) => record.phase === phase);
-  const roles = new Set(phaseScoped.map((record) => record.role));
+  const isClosedDone = (record) => record.closing !== undefined && record.closing !== null && record.closing.status === 'done';
+  const doneRoles = new Set(phaseScoped.filter(isClosedDone).map((record) => record.role));
+  const doneCount = records.filter(isClosedDone).length;
 
   return {
     required: true,
     total: records.length,
     sincePhase: phaseScoped.length,
-    missingRoles: DISPATCH_ROLES.filter((role) => !roles.has(role)),
+    open: stageScoped.filter((record) => !isClosedDone(record)).map(summarizeDispatch),
+    closedRatio: records.length === 0 ? null : doneCount / records.length,
+    missingRoles: DISPATCH_ROLES.filter((role) => !doneRoles.has(role)),
     records: records.slice(-DISPATCH_STATUS_RECENT).map(summarizeDispatch),
   };
 }

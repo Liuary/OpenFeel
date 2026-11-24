@@ -24,7 +24,7 @@ vi.mock('node:child_process', () => ({
   spawn: mockedChild.spawn,
 }));
 
-import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Command, CommanderError } from 'commander';
@@ -37,8 +37,13 @@ import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../../src/core/flow-ar
 import {
   collectDashboardData,
   type DashboardData,
+  type DashboardFlowDebt,
   type DashboardStatusDoc,
 } from '../../src/core/dashboard/aggregate.js';
+// v1.7.0 / REQ-065 A65.3：dashboard 的流程债计数与 `lint fill` 同源——测试里直接调同一单点取证
+import { lintRequirementBodies } from '../../src/core/plan/body-lint.js';
+// v1.7.0 / REQ-065 A65.1：写实正文 / 计划一律来自共享夹具工厂（不另拼字符串）
+import { makeFilledRequirement, makeRequirementPlan } from '../fixtures/requirements.js';
 // op-002 段：HTML 渲染层直接取返回值（本 op 阶段 CLI 尚未注册，不得走命令层 / 写盘）
 import { renderDashboardHtml } from '../../src/core/dashboard/render.js';
 import type { DashboardRequirementItem } from '../../src/core/dashboard/aggregate.js';
@@ -232,6 +237,28 @@ describe('dashboard 聚合层（stage-125 / op-001）', () => {
     });
   }
 
+  /** 写需求正文文件（`.openfeel/requirements/<id>.md`）——流程债扫描的真实输入 */
+  function writeBody(id: string, content: string): void {
+    const dir = join(tmpDir, '.openfeel', 'requirements');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${id}.md`), content, 'utf-8');
+  }
+
+  /** 写需求级计划文件（`.openfeel/plan/reqs/<id>.plan.md`） */
+  function writePlan(id: string, content: string): void {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'reqs');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${id}.plan.md`), content, 'utf-8');
+  }
+
+  /** 空壳正文（骨架形态：两节都是占位；不进成片的测试夹具工厂，工厂只产写实样本） */
+  function shellBody(id: string): string {
+    return [
+      `# ${id}：空壳需求`, '', '## 摘要', '', '（待补充）', '',
+      '## 目标与验收', '', '（待补充）', '',
+    ].join('\n');
+  }
+
   beforeEach(async () => {
     mockHome.dir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-dashboard-home-'));
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-cmd-dashboard-test-'));
@@ -252,7 +279,7 @@ describe('dashboard 聚合层（stage-125 / op-001）', () => {
     rmSync(mockHome.dir, { recursive: true, force: true });
   });
 
-  it('T3: requirements.groups / counts 键序恒 = REQ_STATUSES（7 组恒在），元素含 linkedStages + progress', () => {
+  it('T3: requirements.groups / counts 键序恒 = REQ_STATUSES（8 组恒在），元素含 linkedStages + progress', () => {
     const data = makeData({
       requirements: REQ_STATUSES.map((status, i) => makeReq(`REQ-00${i + 1}`, status)),
       stages: { 'v1.0.0-stage-01': makeStage('exec_running', ['REQ-003']) },
@@ -442,6 +469,86 @@ describe('dashboard 聚合层（stage-125 / op-001）', () => {
     expect(Number.isNaN(Date.parse(d.generatedAt))).toBe(false);
   });
 
+  // ═══ v1.7.0 / REQ-065 A65.2 / A65.3：流程债（四类） ═══
+
+  it('D1（A65.2/A65.3）：flowDebt 恰 4 键；emptyBody/missingPlan 与 lintRequirementBodies 同源同值', () => {
+    // 真实文件：REQ-001 空壳正文且无计划；REQ-002 写实正文 + 写实计划（均来自共享工厂）
+    writeBody('REQ-001', shellBody('REQ-001'));
+    writeBody('REQ-002', makeFilledRequirement('REQ-002', '写实需求'));
+    writePlan('REQ-002', makeRequirementPlan('REQ-002', '写实需求'));
+
+    const lint = lintRequirementBodies(tmpDir);
+    expect(lint.empty.map((entry) => entry.id)).toEqual(['REQ-001']);
+    expect(lint.missingPlan.map((entry) => entry.id)).toEqual(['REQ-001']);
+
+    // 未盖章口径：非终态（scheduled / in_progress）且无 `plan` 指纹
+    const mgr = new FlowManager(tmpDir);
+    const data = mgr.getData()!;
+    data.requirements = [
+      makeReq('REQ-003', 'in_progress'),
+      makeReq('REQ-004', 'in_progress', {
+        plan: { path: '.openfeel/plan/reqs/REQ-004.plan.md', sha256: '0123456789ab', recorded_at: '2026-01-01T00:00:00.000Z' },
+      }),
+      makeReq('REQ-005', 'done'),
+      makeReq('REQ-006', 'draft'),
+      makeReq('REQ-007', 'scheduled'),
+    ];
+    mgr.save();
+
+    const d = collect({ data: mgr.getData()! });
+
+    expect(Object.keys(d.flowDebt)).toEqual(['emptyBody', 'missingPlan', 'unstamped', 'devStale']);
+    // 同源：与 `lint fill --json` 的同一个函数、同一份清单逐字相等
+    expect(d.flowDebt.emptyBody.items).toEqual(lint.empty);
+    expect(d.flowDebt.missingPlan.items).toEqual(lint.missingPlan);
+    expect(d.flowDebt.emptyBody.count).toBe(lint.empty.length);
+    expect(d.flowDebt.missingPlan.count).toBe(lint.missingPlan.length);
+    // count 恒 = items.length（四组同形）
+    expect(d.flowDebt.emptyBody.count).toBe(d.flowDebt.emptyBody.items.length);
+    expect(d.flowDebt.missingPlan.count).toBe(d.flowDebt.missingPlan.items.length);
+    expect(d.flowDebt.unstamped.count).toBe(d.flowDebt.unstamped.items.length);
+
+    // 未盖章：只含 in_progress / scheduled 且无 plan（done / draft / 已盖章均不计）
+    expect(d.flowDebt.unstamped.items).toEqual([
+      { id: 'REQ-003', status: 'in_progress' },
+      { id: 'REQ-007', status: 'scheduled' },
+    ]);
+  });
+
+  it('D2（A65.2）：devStale 反映 due 与最近同步时间（无记录 / 刚同步 / 过期 三态）', () => {
+    const devDir = join(tmpDir, '.openfeel', 'dev');
+    mkdirSync(devDir, { recursive: true });
+    const syncPath = join(devDir, '.sync.json');
+
+    // ① 无 `.sync.json` → 过期且无最近同步时间
+    let d = collect({});
+    expect(d.flowDebt.devStale).toEqual({
+      count: 1,
+      items: [{ due: true, lastSync: null, intervalMinutes: 30 }],
+      due: true,
+      lastSync: null,
+    });
+
+    // ② 刚同步（间隔 30 分钟）→ 未过期；最近同步时间仍可见（不只是布尔）
+    const fresh = new Date();
+    writeFileSync(syncPath, JSON.stringify({ version: 1, last_sync: fresh.toISOString(), interval_minutes: 30 }), 'utf-8');
+    d = collect({});
+    expect(d.flowDebt.devStale.due).toBe(false);
+    expect(d.flowDebt.devStale.count).toBe(0);
+    expect(d.flowDebt.devStale.items).toEqual([]);
+    expect(d.flowDebt.devStale.lastSync).toBe(fresh.toISOString());
+
+    // ③ 两小时前同步（间隔 30 分钟）→ 过期 + 1 条明细
+    const stale = new Date(fresh.getTime() - 2 * 60 * 60 * 1000);
+    writeFileSync(syncPath, JSON.stringify({ version: 1, last_sync: stale.toISOString(), interval_minutes: 30 }), 'utf-8');
+    d = collect({});
+    expect(d.flowDebt.devStale.due).toBe(true);
+    expect(d.flowDebt.devStale.count).toBe(1);
+    expect(d.flowDebt.devStale.items).toEqual([
+      { due: true, lastSync: stale.toISOString(), intervalMinutes: 30 },
+    ]);
+  });
+
   it('T24: src/core/dashboard/** 零 commands/ 与 cli/ 说明符（含裸/动态 import）+ 剥离注释后零 CJK', () => {
     const dashboardDir = join(REPO_ROOT, 'src', 'core', 'dashboard');
     const coreDir = join(REPO_ROOT, 'src', 'core');
@@ -493,7 +600,17 @@ describe('dashboard 聚合层（stage-125 / op-001）', () => {
 // 不依赖进程默认语言、不省略 t() 的 lang。
 // ═══════════════════════════════════════════════════════════════
 
-/** 空看板数据（DashboardData 全键最小样本：零需求 / 零阶段 / 零归档 / 零指标项） */
+/** 空流程债块（四组计数 0；dev 未过期）— 渲染层最小样本 */
+function makeEmptyFlowDebt(): DashboardFlowDebt {
+  return {
+    emptyBody: { count: 0, items: [] },
+    missingPlan: { count: 0, items: [] },
+    unstamped: { count: 0, items: [] },
+    devStale: { count: 0, items: [], due: false, lastSync: '2026-01-01T00:00:00.000Z' },
+  };
+}
+
+/** 空看板数据（DashboardData 全键最小样本：零需求 / 零阶段 / 零归档 / 零指标项 / 零流程债） */
 function makeEmptyDashboard(): DashboardData {
   const counts = {} as Record<RequirementStatus, number>;
   const groups = {} as Record<RequirementStatus, DashboardRequirementItem[]>;
@@ -516,6 +633,7 @@ function makeEmptyDashboard(): DashboardData {
     blockingReviews: [],
     health: { ok: true, items: [] },
     metrics: { agents: [] },
+    flowDebt: makeEmptyFlowDebt(),
   };
 }
 
@@ -623,6 +741,56 @@ describe('dashboard 渲染层（stage-125 / op-002）', () => {
   it('T18: H7 <meta charset="utf-8"> 是 <head> 第一个子元素', () => {
     const html = renderDashboardHtml(makeEmptyDashboard(), { lang: 'zh-CN' });
     expect(/<head>\s*<meta charset="utf-8">/.test(html)).toBe(true);
+  });
+
+  // ═══ v1.7.0 / REQ-065 A65.2：流程债面板（四组计数 + 各前 5 条） ═══
+
+  it('T27（A65.2）：流程债面板 — 四组标签 + 计数 + 前 5 条 + 「其余 N 条」+ dev 状态', () => {
+    const data = makeEmptyDashboard();
+    data.flowDebt = {
+      emptyBody: {
+        count: 7,
+        items: Array.from({ length: 7 }, (_, index) => ({
+          id: `REQ-00${index + 1}`,
+          emptySections: ['摘要'],
+        })),
+      },
+      missingPlan: { count: 2, items: [{ id: 'REQ-010' }, { id: 'REQ-011' }] },
+      unstamped: { count: 1, items: [{ id: 'REQ-012', status: 'in_progress' }] },
+      devStale: {
+        count: 1,
+        items: [{ due: true, lastSync: '2026-01-01T00:00:00.000Z', intervalMinutes: 30 }],
+        due: true,
+        lastSync: '2026-01-01T00:00:00.000Z',
+      },
+    };
+
+    const html = renderDashboardHtml(data, { lang: 'zh-CN' });
+
+    // ① 区块 + 四组标签（data-i18n 属性值恒为源码常量）
+    expect(html).toContain('<section class="card" id="flow-debt">');
+    expect(html).toContain('data-i18n="dashboard.html.section.flowDebt"');
+    for (const key of ['emptyBody', 'missingPlan', 'unstamped', 'devStale'] as const) {
+      expect(html).toContain(`data-i18n="dashboard.html.debt.${key}"`);
+    }
+
+    // ② 四组计数（7 / 2 / 1 / 1）
+    expect(html).toContain('<span class="debt-count">7</span>');
+    expect(html).toContain('<span class="debt-count">2</span>');
+
+    // ③ 明细只出前 5 条 + 「其余 2 条」收口
+    expect(html).toContain('<code>REQ-005</code>');
+    expect(html).not.toContain('<code>REQ-006</code>');
+    expect(html).toContain(t('dashboard.html.debt.moreTmpl', 'zh-CN', { count: '2' }));
+
+    // ④ 译文来自 t()（缺键守卫：禁止假绿）
+    const emptyBodyLabel = t('dashboard.html.debt.emptyBody', 'zh-CN');
+    expect(emptyBodyLabel).not.toBe('dashboard.html.debt.emptyBody');
+    expect(html).toContain(emptyBodyLabel);
+
+    // ⑤ dev 同步：过期状态 + 最近同步时间
+    expect(html).toContain(t('dashboard.html.debt.due', 'zh-CN'));
+    expect(html).toContain('2026-01-01T00:00:00.000Z');
   });
 
   it('T25(补强): 全字段恶意载荷矩阵 —— 零原始标签 + 数据块可回读原值 + 不抛', () => {
@@ -810,7 +978,7 @@ describe('dashboard 命令层（stage-125 / op-003）', () => {
     expect(raw.trim()).toBe(raw);
     expect(Object.keys(parsed)).toEqual([
       'schemaVersion', 'generatedAt', 'generator', 'project', 'requirements',
-      'stages', 'releases', 'blockingReviews', 'health', 'metrics',
+      'stages', 'releases', 'blockingReviews', 'health', 'metrics', 'flowDebt',
     ]);
     expect(parsed.schemaVersion).toBe(1);
     // --json 不写文件、不 spawn
@@ -897,8 +1065,8 @@ describe('dashboard 命令层（stage-125 / op-003）', () => {
     const html = readFileSync(target, 'utf-8');
     expect(html).toContain('<!doctype html');
     expect(html).toContain('<meta charset="utf-8"');
-    // 人类摘要恒 3 行，且打印绝对路径
-    expect(logMock).toHaveBeenCalledTimes(3);
+    // 人类摘要恒 4 行（v1.7.0 / REQ-065 A65.2 追加流程债行），且打印绝对路径
+    expect(logMock).toHaveBeenCalledTimes(4);
     expect(out()).toContain(resolve(target));
   });
 
@@ -909,6 +1077,47 @@ describe('dashboard 命令层（stage-125 / op-003）', () => {
     expect(process.exitCode).toBe(0);
     expect(existsSync(expected)).toBe(true);
     expect(out()).toContain(expected);
+  });
+
+  // ═══ v1.7.0 / REQ-065 A65.2（human/--json 双出口）＋ A65.3（与 lint fill 同源同值） ═══
+
+  it('D-CLI（A65.2/A65.3）：--json 末位追加 flowDebt（四键）；human 摘要 4 行含流程债行', async () => {
+    await safeParse(['dashboard', '--json']);
+
+    expect(process.exitCode).toBe(0);
+    const doc = JSON.parse(logMock.mock.calls[0][0] as string) as DashboardData;
+    expect(Object.keys(doc)).toEqual([
+      'schemaVersion', 'generatedAt', 'generator', 'project', 'requirements',
+      'stages', 'releases', 'blockingReviews', 'health', 'metrics', 'flowDebt',
+    ]);
+    expect(Object.keys(doc.flowDebt)).toEqual(['emptyBody', 'missingPlan', 'unstamped', 'devStale']);
+
+    // 同源：与 `lint fill --json` 的同一单点逐值相等（A65.3）
+    const lint = lintRequirementBodies(tmpDir);
+    expect(doc.flowDebt.emptyBody.count).toBe(lint.empty.length);
+    expect(doc.flowDebt.missingPlan.count).toBe(lint.missingPlan.length);
+    // 空项目：当前无 requirements 目录 → 两账俱零；dev 无 .sync.json → 过期且无记录
+    expect(doc.flowDebt.emptyBody).toEqual({ count: 0, items: [] });
+    expect(doc.flowDebt.missingPlan).toEqual({ count: 0, items: [] });
+    expect(doc.flowDebt.devStale).toMatchObject({ count: 1, due: true, lastSync: null });
+
+    // human：恰 4 行（title / stats / 流程债 / 绝对路径），第 3 行含 dev 状态与最近同步
+    resetCapture();
+    await safeParse(['dashboard']);
+    expect(process.exitCode).toBe(0);
+    const lines = logMock.mock.calls.map((call) => String(call[0]));
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toBe(t('dashboard.title', 'zh-CN'));
+    expect(lines[1]).toBe(t('dashboard.statsTmpl', 'zh-CN', {
+      requirements: '0',
+      stages: '0',
+      blockingReviews: '0',
+    }));
+    expect(lines[2]).toContain(t('dashboard.debtDue', 'zh-CN'));
+    expect(lines[2]).toContain(t('dashboard.debtNever', 'zh-CN'));
+    // 四组计数依次落在同一行（0 / 0 / 0）
+    expect(lines[2]).toMatch(/(?:\D|^)0(?:\D|$)/);
+    expect(lines[3]).toBe(t('dashboard.writtenTmpl', 'zh-CN', { path: defaultDashboardPath(tmpDir) }));
   });
 
   it('T19: 写盘失败（父路径是已存在文件）→ 人类侧 stderr + exit 3', async () => {
@@ -992,8 +1201,7 @@ describe('dashboard 命令层（stage-125 / op-003）', () => {
     expect(call[2]).toEqual({ detached: true, stdio: 'ignore' });
   });
 
-  it('P0: browserCommand 三平台矩阵 —— win32 不经 cmd，特殊字符路径原样单 argv', () => {
-    const winPaths = [
+  it('P0: browserCommand 三平台矩阵 —— win32 不经 cmd，特殊字符路径原样单 argv', () => {    const winPaths = [
       'C:/tmp/R&D/d.html',
       'C:/tmp/a b/c&d|e<f>g^h.html',
       'C:/tmp/中文 目录/d.html',

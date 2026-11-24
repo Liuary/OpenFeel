@@ -117,9 +117,9 @@ describe('错误层（stage-95 op-002）', () => {
     return JSON.parse(logMock.mock.calls[logMock.mock.calls.length - 1][0] as string) as Record<string, unknown>;
   }
 
-  // ── 1：15 行映射表逐行断言 ──
+  // ── 1：20 行映射表逐行断言 ──
 
-  it('① 映射表：15 行、code 唯一、逐行 code/kind/exitCode 与契约 §3 一致', () => {
+  it('① 映射表：20 行、code 唯一、逐行 code/kind/exitCode 与契约 §3 一致', () => {
     const expected: Array<[string, string, number]> = [
       ['NO_INIT', 'refusal', 1],
       ['INVALID_ARGUMENT', 'refusal', 1],
@@ -138,9 +138,16 @@ describe('错误层（stage-95 op-002）', () => {
       ['STAGE_PLAN_GATE', 'refusal', 1],
       // v1.6.0 / REQ-059 T8：archiving → done 前开发账本仍陈旧（同步失败）
       ['DEV_SYNC_STALE', 'refusal', 1],
+      // v1.7.0 / REQ-063 A63.3：需求生命周期门禁（req claim/advance/complete --json 的失败码）
+      ['REQ_BODY_GATE', 'refusal', 1],
+      ['REQ_PLAN_GATE', 'refusal', 1],
+      ['REQ_PLAN_DEVIATION', 'refusal', 1],
+      // A63.2：review_pending → done 缺审查 / 缺验证（**无 REQ_REVIEW_GATE**，REV-P02）
+      ['REQ_REVIEW_REQUIRED', 'refusal', 1],
+      ['REQ_VERIFY_REQUIRED', 'refusal', 1],
     ];
-    expect(CLI_ERROR_TABLE).toHaveLength(15);
-    expect(new Set(CLI_ERROR_TABLE.map((r) => r.code)).size).toBe(15);
+    expect(CLI_ERROR_TABLE).toHaveLength(20);
+    expect(new Set(CLI_ERROR_TABLE.map((r) => r.code)).size).toBe(20);
     expect(CLI_ERROR_TABLE.map((r) => [r.code, r.kind, r.exitCode])).toEqual(expected);
     // 码表键与 code 字段一致（防字符串漂移）
     for (const [key, spec] of Object.entries(CLI_ERROR_CODES)) {
@@ -151,6 +158,11 @@ describe('错误层（stage-95 op-002）', () => {
     expect(isInternalCode('ARCHIVE_WRITE_FAILED')).toBe(true);
     expect(isInternalCode('INVALID_ARGUMENT')).toBe(false);
     expect(isInternalCode('DEV_SYNC_STALE')).toBe(false);
+    // v1.7.0 / REQ-063：五个需求门禁码均为 refusal/1（A63.2 两码 + 既有三码）
+    for (const code of ['REQ_BODY_GATE', 'REQ_PLAN_GATE', 'REQ_PLAN_DEVIATION', 'REQ_REVIEW_REQUIRED', 'REQ_VERIFY_REQUIRED'] as const) {
+      expect(getCliErrorSpec(code)).toEqual({ code, kind: 'refusal', exitCode: 1 });
+      expect(isInternalCode(code)).toBe(false);
+    }
   });
 
   // ── 2：envelope 形态 ──

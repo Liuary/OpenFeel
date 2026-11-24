@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -242,6 +242,210 @@ describe('lint 命令（stage-50 op-002 T17/R1）', () => {
     expect(out).toContain('REQ-020');
     expect(out).not.toContain('REQ-021');
     expect(out).toContain('…其余 5 条');
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  // ── v1.7.0 / REQ-064 A64.3：--fix-plan（只补缺失、不覆盖、不编内容、advisory exit 0） ──
+
+  /** 在临时项目内写需求正文文件 */
+  function writeRequirementFile(id: string): void {
+    const reqDir = join(tmpDir, '.openfeel', 'requirements');
+    mkdirSync(reqDir, { recursive: true });
+    writeFileSync(join(reqDir, `${id}.md`), shellRequirementBody(id), 'utf-8');
+  }
+
+  function requirementPlanPath(id: string): string {
+    return join(tmpDir, '.openfeel', 'plan', 'reqs', `${id}.plan.md`);
+  }
+
+  /** 执行 `lint fill --fix-plan --json` 并返回单文档 */
+  async function runFixPlanJson(): Promise<Record<string, unknown>> {
+    logMock.mockClear();
+    errorMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'fill', '--fix-plan', '--json']);
+    const raw = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    return JSON.parse(raw) as Record<string, unknown>;
+  }
+
+  it('A64.3 --json：末位追加 created[]/skipped[]，只为缺计划的需求建骨架，且仍恒 exit 0', async () => {
+    writeRequirementFile('REQ-001');
+    writeRequirementFile('REQ-002');
+    // REQ-002 已有计划（含空壳）：字节绝不能变
+    mkdirSync(join(tmpDir, '.openfeel', 'plan', 'reqs'), { recursive: true });
+    const existingPlan = ['## 目标', '', '手写空壳计划，不得被 --fix-plan 覆盖。', ''].join('\n');
+    writeFileSync(requirementPlanPath('REQ-002'), existingPlan, 'utf-8');
+
+    const doc = await runFixPlanJson();
+
+    expect(Object.keys(doc)).toEqual([
+      'schemaVersion', 'target', 'ok', 'checked', 'empty', 'missingPlan', 'stageDocs', 'created', 'skipped',
+    ]);
+    expect(doc.target).toBe('fill');
+    expect(doc.created).toEqual(['REQ-001']);
+    expect(doc.skipped).toEqual([{ id: 'REQ-002', reason: 'exists' }]);
+    // A64.3「缺失计划清零」：输出描述动作之后的状态
+    expect(doc.missingPlan).toEqual([]);
+    // ★ advisory：仍有空壳/缺计划也恒 exit 0
+    expect(process.exitCode).toBeUndefined();
+    expect(readFileSync(requirementPlanPath('REQ-002'), 'utf-8')).toBe(existingPlan);
+    // 新建骨架路径固定 + 四节齐全（内容从正文派生，空壳正文则诚实留空）
+    const created = readFileSync(requirementPlanPath('REQ-001'), 'utf-8');
+    for (const name of ['目标', '任务拆解', '验收判据', '偏差与回写']) {
+      expect(created).toContain(`## ${name}`);
+    }
+    expect(created).toContain('# REQ-001 计划：空壳需求');
+  });
+
+  it('A64.3 幂等：重复 --fix-plan → created 为空、已建计划字节不变', async () => {
+    writeRequirementFile('REQ-001');
+    const first = await runFixPlanJson();
+    expect(first.created).toEqual(['REQ-001']);
+    const built = readFileSync(requirementPlanPath('REQ-001'), 'utf-8');
+
+    const second = await runFixPlanJson();
+    expect(second.created).toEqual([]);
+    expect(second.skipped).toEqual([{ id: 'REQ-001', reason: 'exists' }]);
+    expect(readFileSync(requirementPlanPath('REQ-001'), 'utf-8')).toBe(built);
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('A64.3 人类出口：一行 plan-fix 摘要', async () => {
+    writeRequirementFile('REQ-001');
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'fill', '--fix-plan']);
+    const out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('plan-fix: 新建 1 个需求计划 / 跳过 0 个');
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('A64.3 无 --fix-plan 时既有 7 键出口零改动（不出现 created/skipped）', async () => {
+    writeRequirementFile('REQ-001');
+    const doc = await runFillJson();
+    expect(Object.keys(doc)).toEqual([
+      'schemaVersion', 'target', 'ok', 'checked', 'empty', 'missingPlan', 'stageDocs',
+    ]);
+  });
+
+  // ── v1.7.0 / REQ-066 A66.3：lint adherence（遵守率四指标；只读观测，恒 exit 0） ──
+
+  /** 写一行 JSONL 到项目内相对路径（自动建父目录） */
+  function writeJsonl(relPath: string, rows: Array<Record<string, unknown>>): void {
+    const file = join(tmpDir, ...relPath.split('/'));
+    mkdirSync(join(file, '..'), { recursive: true });
+    writeFileSync(file, rows.map((row) => JSON.stringify(row)).join('\n') + '\n', 'utf-8');
+  }
+
+  /** 写入遵守率夹具：2 条派发（1 executor done + 1 reviewer open）+ 3 条 guard 决策 + 45 分钟前同步 + 需求 */
+  function seedAdherenceFixture(): void {
+    writeJsonl('.openfeel/dev/dispatch.jsonl', [
+      {
+        dispatchId: 'd-0001', ts: '2026-11-24T00:00:00.000Z', leadSessionId: 's', origin: 'root',
+        stage: 's1', phase: 'exec_running', targetAgent: 'executor-a', role: 'executor',
+        taskId: 'T1', goal: 'g1', files: [], returnFormat: 'x', dispatchDepth: 1,
+        closing: { status: 'done', artifacts: ['a.ts'], durationMs: 1200, summary: 'ok' },
+        closedAt: '2026-11-24T00:01:00.000Z',
+      },
+      {
+        dispatchId: 'd-0002', ts: '2026-11-24T00:02:00.000Z', leadSessionId: 's', origin: 'root',
+        stage: 's1', phase: 'exec_running', targetAgent: 'reviewer-a', role: 'reviewer',
+        taskId: 'T2', goal: 'g2', files: [], returnFormat: 'x', dispatchDepth: 1,
+      },
+    ]);
+    writeJsonl('.openfeel/log/guard-audit.jsonl', [
+      { time: '2026-11-24T00:00:00.000Z', event: 'guard_allow', decision: 'allow', tool: 'write', origin: 'root' },
+      { time: '2026-11-24T00:00:01.000Z', event: 'guard_allow', decision: 'allow', tool: 'edit', origin: 'root' },
+      { time: '2026-11-24T00:00:02.000Z', event: 'guard_deny', decision: 'deny', tool: 'write', origin: 'subagent' },
+    ]);
+    const devDir = join(tmpDir, '.openfeel', 'dev');
+    writeFileSync(
+      join(devDir, '.sync.json'),
+      `${JSON.stringify({ version: 1, last_sync: new Date(Date.now() - 45 * 60_000).toISOString(), interval_minutes: 30 })}\n`,
+      'utf-8',
+    );
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'flow.json'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        stages: {},
+        requirements: [
+          { id: 'REQ-001', status: 'in_progress' },
+          { id: 'REQ-002', status: 'done' },
+        ],
+      })}\n`,
+      'utf-8',
+    );
+  }
+
+  /** 执行 `lint adherence --json` 并解析单文档 */
+  async function runAdherenceJson(): Promise<Record<string, unknown>> {
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'adherence', '--json']);
+    const raw = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    return JSON.parse(raw) as Record<string, unknown>;
+  }
+
+  it('A66.3 JSON：四指标出口 7 键固定序，每项 {value, definition} 且 definition 非空', async () => {
+    seedAdherenceFixture();
+    const doc = await runAdherenceJson();
+
+    expect(Object.keys(doc)).toEqual([
+      'schemaVersion', 'target', 'ok',
+      'main_write_ratio', 'subagent_per_req', 'sync_gap', 'violation_rate',
+    ]);
+    expect(doc.target).toBe('adherence');
+    expect(doc.ok).toBe(true);
+
+    const expected: Record<string, number> = {
+      main_write_ratio: 2 / 3, // root 2 / (root 2 + subagent 1)
+      subagent_per_req: 1, // 1 个 executor 已 done / 1 个进行中需求
+      sync_gap: 45, // 45 分钟前同步（取整）
+      violation_rate: 1 / 3, // deny 1 / 决策 3
+    };
+    for (const [key, value] of Object.entries(expected)) {
+      const metric = doc[key] as Record<string, unknown>;
+      expect(Object.keys(metric)).toEqual(['value', 'definition']);
+      expect(metric.value as number).toBeCloseTo(value);
+      expect(typeof metric.definition).toBe('string');
+      expect(String(metric.definition)).toContain('分子');
+      expect(String(metric.definition)).toContain('分母');
+      expect(String(metric.definition)).toContain('样本窗口');
+    }
+    // 只读观测：恒 exit 0
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('A66.3 边界：无任何数据 → 四值全 null（不是 0 / 不 NaN），仍 exit 0', async () => {
+    const doc = await runAdherenceJson();
+    for (const key of ['main_write_ratio', 'subagent_per_req', 'sync_gap', 'violation_rate']) {
+      const metric = doc[key] as Record<string, unknown>;
+      expect(metric.value).toBeNull();
+      expect(String(metric.definition)).not.toBe('');
+    }
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('A66.3 人类出口：标题 + 样本量 + 四行指标（含样本不足提示）', async () => {
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'adherence']);
+    let out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('遵守率');
+    expect(out).toContain('样本：派发 0 条');
+    expect(out).toContain('主会话写调用占比：样本不足（null）');
+    expect(process.exitCode).toBeUndefined();
+
+    seedAdherenceFixture();
+    logMock.mockClear();
+    await safeParse(['lint', 'adherence']);
+    out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('样本：派发 2 条');
+    expect(out).toContain('主会话写调用占比：66.7%（2/3）');
+    expect(out).toContain('每需求 executor 派发数：1.00（1/1）');
+    expect(out).toContain('账本同步间隔：45 分钟');
+    expect(out).toContain('门禁拒绝率：33.3%（1/3）');
     expect(process.exitCode).toBeUndefined();
   });
 });

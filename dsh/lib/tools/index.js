@@ -11,8 +11,9 @@
  * 3. 在拒绝时给出**可操作的下一步**（改哪个参数、先跑哪条命令）。
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import { FeelError } from '../adapters/cli.js';
 import { legalNextPhases, planNextStep, readSnapshot } from '../adapters/dashboard.js';
@@ -25,6 +26,7 @@ import {
   DISPATCH_LEDGER_REL_PATH,
   DISPATCH_ROLES,
   appendDispatch,
+  closeDispatch,
   dispatchLedgerPath,
   dispatchSummary,
   readDispatches,
@@ -167,17 +169,26 @@ function safeObservability(snapshot) {
  * **提示级，不做硬拦**（用户裁定 ②）：`required` 恒 true 只表示「建议走台账」，
  * 不阻断任何工具调用。台账读取失败降级为空台账（观测数据绝不影响 feel_status）。
  *
- * 形状与 `dispatchSummary` 单点对齐：`{required, total, sincePhase, missingRoles, records}`。
+ * 形状与 `dispatchSummary` 单点对齐：`{required, total, sincePhase, open, closedRatio, missingRoles, records}`
+ * （v1.7.0 / REQ-066 A66.2 增 `open[]` / `closedRatio`；既有四键保留）。
  *
  * @param {string} projectRoot
  * @param {{ stage?: string, phase?: string }} [focus]
- * @returns {{ required: true, total: number, sincePhase: number, missingRoles: string[], records: Array<Record<string, any>> }}
+ * @returns {{ required: true, total: number, sincePhase: number, open: Array<Record<string, any>>, closedRatio: number | null, missingRoles: string[], records: Array<Record<string, any>> }}
  */
 function safeDispatchSection(projectRoot, focus = {}) {
   try {
     return dispatchSummary(projectRoot, { stage: focus.stage ?? '', phase: focus.phase ?? '' });
   } catch {
-    return { required: true, total: 0, sincePhase: 0, missingRoles: [...DISPATCH_ROLES], records: [] };
+    return {
+      required: true,
+      total: 0,
+      sincePhase: 0,
+      open: [],
+      closedRatio: null,
+      missingRoles: [...DISPATCH_ROLES],
+      records: [],
+    };
   }
 }
 
@@ -1154,7 +1165,9 @@ export function createTools(context) {
           // shell 跑 openfeel 写命令同样被拒 —— 这是给正文开的唯一通道。
           const id = requireArg(args, 'id', action);
           const section = requireArg(args, 'section', action);
-          const text = optionalArg(args, 'text');
+          // v1.7.0 / REQ-064 A64.4：`text` **不得经 argv**（多行会被截断/转义），也不得 trim
+          // （首尾空行 / CRLF / `###` 子标题必须原样落盘）——只判空，随后写 os.tmpdir() 临时文件走 `--file`。
+          const text = typeof args.text === 'string' && args.text.trim() !== '' ? args.text : undefined;
           const file = optionalArg(args, 'file');
           if (text === undefined && file === undefined) {
             throw new FeelError('req body 需要 text 或 file 之一（小节正文来源）', {
@@ -1174,22 +1187,49 @@ export function createTools(context) {
               code: 'FEEL_BAD_USAGE',
             });
           }
+          /** @type {string | null} */
+          let tempFile = null;
+          if (text !== undefined) {
+            tempFile = join(
+              tmpdir(),
+              `openfeel-req-body-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.md`,
+            );
+            try {
+              writeFileSync(tempFile, text, 'utf-8');
+            } catch (error) {
+              throw new FeelError(`req body 临时正文文件写入失败：${error instanceof Error ? error.message : String(error)}`, {
+                kind: 'internal',
+                code: 'FEEL_INTERNAL',
+              });
+            }
+          }
           const argv = ['req', 'body', id, '--section', section, '--json'];
-          pushOption(argv, '--text', text);
-          pushOption(argv, '--file', file);
+          // `--text` 在适配器侧**零命中**（grep 断言）：多行正文一律走临时文件 `--file`
+          pushOption(argv, '--file', tempFile ?? file);
           pushFlag(argv, '--append', args.append);
           pushFlag(argv, '--replace', args.replace);
-          return envelope(action, async () => {
-            const doc = await writeJsonDoc(cli, argv, opts);
-            const created = doc?.created === true;
-            const lines = typeof doc?.lines === 'number' ? doc.lines : null;
-            const path = typeof doc?.path === 'string' ? doc.path : null;
-            const mode = created ? '新建小节' : (args.append === true ? '追加' : '替换');
-            return {
-              data: { ok: true, id, section, path, lines, created },
-              summary: `需求 ${id} 的「${section}」已${mode}${lines === null ? '' : `（${lines} 行）`}${path === null ? '' : ` → ${path}`}。`,
-            };
-          });
+          try {
+            return await envelope(action, async () => {
+              const doc = await writeJsonDoc(cli, argv, opts);
+              const created = doc?.created === true;
+              const lines = typeof doc?.lines === 'number' ? doc.lines : null;
+              const path = typeof doc?.path === 'string' ? doc.path : null;
+              const mode = created ? '新建小节' : (args.append === true ? '追加' : '替换');
+              return {
+                data: { ok: true, id, section, path, lines, created },
+                summary: `需求 ${id} 的「${section}」已${mode}${lines === null ? '' : `（${lines} 行）`}${path === null ? '' : ` → ${path}`}。`,
+              };
+            });
+          } finally {
+            // 临时文件绝不残留（不落工作区，避免 guard / 污染；失败也清理）
+            if (tempFile !== null) {
+              try {
+                rmSync(tempFile, { force: true });
+              } catch {
+                // 清理失败不掩盖主错误
+              }
+            }
+          }
         }
         case 'list': {
           const argv = ['req', 'list', '--json'];
@@ -1645,9 +1685,9 @@ export function createTools(context) {
   const feelVerify = {
     name: 'feel_verify',
     description:
-      '健康检查与对账。action=health 全面检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml（fix=true 时以 flow.json 为权威回写 status.md 的状态字段）；action=lint 项目健康检查（i18n 键一致性 / kb 引用有效性）；action=recover 跨会话上下文恢复（流水线状态、阻塞原因、待处理任务），换会话或中断后先跑它；action=project 结构化项目概览；action=config_get / config_set 读写项目配置（workflow_mode / auto_advance / merge_mode / execution_mode）。',
+      '健康检查与对账。action=health 全面检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml（fix=true 时以 flow.json 为权威回写 status.md 的状态字段）；action=lint 项目健康检查（i18n 键一致性 / kb 引用有效性）；action=adherence 遵守率四指标（主会话写占比 / 每需求 executor 派发 / 账本同步间隔 / 门禁拒绝率，每键带 definition，只读不改门禁）；action=recover 跨会话上下文恢复（流水线状态、阻塞原因、待处理任务），换会话或中断后先跑它；action=project 结构化项目概览；action=config_get / config_set 读写项目配置（workflow_mode / auto_advance / merge_mode / execution_mode）。',
     parameters: {
-      action: stringEnum(['health', 'lint', 'recover', 'project', 'config_get', 'config_set', 'config_effective'], '操作。', { required: true }),
+      action: stringEnum(['health', 'lint', 'adherence', 'recover', 'project', 'config_get', 'config_set', 'config_effective'], '操作。', { required: true }),
       quick: boolean('health 仅检查关键项。'),
       fix: boolean('health 以 flow.json 为权威回写 status.md 状态字段。'),
       dry_run: boolean('health fix 仅预览。'),
@@ -1703,6 +1743,18 @@ export function createTools(context) {
             return { data, summary: `lint ${target} ${ok ? '通过' : '发现问题'}（${issues} 项）。` };
           });
         }
+        // v1.7.0 / REQ-066 A66.3：遵守率四指标出口（选定出口，不新增 CLI 子命令/工具；
+        // 数据源与 CLI `lint adherence --json` 同源，只读展示、不产生任何 deny）。
+        case 'adherence':
+          return envelope(action, async () => {
+            const data = await cli.json(['lint', 'adherence', '--json'], opts);
+            const valueOf = (key) => (data?.[key] && typeof data[key] === 'object' ? data[key].value : null);
+            const label = (value) => (value === null || value === undefined ? 'null（样本不足）' : String(value));
+            return {
+              data,
+              summary: `遵守率：main_write_ratio=${label(valueOf('main_write_ratio'))} subagent_per_req=${label(valueOf('subagent_per_req'))} sync_gap=${label(valueOf('sync_gap'))} violation_rate=${label(valueOf('violation_rate'))}（definition 见 details）。`,
+            };
+          });
         case 'recover':
           return envelope(action, async () => {
             const data = await cli.json(['flow', 'recover', '--json'], opts);
@@ -1946,14 +1998,18 @@ export function createTools(context) {
   const feelDispatch = {
     name: 'feel_dispatch',
     description:
-      '派发台账：把「派给谁、派什么、允许写哪些文件」记进 `.openfeel/dev/dispatch.jsonl`（一行一条 JSON，字段见 plan §5.4）。action=record 记录一次派发（同 `leadSessionId+taskId+goal` 5 分钟内去重，返回既有 `dispatchId`）；action=list 读最近 20 条。该文件受 guard 保护：只能经本工具写入，`write`/`edit`/shell 直写会被拒绝。台账是**提示级观测**（不做硬拦），`feel_status.dispatch` 汇总 `required / total / sincePhase / missingRoles / records`。',
+      '派发台账：把「派给谁、派什么、允许写哪些文件」记进 `.openfeel/dev/dispatch.jsonl`（一行一条 JSON，字段见 plan §5.4）。action=record 记录一次派发（同 `leadSessionId+taskId+goal` 5 分钟内去重，返回既有 `dispatchId`）；action=finish 按 `dispatchId` **原地补写**闭环字段 `closing{status,artifacts,durationMs,summary}` + 顶层 `closedAt`（行数/行序不变，重复 finish 内容相同 → 幂等 `changed:false`，未知 id → 报错）；action=list 读最近 20 条。该文件受 guard 保护：只能经本工具写入，`write`/`edit`/shell 直写会被拒绝。台账是**提示级观测**（不做硬拦），`feel_status.dispatch` 汇总 `required / total / sincePhase / open / closedRatio / missingRoles / records`。',
     parameters: {
-      action: stringEnum(['record', 'list'], '操作。', { required: true }),
+      action: stringEnum(['record', 'finish', 'list'], '操作。', { required: true }),
       target_agent: string('目标子 agent 名（如 executor-a-cli）。record 必需。'),
       role: stringEnum(DISPATCH_ROLES, '目标角色。record 必需。'),
       goal: string('一句话任务（含验收命令，可直接粘贴进 subagent prompt）。record 必需。'),
       task_id: string('任务编号（如 T9），用于 5 分钟去重。record 必需。'),
       files: stringArray('本任务允许写的文件 / 目录清单（可选，写入台账的 files[]）。'),
+      dispatch_id: string('要闭合的派发 ID（如 d-0001）。finish 必需。'),
+      status: stringEnum(['done', 'failed'], '闭合状态：done=完成，failed=失败。finish 必需。'),
+      artifacts: stringArray('本次派发产出的文件 / 证据（finish 写入 closing.artifacts[]）。'),
+      summary: string('一句话结论（finish 写入 closing.summary；≤10 行回报摘要）。'),
       stage: string('阶段 ID（可选；缺省取当前活跃阶段，读一次 flow next）。'),
       phase: string('相位（可选；缺省取当前阶段相位）。'),
       project: string('项目根目录。'),
@@ -2003,6 +2059,41 @@ export function createTools(context) {
               next: { tool: 'feel_status', arguments: {}, why: '确认 dispatch.records / missingRoles 已更新。' },
             };
           });
+        }
+        case 'finish': {
+          // v1.7.0 / REQ-066 A66.1：按 dispatchId 原地补写 closing（行数/行序不变、幂等）。
+          const dispatchId = requireArg(args, 'dispatch_id', action);
+          const status = requireArg(args, 'status', action);
+          if (status !== 'done' && status !== 'failed') {
+            throw new FeelError(`非法 status: ${status}（合法值：done / failed）`, {
+              kind: 'usage',
+              code: 'FEEL_INVALID_ARGUMENT',
+            });
+          }
+          const result = closeDispatch(resolved.cwd, dispatchId, {
+            status,
+            artifacts: Array.isArray(args.artifacts) ? args.artifacts : [],
+            summary: typeof args.summary === 'string' ? args.summary : '',
+          });
+          if (result.ok !== true) {
+            throw new FeelError(
+              result.code === 'not_found'
+                ? `未找到派发 ${dispatchId}（${DISPATCH_LEDGER_REL_PATH} 无此 dispatchId；先 record 再 finish）。`
+                : `闭合参数非法（${result.code}）；status 必须是 done / failed。`,
+              {
+                kind: 'refusal',
+                code: result.code === 'not_found' ? 'FEEL_DISPATCH_NOT_FOUND' : 'FEEL_INVALID_ARGUMENT',
+                detail: { dispatchId, code: result.code },
+              },
+            );
+          }
+          return envelope(action, async () => ({
+            data: { ok: true, dispatchId: result.dispatchId, closedAt: result.closedAt, changed: result.changed },
+            summary: result.changed
+              ? `已闭合派发 ${result.dispatchId}（status=${status}，closedAt=${result.closedAt}）。`
+              : `派发 ${result.dispatchId} 已闭合且内容相同（幂等，未改写 ts/closing/closedAt）。`,
+            next: { tool: 'feel_status', arguments: {}, why: '确认 dispatch.open[] / closedRatio 已更新。' },
+          }));
         }
         case 'list': {
           return envelope(action, async () => {

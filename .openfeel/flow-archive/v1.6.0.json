@@ -1,0 +1,970 @@
+{
+  "version": "v1.6.0",
+  "stages": {
+    "v1.6.0-stage-132": {
+      "name": "v1.6.0-stage-132",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {
+        "op-001": {
+          "title": "判据单点与写实原语（T1–T3）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-001"
+        },
+        "op-002": {
+          "title": "需求正文门与认领门（T4）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-002"
+        },
+        "op-003": {
+          "title": "阶段计划门与偏差回写（T5–T6）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-003"
+        },
+        "op-004": {
+          "title": "需求级强制链：general 与零阶段（T7）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-004"
+        },
+        "op-005": {
+          "title": "开发账本自动同步（T8）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-005"
+        },
+        "op-006": {
+          "title": "DSH 工具面与提示词重写（T9–T10）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-006"
+        },
+        "op-007": {
+          "title": "研究文档、阶段写实与文档对账（T11–T13）",
+          "state": "pending",
+          "assignee": "openfeel-executor",
+          "attempts": 0,
+          "max_attempts": 3,
+          "checkpoints": {
+            "plan": "pending",
+            "scheme": "pending",
+            "exec": {
+              "attempts": 0,
+              "self": "pending"
+            },
+            "review": "pending",
+            "test": "pending"
+          },
+          "id": "op-007"
+        }
+      },
+      "workflow_mode": "full",
+      "requirements": [
+        {
+          "id": "REQ-055",
+          "order": 0
+        },
+        {
+          "id": "REQ-056",
+          "order": 1
+        },
+        {
+          "id": "REQ-057",
+          "order": 2
+        },
+        {
+          "id": "REQ-058",
+          "order": 3
+        },
+        {
+          "id": "REQ-059",
+          "order": 4
+        },
+        {
+          "id": "REQ-060",
+          "order": 5
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-23T20:40:02.986Z",
+        "end_time": "2026-11-24T01:51:22.889Z",
+        "duration_ms": 18679903
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:51:18.092Z",
+        "note": "阶段验收通过：REQ-055~060 全部实现、独立审查 0 未闭环 blocking、A1~A12 判据均有测试或实测取证；已知未验证项（guard origin 审计、post-execute 首选项）已在 plan §十一 与 ADAPTER.md 标注。",
+        "evidence": "npm test 101 文件/2582 passed；npx tsc --noEmit 0；npm run build 0（含模板一致性 3/3）；dsh contract 53·verify 131·guard 180·preflight 10 全 exit 0；lint i18n 1305 键一致；openfeel 1.6.0；6 需求全 done（review+verify pass）",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  },
+  "reviews": [
+    {
+      "id": "REV-001",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] 偏差门挂在需求不存在的 targetStatus=review_pending，判据是死代码",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:43:52.176Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-002",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] applyStatusChange 只返回 boolean，新门错误码无法 surface",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:43:54.673Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-003",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] claimRequirement 不经 applyStatusChange，「未写实不得认领」无判据",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:43:57.406Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-004",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] EMPTY_TEMPLATE 正则失锚（无 m），多行骨架会被误判为空/非空",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:44:01.828Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-005",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] flow stage reset 无 --force，复位门成为不可放行的硬门",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:44:03.331Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-006",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] i18n 路径写错：实为 src/core/i18n-data/，照单派发找不到文件",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:44:05.628Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-007",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[major] --json 出口编号三处互斥；实际应为 45 成功/46 注册、出口 #45",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:44:11.657Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-008",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[major] 阶段计划门只校验存在性，与「必须写实」不一致，缺占位拒绝用例",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:44:13.054Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-009",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[minor] A9 账本门正常路径不可复现；DSH 预算/guard schema/未验证项需补注",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:44:15.809Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-010",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] op-001 body-lint 依赖 T5 才建的 findRequirementPlanPath，构建必红",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:57:11.722Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-011",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] op-007 用 shell 写 requirements 正文，guard 必拒且与自身步骤矛盾",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:57:13.762Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-012",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[major] op-004 缺 types.ts plan_waiver；op-006/007 争 ADAPTER.md 写者；T14 无承接",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T20:57:16.695Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-013",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] req add --claim/--start 未传 projectPath，正文/计划门 fail-open",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T23:06:28.340Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-014",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] --force 单跳可跳过 exec_running，计划门不触发且无审计",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T23:06:30.290Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-015",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] A1/T12 未取证：6 份需求正文仍是骨架，lint fill 仍报 emptyBody",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T23:06:31.745Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-016",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] A2/A2c/A8 判据两处都未落地：无 envelope 码也无计划回写",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T23:06:36.544Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-017",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "resolved",
+      "priority": "medium",
+      "title": "[blocking] A5 盖章路径零测试，真实仓 6 需求只会走 plan_unstamped 放行",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T23:06:38.608Z",
+      "canAutoFix": false,
+      "blocking": true
+    },
+    {
+      "id": "REV-018",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "open",
+      "priority": "medium",
+      "title": "[major] 全局 CLI 仍 1.5.25（R1）且 A7 无真实仓 dispatch 台账取证",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T23:06:41.128Z",
+      "canAutoFix": false,
+      "blocking": false
+    },
+    {
+      "id": "REV-019",
+      "op": "v1.6.0-stage-132",
+      "stage": "v1.6.0-stage-132",
+      "status": "open",
+      "priority": "medium",
+      "title": "[minor] 计划§十一两行与代码不符；body-lint 含终态噪声；双 sync；聚合旁路未审计",
+      "filed_by": "cli",
+      "filed_at": "2026-11-23T23:06:43.417Z",
+      "canAutoFix": false,
+      "blocking": false
+    }
+  ],
+  "log": [
+    {
+      "time": "2026-11-23T20:20:46.548Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-23T20:40:02.982Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-23T20:50:40.446Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-23T20:51:05.631Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-23T20:51:36.111Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opId": "op-001"
+      }
+    },
+    {
+      "time": "2026-11-23T20:51:47.050Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opId": "op-002"
+      }
+    },
+    {
+      "time": "2026-11-23T20:51:50.041Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opId": "op-003"
+      }
+    },
+    {
+      "time": "2026-11-23T20:51:53.409Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opId": "op-004"
+      }
+    },
+    {
+      "time": "2026-11-23T20:51:56.534Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opId": "op-005"
+      }
+    },
+    {
+      "time": "2026-11-23T20:51:59.891Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opId": "op-006"
+      }
+    },
+    {
+      "time": "2026-11-23T20:52:03.630Z",
+      "agent": "cli",
+      "action": "register_op",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opId": "op-007"
+      }
+    },
+    {
+      "time": "2026-11-23T20:54:51.568Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "scheme_pending",
+        "to": "scheme_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-23T21:01:06.029Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "scheme_review",
+        "to": "scheme_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-23T21:01:10.161Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:14:38.885Z",
+      "agent": "flow-manager",
+      "action": "reset_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "exec_running",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:14:42.731Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "plan_passed",
+        "to": "scheme_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:15:15.610Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "scheme_pending",
+        "to": "scheme_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:15:21.644Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "scheme_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:23:46.447Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:26:53.361Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "review_pending",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:29:20.869Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:29:26.203Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:37:19.134Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "review_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:49:19.367Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:49:23.379Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:49:27.133Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "review_passed",
+        "to": "test_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:49:32.661Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "test_pending",
+        "to": "test_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:51:12.500Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "test_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:51:22.884Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:51:31.778Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opsCount": 7,
+        "reviewsCount": 19,
+        "knowledgeCount": 17,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.6.0-stage-132.md",
+        "requirementsCount": 6,
+        "releaseNotes": "docs\\releases\\v1.6.0.md",
+        "skillsCount": 0
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-055",
+      "title": "需求/阶段正文必须写实：空壳需求禁止流转",
+      "status": "done",
+      "created_at": "2026-11-23T20:20:50.923Z",
+      "updated_at": "2026-11-24T01:50:40.971Z",
+      "target_version": "v1.6.0",
+      "priority": "P0",
+      "workflow_mode": "full",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-23T20:20:50.924Z",
+      "body_path": ".openfeel/requirements/REQ-055.md",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-055.plan.md",
+        "sha256": "bd13b3f06cc5",
+        "recorded_at": "2026-11-24T01:15:21.632Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:49:40.292Z",
+        "note": "独立复审查 APPROVE_WITH_FIXES（0 未闭环 blocking）：正文写入原语 + 写实判据单点 + claim/in_progress 门闭环；6 份需求正文已写实，lint fill 不再列本需求。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:50:18.786Z",
+        "note": "正文写实门与 req body 命令端到端可用；6 份本阶段需求正文已写实且不在 lint fill.empty。",
+        "evidence": "npm test: 101 files / 2582 passed; npx tsc --noEmit exit 0; npm run build exit 0; dsh 四测全 exit 0; lint i18n 1305 键一致",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-056",
+      "title": "执行前必须有计划：需求级计划门禁与偏差回写",
+      "status": "done",
+      "created_at": "2026-11-23T20:20:53.924Z",
+      "updated_at": "2026-11-24T01:50:44.037Z",
+      "target_version": "v1.6.0",
+      "priority": "P0",
+      "workflow_mode": "full",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-23T20:20:53.925Z",
+      "body_path": ".openfeel/requirements/REQ-056.md",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-056.plan.md",
+        "sha256": "f661f6d2b073",
+        "recorded_at": "2026-11-24T01:15:21.632Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:49:44.440Z",
+        "note": "独立复审查通过：计划门按相位路径跨越触发（含 --force 单跳），偏差门挂 →done，盖章路径有实测用例且本阶段 6 需求已盖章。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:50:22.096Z",
+        "note": "计划门/复位门/偏差门三态与 force 留痕均有实测；本阶段需求级计划齐全。",
+        "evidence": "npm test 2582 passed（含 T056.x 计划门/偏差门/盖章用例）；真实仓 REQ-055..060 plan.sha256 已盖章且与计划文件哈希一致",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-057",
+      "title": "主会话只调度：子 Agent 分角色执行并记录派发",
+      "status": "done",
+      "created_at": "2026-11-23T20:20:57.221Z",
+      "updated_at": "2026-11-24T01:50:48.338Z",
+      "target_version": "v1.6.0",
+      "priority": "P1",
+      "workflow_mode": "full",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-23T20:20:57.222Z",
+      "body_path": ".openfeel/requirements/REQ-057.md",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-057.plan.md",
+        "sha256": "efa4c062f4db",
+        "recorded_at": "2026-11-24T01:15:21.632Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:49:48.616Z",
+        "note": "独立复审查通过：dispatch ledger schema/去重/清理、feel_dispatch 工具、guard 保护、feel_status.dispatch 与 nextAction 均落地；提示词改为三条检查点。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:50:24.369Z",
+        "note": "派发台账与工具面落地，真实仓已有首条派发记录；提示词三条检查点生效。",
+        "evidence": "dsh contract 53/53、verify 131/131、guard 180/180、preflight 10/10 全 exit 0；真实仓 .openfeel/dev/dispatch.jsonl 已写入 d-0001",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-058",
+      "title": "模式语义收紧：general/fast 也必须 plan→exec→review",
+      "status": "done",
+      "created_at": "2026-11-23T20:20:58.976Z",
+      "updated_at": "2026-11-24T01:50:55.247Z",
+      "target_version": "v1.6.0",
+      "priority": "P0",
+      "workflow_mode": "full",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-23T20:20:58.976Z",
+      "body_path": ".openfeel/requirements/REQ-058.md",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-058.plan.md",
+        "sha256": "0e88b5d2a5be",
+        "recorded_at": "2026-11-24T01:15:21.632Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:49:53.556Z",
+        "note": "独立复审查通过：general/零阶段需求 →in_progress 计划门（plan_missing + force 留痕），阶段级 general 空表零改动，三组合用例覆盖。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:50:31.129Z",
+        "note": "general/零阶段需求计划门生效，阶段级 general 空表保持原样。",
+        "evidence": "npm test 2582 passed（含 T058.x 三组合用例）；plan §1.1 A8/A8b/A8c/A8d 已按 human 文案 + exit 1 取证",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-059",
+      "title": "开发账本必须持续更新：dev/ 与 dev_last.md 交接摘要门禁",
+      "status": "done",
+      "created_at": "2026-11-23T20:25:10.099Z",
+      "updated_at": "2026-11-24T01:50:58.358Z",
+      "target_version": "v1.6.0",
+      "priority": "P0",
+      "workflow_mode": "full",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-23T20:25:10.100Z",
+      "body_path": ".openfeel/requirements/REQ-059.md",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-059.plan.md",
+        "sha256": "852ff703d8fe",
+        "recorded_at": "2026-11-24T01:15:21.632Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:49:56.243Z",
+        "note": "独立复审查通过：maybeSyncDevStatus 三态 + 写出口自动同步 + DEV_SYNC_STALE 门（force 留痕）；feel_dev 工具与 dsh 测试全绿。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:50:34.030Z",
+        "note": "账本自动同步在需求/阶段写操作后生效；done 前硬门可构造复现。",
+        "evidence": "npm test 2582 passed（T059.x 自动同步/DEV_SYNC_STALE/force 留痕）；.openfeel/dev/.sync.json 在多次写操作后持续前进",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-060",
+      "title": "DSH 提示词失效根因与改造：从「建议」到「不可忽略」",
+      "status": "done",
+      "created_at": "2026-11-23T20:25:14.224Z",
+      "updated_at": "2026-11-24T01:51:00.859Z",
+      "target_version": "v1.6.0",
+      "priority": "P0",
+      "workflow_mode": "full",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-23T20:25:14.224Z",
+      "body_path": ".openfeel/requirements/REQ-060.md",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-060.plan.md",
+        "sha256": "4ce5b62d218c",
+        "recorded_at": "2026-11-24T01:15:21.632Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:49:58.593Z",
+        "note": "独立复审查通过：提示词 ≤1200 字符/≤25 行、5 处副本同哈希、提醒走降级 1 且 spike 留证、nextAction 动作型、研究文档落 docs/research。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "reviewer2",
+        "at": "2026-11-24T01:50:36.733Z",
+        "note": "提示词压缩与副本同哈希、reminder 降级档、nextAction 动作型均有取证。",
+        "evidence": "test/cli/feel-prompt-parity.test.ts 5/5；dsh verify 131 含提示段断言；.openfeel/tmp/stage-132/spike.md 记录降级档证据",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 19,
+    "log": 30,
+    "requirements": 6
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-24T13:43:34.532Z"
+}

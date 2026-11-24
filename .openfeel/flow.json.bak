@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-24T01:51:18.092Z",
-    "revision": 2529,
+    "updated": "2026-11-24T01:51:31.778Z",
+    "revision": 2531,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -56,7 +56,7 @@
     "last_req_seq": 60
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.6.0-stage-132",
       "op": "op-001"
@@ -66,8 +66,8 @@
   "stages": {
     "v1.6.0-stage-132": {
       "name": "v1.6.0-stage-132",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {
         "op-001": {
@@ -219,8 +219,8 @@
       ],
       "stats": {
         "start_time": "2026-11-23T20:40:02.986Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-24T01:51:22.889Z",
+        "duration_ms": 18679903
       },
       "verification": {
         "result": "pass",
@@ -464,27 +464,6 @@
     }
   ],
   "log": [
-    {
-      "time": "2026-11-17T14:45:40.827Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-040",
-        "result": "pass",
-        "kind": "manual",
-        "by": "lead"
-      }
-    },
-    {
-      "time": "2026-11-17T14:45:48.777Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-040",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
     {
       "time": "2026-11-17T14:45:52.058Z",
       "agent": "cli",
@@ -2504,6 +2483,33 @@
         "result": "pass",
         "kind": "test",
         "by": "reviewer2"
+      }
+    },
+    {
+      "time": "2026-11-24T01:51:22.884Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T01:51:31.778Z",
+      "agent": "openfeel-archiver",
+      "action": "archive_stage",
+      "detail": {
+        "stageName": "v1.6.0-stage-132",
+        "opsCount": 7,
+        "reviewsCount": 19,
+        "knowledgeCount": 17,
+        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.6.0-stage-132.md",
+        "requirementsCount": 6,
+        "releaseNotes": "docs\\releases\\v1.6.0.md",
+        "skillsCount": 0
       }
     }
   ],

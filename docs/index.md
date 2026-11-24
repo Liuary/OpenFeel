@@ -32,6 +32,11 @@
 | 文件 | 内容 |
 |------|------|
 | [research/](research/) | 技术调研与方向分析（AI_Prompt 框架、Vibe Coding、v3 方向等） |
+| [research/req-body-gate-2026-11-24.md](research/req-body-gate-2026-11-24.md) | v1.6.0：需求正文写实门（`req body` 唯一写入口、空壳拦截、force 留痕） |
+| [research/plan-gate-2026-11-24.md](research/plan-gate-2026-11-24.md) | v1.6.0：执行前计划门（阶段与需求级计划「存在且写实」、偏差回写、复位同口径） |
+| [research/dsh-dispatch-2026-11-24.md](research/dsh-dispatch-2026-11-24.md) | v1.6.0：DSH 派发台账（`feel_dispatch` / `feel_status.dispatch` / 只调度硬规则） |
+| [research/dev-ledger-2026-11-24.md](research/dev-ledger-2026-11-24.md) | v1.6.0：开发账本自动同步（`feel_dev`、`DEV_SYNC_STALE`、构造法取证） |
+| [research/prompt-adherence-2026-11-24.md](research/prompt-adherence-2026-11-24.md) | v1.6.0：提示词瘦身与每轮提醒（预算、降级档、副本 parity） |
 
 ## 版本与发布
 

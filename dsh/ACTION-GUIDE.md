@@ -5,8 +5,41 @@
 > **日期**：2026-10-17 ｜ **基线**：OpenFeel `1.2.3` / DSH `0.2.0-rc.2`
 > **权威契约**：[`../docs/json-contract.md`](../docs/json-contract.md)
 >
-> **一句话**：11 项需求已确认交付，适配器工作正常。剩余 **5 项待办**（1 项数据安全 P1、
-> 2 项高频 `--json` P1、2 项 P2），以及 **4 条边界约定**需要 OpenFeel 侧遵守。
+> **一句话**（v1.6.0 更新）：A1~A5 已全部交付，适配器工具面扩到 **15 个**（新增 `feel_dispatch` / `feel_dev`），并新增「主会话只调度」硬规则。§3~§7 是历史需求单存档（交付记录），**现行契约以 §0 与 `docs/json-contract.md` 为准**。
+
+---
+
+## 0. v1.6.0 硬规则（现行，优先于下文存档）
+
+### 0.1 主会话只调度 —— 必须派发子 Agent
+
+- 写文件 / 改代码 / 跑测试**一律交给子 agent**（DSH 的 `subagent` / `workflow`）；主会话只做「判断该谁做 → 派发 → 记账 → 裁决」。
+- **主会话直接改仓库即违规**：派发台账里没有记录，等于没派发。`feel_status.dispatch` 给出 `{required, records, missingRoles}`，`required` 恒 `true`（提示级，不做硬拦）。
+- 每次派发先调 `feel_dispatch` 记账（写 `.openfeel/dev/dispatch.jsonl`，受 guard 保护）：
+
+  ```text
+  feel_dispatch stage=v1.6.0-stage-132 phase=exec_running
+    targetAgent=openfeel-executor role=executor
+    goal="T13 文档对账：docs/json-contract.md 计数改 46/47，并通过 npm run build"
+    files=["docs/json-contract.md","CHANGELOG.md"]
+    returnFormat="≤10 行：结论/改动文件/验证/阻塞"
+  ```
+
+- 子 agent 只读派发 prompt 与其中指定的文件；**禁读** `flow.json` / `status.md` / `dev_last*` / `dev/current.md`；返回 ≤10 行。
+- **适用模式**：以上是 **Feel Mode（流程模式）** 的硬规则；**Free Mode**（`feel_mode=disabled`）下流程与检查点可选（写入门禁仍生效），派发台账 / 正文写入口 / 需求级计划仍可用，只是不强制。
+
+### 0.2 需求正文必须写实（`req body` / `feel_req action=body`）
+
+- 正文**唯一写入口**是 `openfeel req body <id> --section <摘要|目标与验收> (--text <md> | --file <path>) [--json]`；适配器通道为 `feel_req action=body`。
+- 空壳（两节不足 40 字 / 只有占位行）在状态流转 `→scheduled|in_progress|done` 时被 `REQ_BODY_GATE` 拦住（exit 1，零写盘）；`--force`（`advance` / `complete`）写 `body_waiver` + 审计后放行。**认领（`claim`）不校验正文**，`add --claim` 可一次原子成功。
+- 元信息（状态 / 负责人 / 版本）**不走** `body`，用 `req add|set|claim`。
+
+### 0.3 执行前必须有需求级计划，全模式强制 plan → exec → review
+
+- 进入 `exec_running` 前：阶段 `plan.md` 与每个在办需求的 `.openfeel/plan/reqs/REQ-NNN.plan.md` 必须**存在且写实**（`STAGE_PLAN_GATE`）。
+- `general` 需求 / 零关联阶段的 `fast`·`full` 需求：`→in_progress` 前必须有写实计划（`REQ_PLAN_GATE`）；`→done` 前计划被改动须写实 `## 偏差与回写`（`REQ_PLAN_DEVIATION`）。
+- `general` 的**阶段级**转移表仍为空（阶段级 general 在写入面即被拒）；强制链落在**需求生命周期**——三种模式都要求「计划 → 执行 → 审查」，区别只在阶段级是否裁剪 scheme/test。
+- `--force` 只做**留痕放行**（`gate_overrides` / waiver + 审计），**不能**绕过 done 门（review + verify）、blocking REV 门与版本归档判据。
 
 ---
 
@@ -26,15 +59,15 @@
 
 ---
 
-## 1. 现状基线
+## 1. 现状基线（v1.2.3 存档；现行数字见 §0 与 `docs/json-contract.md`）
 
 | 项 | 值 |
 |---|---|
-| OpenFeel 版本 | `1.2.3`（`openfeel --version --json` 实测） |
-| 成功 `--json` 出口 | **33**（契约 §5 冻结表） |
-| 适配器已消费 | **25** 个出口（`cli.json` 调用点 25 处） |
-| 适配器文本回显 | **8** 处 —— 其中 **7** 处因 6 个命令面缺 `--json`，1 处为 `instructions` 的 XML 默认形态（合理） |
-| 适配器验证 | contract 42/42、verify 58/58、integration 10/10 = **110 断言全绿** |
+| OpenFeel 版本 | `1.2.3`（存档基线；现行 1.6.0） |
+| 成功 `--json` 出口 | **33**（存档；现行 **46**，注册选项 **47**） |
+| 适配器已消费 | **25** 个出口（存档；现行按工具实现，不按出口总数折算） |
+| 适配器文本回显 | **8** 处（存档；现行仅 `dev status` 与 `instructions` XML 默认形态） |
+| 适配器验证 | 存档 110 断言；现行 contract 53 / verify 129 / guard 180 / integration 10 |
 | 适配器位置 | `OpenFeel/dsh/`（与 `claude/`、`kilo/` 同级的一等适配器） |
 
 **为什么要关心文本回显那 7 处**：适配器要把结构化结果交给模型。落地为人类中文文本后，

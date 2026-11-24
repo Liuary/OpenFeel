@@ -463,3 +463,66 @@ export function findStageStatusPath(projectPath: string, stageId: string): strin
 
   return null;
 }
+
+/**
+ * 三级回退查找阶段计划 `plan.md`（v1.6.0-stage-132 T5；与 {@link findStageStatusPath} 同范式）
+ *
+ * 1. plan/{series}/stage-NN/plan.md（解析 stageId → 精确路径，首选）
+ * 2. plan/ 下递归搜索 stage-NN/plan.md（兼容 series 变化/旧平铺）
+ * 3. stages/{stageId}/plan.md（历史遗留，只读兜底）
+ *
+ * 说明：CLI 从不创建 `plan.md`（`ensureStageSkeleton` 只保证 overview/status），
+ * 因此"缺失"是常态而不是异常——返回值由调用方（阶段计划门）判为 `stagePlanMissing`。
+ *
+ * @returns plan.md 绝对路径，三级均未命中返回 null
+ */
+export function findStagePlanPath(projectPath: string, stageId: string): string | null {
+  const parsed = parseStageId(stageId);
+
+  if (parsed) {
+    // 1. 精确路径 plan/{series}/stage-NN/plan.md
+    const exact = resolve(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'plan.md');
+    if (existsSync(exact)) {
+      return exact;
+    }
+
+    // 2. 递归搜索 plan/**/stage-NN/plan.md
+    const planDir = resolve(projectPath, '.openfeel', 'plan');
+    if (existsSync(planDir)) {
+      const matches = fastGlob.sync(`**/${parsed.stageDir}/plan.md`, {
+        cwd: planDir,
+        onlyFiles: true,
+        caseSensitiveMatch: true,
+      });
+      if (matches.length > 0) {
+        return resolve(planDir, matches[0]);
+      }
+    }
+  }
+
+  // 3. 历史兜底 stages/{stageId}/plan.md
+  const legacy = resolve(projectPath, '.openfeel', 'stages', stageId, 'plan.md');
+  if (existsSync(legacy)) {
+    return legacy;
+  }
+
+  return null;
+}
+
+/** 需求级计划的 POSIX 相对路径（**全局单点派生**，不随阶段/版本漂移） */
+export function getRequirementPlanRelPath(reqId: string): string {
+  return `.openfeel/plan/reqs/${reqId}.plan.md`;
+}
+
+/**
+ * 查找需求级计划文件（v1.6.0-stage-132 T5）。
+ *
+ * 位置**全局固定**为 `.openfeel/plan/reqs/{REQ-NNN}.plan.md`：`rollover` 只改
+ * `target_version`，计划文件不随阶段/版本迁移，顺延后仍可校验。
+ *
+ * @returns 计划的绝对路径；文件不存在返回 null
+ */
+export function findRequirementPlanPath(projectPath: string, reqId: string): string | null {
+  const exact = resolve(projectPath, '.openfeel', 'plan', 'reqs', `${reqId}.plan.md`);
+  return existsSync(exact) ? exact : null;
+}

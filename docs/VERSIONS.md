@@ -16,6 +16,7 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.6.0** — Trustworthy process: requirement bodies now have a single write entry point (`req body`, JSON exit #45) and a real-content gate (`REQ_BODY_GATE`) on `scheduled` / `in_progress` / `done` transitions (not on claim; `req claim --force` is a compatibility no-op); entering `exec_running` requires a filled stage plan **and** a filled `.openfeel/plan/reqs/REQ-NNN.plan.md` for every in-flight requirement (`STAGE_PLAN_GATE`, same rule for `flow stage reset`), with a `REQ_PLAN_DEVIATION` check before `done`. `general` requirements (and zero-stage `fast`/`full` ones) follow the same plan gate at the requirement level while the stage-level `general` table stays empty. The DSH adapter grows to 15 tools (`feel_dispatch` ledger, `feel_dev`), the prompt is rewritten to ≤1200 chars / ≤25 lines with a per-turn reminder (downgrade path documented), and JSON counts move to 46 success exits / 47 registered `--json` options.
 - **v1.5.22** — Documentation: the `openfeel-dsh` npm page now leads with OpenFeel itself (what it is, the two problems, stages/requirements, the two modes, where records live) and then states that this package is OpenFeel's adapter for DeepSeek Harness; adapter internals moved under an "Adapter details" section. Behavior is unchanged.
 - **v1.5.21** — Documentation: the README and the DSH adapter page (`openfeel-dsh` on npm) are rewritten in plain language for non-programmers — pain points first (losing context, jumping steps), then stages/requirements, the two modes, and where records live. Behavior is unchanged.
 - **v1.5.20** — Distribution: the DSH adapter (`dsh/`) is now also published as its own npm package **`openfeel-dsh`**, released in lockstep with the CLI and declaring its CLI floor via `requiresCli`, so community plugin markets (which require an npm identity) can list and install it via `dsh plugin add openfeel-dsh`. The CLI remains required (`npm i -g openfeel`); market installs should *not* also run `openfeel setup --tools dsh` (it rewrites the dependency to a local `link:`). Publishing uses `npm publish ./dsh` from the monorepo — no mirror repository, single source of truth.
@@ -51,6 +52,15 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.6.0 — 流程可信：正文写实、执行前计划、主会话只调度
+
+- **需求正文有唯一写入口**：`openfeel req body <id> --section 摘要|目标与验收 (--text|--file)`（`--json` 出口 #45）；空壳需求在**状态流转**（`→scheduled` / `→in_progress` / `→done`）时被 `REQ_BODY_GATE` 拦住（认领不校验正文；`--force` 由 `advance` / `complete` 写 waiver + 审计留痕）。`openfeel lint fill`（出口 #46）列出空壳正文 / 缺计划 / 空阶段文档，**恒 exit 0**（advisory）。
+- **执行前必须有计划**：进入 `exec_running` 要阶段 `plan.md` 与每个在办需求的 `.openfeel/plan/reqs/REQ-NNN.plan.md` **存在且写实**（`STAGE_PLAN_GATE`；`flow stage reset --to exec_running` 同口径）；`→done` 前计划被改动须写实 `## 偏差与回写`（`REQ_PLAN_DEVIATION`）。
+- **全模式强制 plan → exec → review**：`general` 需求与零关联阶段需求在 `→in_progress` 前也要有计划（`REQ_PLAN_GATE`）；阶段级 `general` 转移表仍为空（阶段级 general 依旧不合法），改的是**需求生命周期**，不是转移表。
+- **DSH 适配器**：工具 13 → **15**（`feel_dispatch` 派发台账 + `feel_dev`），提示词压到 ≤1200 字符 / ≤25 行并加每轮提醒（降级档已落地）；`openfeel.requiresCli` → `>=1.6.0`。
+- **JSON 契约**：46 个成功出口 / 47 个注册 `--json` 选项（补登 #44 `dev clean`，新增 #45/#46）；错误码表 15 行（`STAGE_PLAN_GATE` / `DEV_SYNC_STALE`）。
+- **升级**：`npm i -g openfeel@latest` → 重启 DSH；存量 48 份空壳不批量回填，首次流转补正文或 `--force`。
 
 ## v1.5.25 — 按数据提速（需求记账合并 + 等待改事件）
 

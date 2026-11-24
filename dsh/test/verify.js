@@ -21,9 +21,19 @@ import { tokenize } from '../lib/surface/command.js';
 import { renderFeelPrompt } from '../lib/surface/prompt.js';
 import { computeWorkflowGate, headlineWarning, workflowGateTitle } from '../lib/adapters/workflow-gate.js';
 import { resolveFeelMode } from '../lib/adapters/feel-mode.js';
-import { guardWarnings } from '../lib/tools/index.js';
+import { createTools, guardWarnings } from '../lib/tools/index.js';
 import { buildGuardSection, computeGuardStale, readGuardState, writeGuardState } from '../lib/adapters/guard-state.js';
 import { buildObservability } from '../lib/adapters/observability.js';
+import { appendDispatch, dispatchLedgerPath, dispatchSummary, pruneDispatches, readDispatches } from '../lib/adapters/dispatch-ledger.js';
+import {
+  REMINDER_CONTEXT_NAME,
+  deriveNextAction,
+  nextActionLine,
+  noteToolCall,
+  reminderText,
+  resetReminderState,
+  toWireNext,
+} from '../lib/adapters/next-action.js';
 import { assertRealGuardUntouched, installIsolatedGuardEnv, snapshotRealGuardState } from './guard-isolation.js';
 
 /** 真实 OpenFeel 项目（只读源）。 */
@@ -229,8 +239,8 @@ async function main() {
   };
   await waitForSelfCheck();
 
-  await check('注册了 13 个工具', () => {
-    assert(workspace.tools.size === 13, `期望 13，实际 ${workspace.tools.size}: ${[...workspace.tools.keys()].join(',')}`);
+  await check('注册了 15 个工具', () => {
+    assert(workspace.tools.size === 15, `期望 15，实际 ${workspace.tools.size}: ${[...workspace.tools.keys()].join(',')}`);
   });
   await check('工具名全部以 feel_ 前缀', () => {
     for (const name of workspace.tools.keys()) assert(name.startsWith('feel_'), `非法工具名 ${name}`);
@@ -243,20 +253,34 @@ async function main() {
     assert(workspace.sections.length === 1, `期望 1 个段落，实际 ${workspace.sections.length}`);
     assert(workspace.sections[0].name === 'feel-mode', `段落名应为 feel-mode`);
   });
-  await check('提示段正文包含 Feel 纪律', () => {
+  await check('提示段正文包含 Feel 纪律（v1.6.0 精简版）', () => {
     const text = workspace.sections[0].text();
     assertString(text, '提示段为空');
-    for (const marker of ['<feel_mode>', '调度者', 'flow.json', 'blocking REV', 'general']) {
+    for (const marker of ['<feel_mode>', '调度者', 'feel_dispatch', 'REQ_BODY_GATE', '≤10 行', 'feel_status']) {
       assert(text.includes(marker), `提示段缺少标记「${marker}」`);
     }
   });
-  await check('提示段包含 Windows shell 推荐（v1.3.5，zh/en）', () => {
-    const zh = workspace.sections[0].text();
-    assert(zh.includes('Git Bash'), 'zh 提示段缺少 Git Bash');
-    assert(zh.includes('pwsh') && zh.includes('PowerShell 7'), 'zh 提示段缺少 pwsh / PowerShell 7');
-    const en = renderFeelPrompt({ language: 'en', detected: true, projectRoot: SOURCE_PROJECT });
-    assert(en.includes('Git Bash') && en.includes('PowerShell 7'), 'en 提示段缺少 shell 推荐');
-    assert(en.includes('bash'), 'en 提示段缺少 bash');
+  await check('提示段已移除版本号 / shell 档位 / 退出码（v1.6.0 / A10）', () => {
+    for (const language of ['zh-CN', 'en']) {
+      const text = renderFeelPrompt({ language, detected: true, projectRoot: SOURCE_PROJECT });
+      assert(!/v\d+\.\d+\.\d+/.test(text), `${language} 提示段仍含版本号`);
+      assert(!text.includes('Git Bash'), `${language} 提示段仍含 shell 档位`);
+      assert(!text.includes('退出码'), `${language} 提示段仍含退出码口径`);
+    }
+  });
+  await check('A10：提示段 ≤1200 字符 / ≤25 行（中英 × enabled/disabled）', () => {
+    for (const language of ['zh-CN', 'en']) {
+      for (const value of ['enabled', 'disabled']) {
+        // A10 命令口径（未传 detected）：渲染后总数含 Free Mode 附录
+        const plain = renderFeelPrompt({ language, feelMode: { value } });
+        assert(plain.length <= 1200, `${language}/${value} 提示段 ${plain.length} 字符 > 1200`);
+        assert(plain.split('\n').length <= 25, `${language}/${value} 提示段 ${plain.split('\n').length} 行 > 25`);
+        // 已初始化口径（带 projectRoot）：路径不得把预算顶破
+        const detected = renderFeelPrompt({ language, detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value } });
+        assert(detected.length <= 1200, `${language}/${value} detected 态 ${detected.length} 字符 > 1200`);
+        assert(detected.split('\n').length <= 25, `${language}/${value} detected 态 ${detected.split('\n').length} 行 > 25`);
+      }
+    }
   });
   await check('启动自检发现 CLI 版本', () => {
     const joined = workspace.logs.join('\n');
@@ -323,9 +347,9 @@ async function main() {
       language: 'zh-CN', detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value: 'disabled', source: 'config.yaml' },
     });
     assert(disabledZh.includes('Free Mode（自由模式）'), 'disabled zh 缺少 Free Mode（自由模式）字样');
-    assert(disabledZh.includes('\n\n## Free Mode（自由模式；'), 'disabled zh Free Mode 节前应恰为空行');
-    assert(disabledZh.includes('执行。\n\n## 你的角色：调度者'), 'disabled zh 自由模式节后应恰为空行');
-    for (const marker of ['由你判断', 'preflight', 'done` 门', '归档判据', 'flow.json']) {
+    assert(disabledZh.includes('\n\n## Free Mode（feel_mode=disabled）'), 'disabled zh Free Mode 节前应恰为空行');
+    assert(disabledZh.includes('不变。\n\n## 你的角色：调度者'), 'disabled zh 自由模式节后应恰为空行');
+    for (const marker of ['可直接干活', '写入门禁仍生效', '`done` 门', '归档判据', 'flow.json']) {
       assert(disabledZh.includes(marker), `disabled zh 缺少标记「${marker}」`);
     }
     const disabledEn = renderFeelPrompt({
@@ -333,7 +357,7 @@ async function main() {
     });
     assert(disabledEn.includes('Free Mode'), 'disabled en 缺少 Free Mode 节');
     assert(disabledEn.includes('\n\n## Free Mode ('), 'disabled en 自由模式节前应恰为空行');
-    for (const marker of ['optional', 'done` gate', 'archive criteria', 'write guard']) {
+    for (const marker of ['optional', 'guard stays', 'unchanged']) {
       assert(disabledEn.includes(marker), `disabled en 缺少标记「${marker}」`);
     }
     const enabledEn = renderFeelPrompt({ language: 'en', detected: true, projectRoot: SOURCE_PROJECT, feelMode: { value: 'enabled', source: 'builtin' } });
@@ -342,6 +366,83 @@ async function main() {
     assert(enabledEn.includes('`.openfeel/`).\n\n## Your role'), 'enabled en 标题前应恰为一个空行');
     assert(!enabledEn.includes('\n\n\n'), 'enabled en 不得出现连续三换行');
   });
+  await check('nextAction：dispatch / command / idle 三态（v1.6.0 / A10）', () => {
+    // ① 无开启阶段 → command（开阶段；不催任何执行）
+    const noStage = deriveNextAction({ focus: { stage: '', phase: '' }, workflowGate: { required: true, reason: 'no-active-stage' } });
+    assert(noStage.kind === 'command' && noStage.tool === 'feel_stage', `无阶段应为 command/feel_stage，实际 ${noStage.kind}/${noStage.tool}`);
+    // ② exec_running 且本相位无派发记录 → dispatch（subagent + feel_dispatch）
+    const needDispatch = deriveNextAction({
+      focus: { stage: 's1', phase: 'exec_running', phaseLabel: '执行中', responsibleAgent: 'openfeel-executor', legalNextPhases: [] },
+      recovery: { requirement: 'REQ-060' },
+      dispatch: { sincePhase: 0, missingRoles: ['planner', 'executor', 'reviewer'] },
+    });
+    assert(needDispatch.kind === 'dispatch', `无派发记录应为 dispatch，实际 ${needDispatch.kind}`);
+    assert(needDispatch.tool === 'subagent', 'dispatch.tool 应为 subagent');
+    assert(needDispatch.goal.includes('REQ-060') && needDispatch.goal.includes('s1'), `dispatch.goal 应含真实阶段/需求：${needDispatch.goal}`);
+    assert(needDispatch.prompt.includes('goal：') && needDispatch.prompt.includes('returnFormat：'), 'dispatch.prompt 应为四段式');
+    assert(!/[<>]/.test(needDispatch.goal), `dispatch.goal 不得含尖括号占位：${needDispatch.goal}`);
+    // ③ exec_running 已派发 → idle（阶段是版本容器，不催推进）
+    const idleAtExec = deriveNextAction({
+      focus: { stage: 's1', phase: 'exec_running', legalNextPhases: ['review_pending'] },
+      dispatch: { sincePhase: 2, missingRoles: ['planner'] },
+    });
+    assert(idleAtExec.kind === 'idle', `已派发的 exec_running 应为 idle，实际 ${idleAtExec.kind}`);
+    // ④ 非 exec 相位有合法下一相位 → command/feel_flow
+    const advance = deriveNextAction({
+      focus: { stage: 's1', phase: 'review_pending', legalNextPhases: ['review_passed'], responsibleAgent: 'openfeel-reviewer' },
+      dispatch: { sincePhase: 1, missingRoles: [] },
+    });
+    assert(advance.kind === 'command' && advance.tool === 'feel_flow', `有下一相位应为 command/feel_flow，实际 ${advance.kind}/${advance.tool}`);
+    assert(advance.args.to === 'review_passed', 'command.args.to 应为合法下一相位');
+    // wire 投影：idle → null；dispatch → 只带一句话 goal
+    assert(toWireNext(idleAtExec) === null, 'idle 的 wire next 应为 null');
+    assert(toWireNext(needDispatch).arguments.goal === needDispatch.goal, 'dispatch 的 wire next 只带 goal');
+    assert(typeof nextActionLine(needDispatch) === 'string' && nextActionLine(needDispatch).includes('subagent'), 'nextActionLine 应为动作型字符串');
+    assert(nextActionLine(idleAtExec) === null, 'idle 的 nextAction 字符串应为 null');
+  });
+
+  await check('每步提醒：systemPrompt.context + post-execute 观察者（v1.6.0 / T10 降级 1）', async () => {
+    resetReminderState();
+    const reminderMock = mockContext(SOURCE_PROJECT);
+    /** @type {any[]} */
+    const contexts = [];
+    /** @type {Array<{ event: string, handler: Function }>} */
+    const listeners = [];
+    reminderMock.ctx.systemPrompt.context = (context) => {
+      contexts.push(context);
+      return () => {};
+    };
+    reminderMock.ctx.on = (event, handler) => {
+      listeners.push({ event, handler });
+      return () => {};
+    };
+    apply(reminderMock.ctx, {});
+    assert(contexts.length === 1, `应注册 1 个动态上下文，实际 ${contexts.length}`);
+    assert(contexts[0].name === REMINDER_CONTEXT_NAME, `上下文名应为 ${REMINDER_CONTEXT_NAME}`);
+    assert(reminderText() === '', '初始不应注入提醒（零 token）');
+    const observer = listeners.find((entry) => entry.event === 'tools/post-execute');
+    assert(observer !== undefined, '缺 tools/post-execute 观察者');
+    const post = async (toolName) => observer.handler({ name: toolName, arguments: {} }, {}, async () => ({ kind: 'accept' }));
+    await post('read');
+    assert(reminderText() === '', '只读工具不应触发提醒');
+    await post('write');
+    const line = contexts[0].text();
+    assert(line.includes('下一步'), `写类工具后应注入一行提醒，实际「${line}」`);
+    await post('read');
+    assert(reminderText() === '', '写类工具之后的读调用应复位（避免每轮重复注入）');
+    // 每 5 步兜底：连续读第 4、5 次时第 5 步触发
+    resetReminderState();
+    for (let index = 0; index < 4; index += 1) await post('read');
+    assert(reminderText() === '', '第 4 步不应触发（每 5 步一次）');
+    await post('read');
+    assert(reminderText().includes('下一步'), '第 5 步应触发兜底提醒');
+    // 观察者必须放行下游决定（不 veto、不改结果）
+    const passthrough = await observer.handler({ name: 'read', arguments: {} }, {}, async () => ({ kind: 'accept', value: 1 }));
+    assert(passthrough.kind === 'accept' && passthrough.value === 1, 'post-execute 观察者必须原样透传下游决定');
+    resetReminderState();
+  });
+
+
   await check('dashboard 不再导出 PHASE_AGENT 本地镜像', async () => {
     const dashboard = await import('../lib/adapters/dashboard.js');
     assert(!Object.hasOwn(dashboard, 'PHASE_AGENT'), 'PHASE_AGENT 应从 dashboard.js 移除（改由 flow next 权威输出）');
@@ -366,6 +467,13 @@ async function main() {
     assert(Array.isArray(snapshot.stages), 'stages 应为数组');
     assert(snapshot.stages.length > 0, 'stages 不应为空');
     assertString(result.summary, 'summary 为空');
+    // v1.6.0 / T10（A10）：动作型 next 三态之一
+    assert(
+      snapshot.nextAction !== null
+        && ['dispatch', 'command', 'idle'].includes(snapshot.nextAction.kind),
+      `feel_status.nextAction.kind 应为 dispatch/command/idle，实际 ${JSON.stringify(snapshot.nextAction)}`,
+    );
+    assert(typeof snapshot.nextAction.reason === 'string' && snapshot.nextAction.reason !== '', 'nextAction.reason 应为非空说明');
   });
   await check('快照包含三种模式的转移表', () => {
     const modes = snapshot.mode.transitionsByMode;
@@ -433,6 +541,11 @@ async function main() {
     assert(Array.isArray(data.legalNextPhases), 'legalNextPhases 应为数组');
     assert(data.suggestedCommand === null || typeof data.suggestedCommand === 'string', 'suggestedCommand 应为 string 或 null');
     assert(typeof data.phaseLabel === 'string', 'phaseLabel 应来自 CLI（可为空串）');
+    // v1.6.0 / T10：动作型 next（与 feel_status 同一纯函数，台账来自本地 jsonl）
+    assert(
+      data.nextAction !== null && ['dispatch', 'command', 'idle'].includes(data.nextAction.kind),
+      `feel_next.nextAction.kind 应为 dispatch/command/idle，实际 ${JSON.stringify(data.nextAction)}`,
+    );
   });
 
   await check('feel_next/feel_status 暴露 statusSync（v1.5.0，默认 30 分钟）', async () => {
@@ -848,11 +961,10 @@ async function main() {
     }
   });
 
-  await check('提示段含「只有 Feel 写状态 / 子 agent 禁读写」（v1.5.0）', () => {
+  await check('提示段含「子 agent 干活 / 禁手改状态」（v1.6.0）', () => {
     const text = workspace.sections[0].text();
-    assert(text.includes('只有 Feel 写状态'), 'zh 提示段缺状态归属');
-    assert(text.includes('子 agent 一律不读不写'), 'zh 提示段缺子 agent 禁读写');
-    assert(text.includes('30 分钟'), 'zh 提示段缺 30 分钟同步');
+    assert(text.includes('由子 agent 完成'), 'zh 提示段缺「由子 agent 完成」');
+    assert(text.includes('禁手改'), 'zh 提示段缺禁手改');
   });
 
   await check('workflowGate：无活跃阶段 required（v1.5.2）', () => {
@@ -866,10 +978,11 @@ async function main() {
     assert(doneOnly.required === true, '仅剩 done 阶段应视为无开启阶段');
   });
 
-  await check('提示段含流程入口硬规则（v1.5.2）', () => {
+  await check('提示段含三个可判定检查点（v1.6.0 / REQ-060）', () => {
     const text = workspace.sections[0].text();
-    assert(text.includes('流程入口'), 'zh 提示段缺流程入口节');
-    assert(text.includes('不得以「调研 / 只读」为由跳过阶段'), 'zh 提示段缺调研禁跳规则');
+    assert(text.includes('三个检查点'), 'zh 提示段缺检查点节');
+    assert(text.includes('REQ_PLAN_GATE') && text.includes('STAGE_PLAN_GATE'), 'zh 提示段缺计划门拒绝形态');
+    assert(text.includes('planner') && text.includes('executor') && text.includes('reviewer'), 'zh 提示段缺 planner/executor/reviewer 分工');
   });
 
   await check('feel_next 返回 dispatch 契约 + feel_status 返回 recovery（v1.5.3）', async () => {
@@ -879,6 +992,13 @@ async function main() {
       assert(next.dispatch[key] !== undefined, `dispatch 缺 ${key}`);
     }
     assert(Array.isArray(next.dispatch.boundaries.neverRead), 'boundaries.neverRead 应为数组');
+    // v1.6.0 / T9 step2（A7）：goal / boundaries.write 用真实调度上下文填充，不得残留占位句
+    assert(!next.dispatch.goal.includes('一句话目标'), 'dispatch.goal 不得残留占位文案');
+    assert(!/[<>]/.test(next.dispatch.goal), `dispatch.goal 不得含尖括号占位：${next.dispatch.goal}`);
+    assert(
+      Array.isArray(next.dispatch.boundaries.write) && next.dispatch.boundaries.write.length > 0,
+      'boundaries.write 应列出真实写面（数组非空）',
+    );
     assert(next.dispatch.returnFormat.includes('≤10 行'), 'returnFormat 应限制 10 行');
     const status = ok(await workspace.tools.get('feel_status').execute({ detail: 'full' }, realExec));
     assert(status.recovery && typeof status.recovery === 'object', 'feel_status 缺 recovery');
@@ -887,10 +1007,123 @@ async function main() {
     assert('nextAction' in status.recovery, 'recovery 缺 nextAction');
   });
 
-  await check('提示段含派发契约（v1.5.3）', () => {
+  await check('feel_dispatch：台账写行 / 去重 / 唯一 ID / feel_status.dispatch（v1.6.0 / REQ-057）', async () => {
+    // 台账写在临时项目里：绝不污染真实仓库的 .openfeel/dev/。
+    const dir = mkdtempSync(join(tmpdir(), 'feel-dispatch-'));
+    mkdirSync(join(dir, '.openfeel'), { recursive: true });
+    writeFileSync(
+      join(dir, '.openfeel', 'flow.json'),
+      `${JSON.stringify({ schemaVersion: 1, stages: {}, requirements: [] }, null, 2)}\n`,
+      'utf-8',
+    );
+    const dispatchExec = execFor(dir);
+    const tool = workspace.tools.get('feel_dispatch');
+    assert(tool !== undefined, '缺少 feel_dispatch 工具');
+
+    const base = {
+      action: 'record',
+      target_agent: 'executor-b-t9a',
+      role: 'executor',
+      goal: 'T9 step1：派发台账 + feel_dispatch + guard',
+      task_id: 'T9',
+      files: ['dsh/lib/adapters/dispatch-ledger.js'],
+      stage: 'v1.6.0-stage-132',
+      phase: 'exec_running',
+      project: dir,
+    };
+
+    const first = ok(await tool.execute(base, dispatchExec), 'feel_dispatch record');
+    assert(/^d-\d{4,}$/.test(first.dispatchId), `dispatchId 应为 d-NNNN，实际 ${first.dispatchId}`);
+    assert(first.duplicate === false, '首次记录不应判定为重复');
+
+    const ledger = join(dir, '.openfeel', 'dev', 'dispatch.jsonl');
+    assert(existsSync(ledger), `台账未生成：${ledger}`);
+    const lines = readFileSync(ledger, 'utf-8').trim().split('\n');
+    assert(lines.length === 1, `应写 1 行，实际 ${lines.length}`);
+    const row = JSON.parse(lines[0]);
+    for (const key of [
+      'dispatchId', 'ts', 'leadSessionId', 'origin', 'stage', 'phase',
+      'targetAgent', 'role', 'taskId', 'goal', 'files', 'returnFormat', 'dispatchDepth',
+    ]) {
+      assert(key in row, `台账行缺字段 ${key}`);
+    }
+    assert(row.stage === 'v1.6.0-stage-132' && row.phase === 'exec_running', 'stage/phase 应原样落账');
+    assert(Array.isArray(row.files) && row.files[0] === 'dsh/lib/adapters/dispatch-ledger.js', 'files[] 应落账');
+
+    // 5 分钟内同 leadSessionId+taskId+goal → 去重（返回既有 dispatchId，不追加第二行）
+    const again = ok(await tool.execute(base, dispatchExec), 'feel_dispatch 去重');
+    assert(again.duplicate === true, '同 task 5 分钟内应判定为重复');
+    assert(again.dispatchId === first.dispatchId, '重复派发应返回既有 dispatchId');
+    assert(readFileSync(ledger, 'utf-8').trim().split('\n').length === 1, '去重不得追加第二行');
+
+    // 不同 task → 新 dispatchId
+    const second = ok(
+      await tool.execute({ ...base, task_id: 'T10', goal: 'T10：提示词重写' }, dispatchExec),
+      'feel_dispatch 第二条',
+    );
+    assert(second.dispatchId !== first.dispatchId, '不同任务 dispatchId 应唯一');
+
+    const listed = ok(await tool.execute({ action: 'list', project: dir }, dispatchExec), 'feel_dispatch list');
+    assert(listed.total === 2, `list.total 应为 2，实际 ${listed.total}`);
+    assert(listed.records.length === 2, `list.records 应为 2 条，实际 ${listed.records.length}`);
+
+    // feel_status.dispatch 形状（真实项目只读，不写台账）
+    const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
+    assert(status.dispatch && typeof status.dispatch === 'object', 'feel_status 缺 dispatch 段');
+    assert(status.dispatch.required === true, 'dispatch.required 应恒为 true（提示级）');
+    assert(typeof status.dispatch.total === 'number', 'dispatch.total 应为数字');
+    assert(typeof status.dispatch.sincePhase === 'number', 'dispatch.sincePhase 应为数字');
+    assert(Array.isArray(status.dispatch.missingRoles), 'dispatch.missingRoles 应为数组');
+    // v1.6.0 / T9 step2（A7）：records 至少是数组（真实项目可能还没有派发记录）
+    assert(Array.isArray(status.dispatch.records), 'dispatch.records 应为数组');
+    const allowedRoles = ['planner', 'executor', 'reviewer', 'tester', 'archiver'];
+    for (const role of status.dispatch.missingRoles) {
+      assert(allowedRoles.includes(role), `missingRoles 含非法角色 ${role}`);
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  await check('dispatch-ledger：5 分钟去重窗口 / 200 行上限 / 24h 清理（v1.6.0 / REQ-057）', () => {
+    const t0 = Date.parse('2026-11-24T00:00:00.000Z');
+    const dir = mkdtempSync(join(tmpdir(), 'feel-dispatch-ledger-'));
+    mkdirSync(join(dir, '.openfeel'), { recursive: true });
+    const base = { leadSessionId: 's', targetAgent: 'a', role: 'executor', taskId: 'T9', goal: 'g', files: [] };
+
+    // 窗口内 → 去重；窗口外（>5 分钟）→ 新 dispatchId
+    const first = appendDispatch(dir, base, { now: t0 });
+    const within = appendDispatch(dir, base, { now: t0 + 4 * 60_000 });
+    const outside = appendDispatch(dir, base, { now: t0 + 6 * 60_000 });
+    assert(within.duplicate === true && within.dispatchId === first.dispatchId, '5 分钟内应去重');
+    assert(outside.duplicate === false && outside.dispatchId !== first.dispatchId, '超过 5 分钟应追加新行');
+
+    // 200 行上限：205 条不同 goal → 只留最近 200 行
+    for (let index = 0; index < 205; index += 1) {
+      appendDispatch(dir, { ...base, goal: `prune-${index}` }, { now: t0 + 10 * 60_000 + index });
+    }
+    assert(readDispatches(dir).length === 200, `上限应为 200 行，实际 ${readDispatches(dir).length}`);
+
+    // v1.6.0 / T9 step2（A7）：feel_status.dispatch 的数据源形状（required / records）
+    const summary = dispatchSummary(dir);
+    assert(summary.required === true, 'dispatchSummary.required 应恒为 true（提示级，不做硬拦）');
+    assert(summary.total === 200, `summary.total 应为 200，实际 ${summary.total}`);
+    assert(summary.records.length === 5, `records 应只暴露最近 5 条，实际 ${summary.records.length}`);
+    assert(
+      summary.records.every((record) => typeof record.dispatchId === 'string' && /^d-\d{4,}$/.test(record.dispatchId)),
+      'records 每条应有唯一 dispatchId',
+    );
+
+    // 24h 清理：把所有行的时间推到 25 小时前 → 全部移除
+    const pruned = pruneDispatches(dir, { now: t0 + 25 * 60 * 60_000 });
+    assert(pruned.kept === 0 && pruned.removed === 200, `24h 清理应移除全部，实际 kept=${pruned.kept}`);
+    assert(readDispatches(dir).length === 0, '清理后应为空');
+    assert(existsSync(dispatchLedgerPath(dir)), '清理后文件仍应存在（空文件）');
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  await check('提示段含派发契约要点（v1.5.3 → v1.6.0：≤10 行 + 台账）（v1.6.0）', () => {
     const text = workspace.sections[0].text();
-    assert(text.includes('派发契约'), 'zh 提示段缺派发契约节');
     assert(text.includes('≤10 行'), 'zh 提示段缺返回行数限制');
+    assert(text.includes('feel_dispatch'), 'zh 提示段缺派发台账记账动作');
   });
 
   await check('快照 revision / stale / snapshotAt（v1.5.4）', async () => {
@@ -916,14 +1149,11 @@ async function main() {
     assert(plan.adapterHints.some((hint) => hint.includes('plan_pending')), `缺少空转提示: ${plan.adapterHints.join('|')}`);
   });
 
-  await check('preflight 字段 + 提示段禁 shell 写 / 自审标注（v1.5.5）', async () => {
+  await check('preflight 字段（v1.5.5）', async () => {
     const status = ok(await workspace.tools.get('feel_status').execute({}, realExec));
     assert(status.preflight && typeof status.preflight.ok === 'boolean', 'feel_status 缺 preflight');
     const next = ok(await workspace.tools.get('feel_next').execute({}, realExec));
     assert(next.preflight && typeof next.preflight.ok === 'boolean', 'feel_next 缺 preflight');
-    const text = workspace.sections[0].text();
-    assert(text.includes('状态写操作只能用'), '提示段缺「状态写操作只能用 feel_*」');
-    assert(text.includes('self-review'), '提示段缺自审标注约定');
   });
 
   await check('observability 组合摘要（v1.5.6）', async () => {
@@ -1450,8 +1680,19 @@ async function main() {
     assert(/REV-\d+/.test(String(data.output)), `review_add --op 应返回 REV，实际: ${data.output}`);
   });
 
-  await check('feel_req action=add 创建需求', async () => {    const result = await workspace.tools.get('feel_req').execute(
-      { action: 'add', title: '适配器验证需求', target_version: 'v9.9.9' },
+  await check('feel_req action=add 创建需求（add 即写正文：summary / goal / acceptance）', async () => {
+    const result = await workspace.tools.get('feel_req').execute(
+      {
+        action: 'add',
+        title: '适配器验证需求',
+        target_version: 'v9.9.9',
+        // v1.6.0-stage-132 / T13：正文门（REQ_BODY）要求 `## 摘要` 与 `## 目标与验收`
+        // **都**写实；`add` 的 summary / goal / acceptance 在 CLI 侧先于状态流转落盘，
+        // 这是「一步开单」不再被空壳正文拦下的唯一通道。
+        summary: '适配器 feel_req action=add 需要把正文小节一次性透传给 CLI，避免空壳正文被正文门拦下。',
+        goal: '验证 add 的 summary / goal / acceptance 落进 .openfeel/requirements/REQ-NNN.md 的对应小节，并让后续流转通过。',
+        acceptance: '- A1 `node test/verify.js` 退出码 0\n- A2 draft→scheduled 不再报 REQ_BODY',
+      },
       tempExec,
     );
     const data = ok(result);
@@ -1467,15 +1708,50 @@ async function main() {
     assert(found.status === 'draft', `新需求应为 draft，实际 ${found.status}`);
   });
 
-  await check('需求状态流转 draft→scheduled→in_progress', async () => {
+  await check('需求状态流转 draft→scheduled（add 写入的正文过 REQ_BODY 门）', async () => {
     const list = await workspace.tools.get('feel_req').execute({ action: 'list' }, tempExec);
     const listed = ok(list, 'req list');
     const target = listed.requirements.find((/** @type {any} */ item) => item.title === '适配器验证需求');
     assert(target !== undefined, '未找到测试需求');
+    // 正文写实证据：summary / goal / acceptance 已由 `req add` 落盘（不再需要二次补写）
+    const bodyPath = join(tempProject, '.openfeel', 'requirements', `${target.id}.md`);
+    assert(existsSync(bodyPath), `需求正文文件应已生成：${bodyPath}`);
+    const body = readFileSync(bodyPath, 'utf-8');
+    assert(body.includes('适配器 feel_req action=add 需要把正文小节一次性透传'), '`## 摘要` 应包含 add 传入的 summary');
+    assert(/###\s*目标/.test(body) && /###\s*验收/.test(body), '`## 目标与验收` 应含 goal / acceptance 两个子节');
+    assert(/- A1/.test(body), '`## 目标与验收` 应含 `- ` 判据行');
+    // v1.6.0 / REQ-061：正文写实后，draft→scheduled 必须放行（此前空壳正文在这里被拒）
     await workspace.tools.get('feel_req').execute({ action: 'advance', id: target.id, to: 'scheduled' }, tempExec);
     const after = await workspace.tools.get('feel_req').execute({ action: 'show', id: target.id }, tempExec);
     const shown = ok(after, 'req show');
     assert(shown.requirement.status === 'scheduled', `应为 scheduled，实际 ${shown.requirement.status}`);
+  });
+
+  await check('feel_req action=add 缺 summary 时 start 被 REQ_BODY 拦（负例，零落库）', async () => {
+    /** @type {any} */
+    let error;
+    try {
+      await workspace.tools.get('feel_req').execute(
+        {
+          action: 'add',
+          title: '缺摘要的需求',
+          target_version: 'v9.9.9',
+          goal: '只给目标与验收、不给摘要时，正文门仍应拒绝（`## 摘要` 未写实）。',
+          acceptance: '- A1 拒绝原因应点名未写实小节',
+          start: true,
+        },
+        tempExec,
+      );
+    } catch (caught) {
+      error = caught;
+    }
+    assert(error !== undefined, '缺 summary 的 add start=true 应被正文门拒绝');
+    assert(/正文|摘要|REQ_BODY/.test(String(error.message)), `拒绝原因应点明正文门，实际：${error.message}`);
+    const listed = ok(await workspace.tools.get('feel_req').execute({ action: 'list' }, tempExec), 'req list');
+    assert(
+      !listed.requirements.some((/** @type {any} */ item) => item.title === '缺摘要的需求'),
+      '被正文门拒绝的需求不应落库',
+    );
   });
 
   await check('非法状态流转被拒绝（scheduled→done）', async () => {
@@ -1492,6 +1768,190 @@ async function main() {
       assert(/合法目标|not.*allowed|拒绝|不合法/.test(error.message), `拒绝原因不明确: ${error.message}`);
     }
     assert(rejected, 'scheduled→done 应被流转表拒绝');
+  });
+
+  await check('feel_dev：status 只读 / sync 写 AUTO 块并返回 wrote[]（v1.6.0 / REQ-059）', async () => {
+    const tool = workspace.tools.get('feel_dev');
+    assert(tool !== undefined, '缺少 feel_dev 工具');
+    const syncFile = join(tempProject, '.openfeel', 'dev', '.sync.json');
+    const metaBefore = existsSync(syncFile) ? readFileSync(syncFile, 'utf-8') : null;
+
+    // status：只读（不得改写 .sync.json），返回与 CLI 同源的 lastSync / due
+    const status = ok(await tool.execute({ action: 'status', project: tempProject }, tempExec), 'feel_dev status');
+    assert(status.ok === true, 'status.ok 应为 true');
+    assert('lastSync' in status, 'status 应含 lastSync');
+    assert(typeof status.due === 'boolean', 'status.due 应为 boolean');
+    assert(status.changed === false, 'status.changed 应为 false（只读）');
+    assert(Array.isArray(status.wrote) && status.wrote.length === 0, 'status.wrote 应为空数组（只读）');
+    const metaAfter = existsSync(syncFile) ? readFileSync(syncFile, 'utf-8') : null;
+    assert(metaAfter === metaBefore, 'status 不得改写 .sync.json（只读）');
+
+    // sync：清掉用户目录，保证 AUTO 块状态必变（状态未变时 CLI 会跳过重写）
+    rmSync(join(tempProject, '.openfeel', 'users'), { recursive: true, force: true });
+    const synced = ok(await tool.execute({ action: 'sync', project: tempProject }, tempExec), 'feel_dev sync');
+    assert(synced.ok === true, 'sync.ok 应为 true');
+    assert(synced.due === false, 'sync 后 due 应为 false');
+    assertString(synced.lastSync, 'sync 应返回 lastSync');
+    assert(synced.changed === true, '用户目录被清空后 sync 应判定 changed=true');
+    assert(Array.isArray(synced.wrote) && synced.wrote.length >= 1, 'sync.wrote 至少 1 个文件');
+    assert(synced.wrote.some((path) => path.endsWith('dev_last.md')), `wrote 应含 dev_last.md，实际 ${synced.wrote.join(',')}`);
+    for (const path of synced.wrote) {
+      assert(!path.endsWith('.sync.json'), '.sync.json 是元数据，不应出现在 wrote[]');
+      assert(existsSync(join(tempProject, ...path.split('/'))), `wrote 里的路径应真实存在：${path}`);
+    }
+    const meta = JSON.parse(readFileSync(syncFile, 'utf-8'));
+    assert(meta.last_sync === synced.lastSync, '.sync.json 与返回值应同源');
+  });
+
+  await check('feel_req action=body：argv 映射与参数守卫（v1.6.0 / REQ-055）', async () => {
+    /** @type {string[][]} */
+    const calls = [];
+    const doc = { schemaVersion: 1, id: 'REQ-001', section: '摘要', path: '.openfeel/requirements/REQ-001.md', lines: 12, created: false };
+    const fakeCli = {
+      cwd: tempProject,
+      async write(argv) {
+        calls.push([...argv]);
+        return { ok: true, text: JSON.stringify(doc) };
+      },
+      async json(argv) {
+        calls.push([...argv]);
+        return {};
+      },
+      async text(argv) {
+        calls.push([...argv]);
+        return { text: '' };
+      },
+    };
+    const bodyTool = createTools({ cli: fakeCli }).find((tool) => tool.name === 'feel_req');
+    assert(bodyTool !== undefined, '缺少 feel_req 工具');
+    const run = (args) => bodyTool.execute({ ...args, project: tempProject }, tempExec);
+
+    const data = ok(await run({ action: 'body', id: 'REQ-001', section: '摘要', text: '正文' }), 'feel_req body --text');
+    assert(calls.length === 1, `应只调用一次 CLI，实际 ${calls.length}`);
+    assert(
+      calls[0].join(' ') === 'req body REQ-001 --section 摘要 --json --text 正文',
+      `--text 映射不符：${calls[0].join(' ')}`,
+    );
+    assert(data.ok === true && data.id === 'REQ-001' && data.section === '摘要', 'body 返回应回填 id/section');
+    assert(data.path === doc.path && data.lines === 12 && data.created === false, 'body 返回应透传 CLI 出口');
+
+    calls.length = 0;
+    ok(await run({ action: 'body', id: 'REQ-001', section: '目标与验收', file: 'draft.md', append: true }), 'feel_req body --file --append');
+    assert(
+      calls[0].join(' ') === 'req body REQ-001 --section 目标与验收 --json --file draft.md --append',
+      `--file/--append 映射不符：${calls[0].join(' ')}`,
+    );
+
+    calls.length = 0;
+    ok(await run({ action: 'body', id: 'REQ-001', section: '摘要', text: 'x', replace: true }), 'feel_req body --replace');
+    assert(calls[0].includes('--replace'), 'replace=true 应透传 --replace');
+
+    // 参数守卫：在发起 CLI 之前就拒绝（零 argv）
+    const before = calls.length;
+    /** @type {any} */
+    let missingSection;
+    try {
+      await run({ action: 'body', id: 'REQ-001', text: 'x' });
+    } catch (caught) {
+      missingSection = caught;
+    }
+    assert(missingSection !== undefined, '缺 section 应抛错');
+    assert(/需要参数/.test(String(missingSection.message)), `缺 section 的报错应点明参数，实际 ${missingSection.message}`);
+    for (const [label, args] of [
+      ['缺 text/file', { action: 'body', id: 'REQ-001', section: '摘要' }],
+      ['text+file 互斥', { action: 'body', id: 'REQ-001', section: '摘要', text: 'x', file: 'draft.md' }],
+      ['append+replace 互斥', { action: 'body', id: 'REQ-001', section: '摘要', text: 'x', append: true, replace: true }],
+    ]) {
+      /** @type {any} */
+      let error;
+      try {
+        await run(args);
+      } catch (caught) {
+        error = caught;
+      }
+      assert(error !== undefined, `${label} 应抛错`);
+      assert(error.code === 'FEEL_BAD_USAGE', `${label} 的 code 应为 FEEL_BAD_USAGE，实际 ${error.code}`);
+    }
+    assert(calls.length === before, '参数守卫失败时不得调用 CLI');
+  });
+
+  await check('feel_req action=add：正文小节参数映射（summary/problem/goal/acceptance/plan，v1.6.0 / T13）', async () => {
+    /** @type {string[][]} */
+    const calls = [];
+    const fakeCli = {
+      cwd: tempProject,
+      async write(argv) {
+        calls.push([...argv]);
+        return { ok: true, text: '需求已创建' };
+      },
+      async json(argv) {
+        calls.push([...argv]);
+        return {};
+      },
+      async text(argv) {
+        calls.push([...argv]);
+        return { text: '' };
+      },
+    };
+    const addTool = createTools({ cli: fakeCli }).find((tool) => tool.name === 'feel_req');
+    assert(addTool !== undefined, '缺少 feel_req 工具');
+    const run = (args) => addTool.execute({ ...args, project: tempProject }, tempExec);
+
+    ok(await run({
+      action: 'add',
+      title: '映射标题',
+      summary: '摘要正文',
+      problem: '问题正文',
+      goal: '目标正文',
+      acceptance: '- A1 判据',
+      plan: '规划正文',
+    }), 'feel_req add 正文小节');
+    assert(calls.length === 1, `应只调用一次 CLI，实际 ${calls.length}`);
+    assert(
+      calls[0].join(' ') === 'req add 映射标题 --summary 摘要正文 --problem 问题正文 --goal 目标正文 --acceptance - A1 判据 --plan 规划正文',
+      `正文小节映射不符：${calls[0].join(' ')}`,
+    );
+
+    // 字段缺省时不传（不得出现空 flag）
+    calls.length = 0;
+    ok(await run({ action: 'add', title: '裸标题' }), 'feel_req add 裸标题');
+    assert(calls[0].length === 3, `缺省字段不应产生 argv，实际 ${calls[0].join(' ')}`);
+    for (const flag of ['--summary', '--problem', '--goal', '--acceptance', '--plan']) {
+      assert(!calls[0].includes(flag), `缺省时不应透传 ${flag}`);
+    }
+  });
+
+  await check('feel_req action=body：真实 CLI 写入正文小节（v1.6.0 / REQ-055）', async () => {
+    // 适配器只做 argv 映射；端到端写入依赖 T2 的 `req body`。
+    // 已安装 CLI 若尚未升级（op-006 R1：`npm run build` + `npm i -g .` 由 T13 统一），
+    // 这里显式打印跳过原因——绝不把「CLI 不具备该子命令」伪装成通过。
+    const reqTool = workspace.tools.get('feel_req');
+    const listed = ok(await reqTool.execute({ action: 'list' }, tempExec), 'req list');
+    const target = listed.requirements.find((/** @type {any} */ item) => item.title === '适配器验证需求');
+    assert(target !== undefined, '未找到测试需求');
+    const marker = `适配器正文写入验证 ${new Date().toISOString()}`;
+    let result;
+    try {
+      result = await reqTool.execute(
+        { action: 'body', id: target.id, section: '摘要', text: marker, project: tempProject },
+        tempExec,
+      );
+    } catch (error) {
+      if (/unknown command|未知.*(命令|子命令)/i.test(String(error?.message ?? ''))) {
+        process.stdout.write('    (skip: 已安装 CLI 不含 req body —— 升级 CLI 后自动生效)\n');
+        return;
+      }
+      throw error;
+    }
+    const data = ok(result, 'feel_req body');
+    assertString(data.path, 'body 应返回 path');
+    assert(typeof data.lines === 'number' && data.lines > 0, 'body 应返回 lines');
+    assert(data.created === false, '既有 ## 摘要 不应被判为新建');
+    const file = join(tempProject, ...String(data.path).split('/'));
+    assert(existsSync(file), `正文文件应存在：${file}`);
+    const markdown = readFileSync(file, 'utf-8');
+    assert(markdown.includes(marker), '正文文件应包含本次写入内容');
+    assert(markdown.includes('## 摘要'), '正文文件应保留 ## 摘要 小节');
   });
 
   await check('非法相位推进被拒绝', async () => {

@@ -300,6 +300,53 @@ export function syncDevStatus(
   return { status: { ...status, lastSync: syncedAt, due: false }, file: devLastPath(projectPath), syncedAt, changed };
 }
 
+/** 自动同步结果（v1.6.0 / REQ-059 T8） */
+export interface DevSyncAttempt {
+  /** 本次是否真的执行了同步（false = 未到期且非节点相位，文件一个字都没动） */
+  synced: boolean;
+  /** 同步后是否仍「到期」（同步成功恒 false；失败时为**重新读取**到的真实 due） */
+  due: boolean;
+  /** 同步异常消息（v1.6.0 起不再静默吞掉；由调用方输出一行 stderr） */
+  error?: string;
+}
+
+/**
+ * 按需自动同步开发账本（v1.6.0 / REQ-059 T8；写命令成功出口与 `advanceStagePhase` 的 done 门前共用）。
+ *
+ * 触发条件 = `due`（超时/无元数据）**或**当前活跃相位属节点（开始/转折/结束）。
+ * 与裸 `syncDevStatus` 的差别：
+ * - 成本控制沿用 `blockChanged()`（状态未变不重写 AUTO 块）；
+ * - 异常**不再吞**：捕获后返回 `error`（调用方决定提示），并把 `due` 重新读成真实值——
+ *   因此「同步失败 → due 仍为 true」是调用方唯一可见的信号（done 前硬门 `DEV_SYNC_STALE` 依赖它）。
+ *
+ * @param projectPath 项目根
+ * @param options.now 固定「当前时间」（测试注入；省略 = 真实时钟）
+ * @returns 是否同步 / 是否仍到期 / 失败原因
+ */
+export function maybeSyncDevStatus(
+  projectPath: string,
+  options: { now?: Date } = {},
+): DevSyncAttempt {
+  const now = options.now ?? new Date();
+  const status = getDevStatus(projectPath, now);
+  if (!status.due && !isSyncNodePhase(status.phase)) {
+    return { synced: false, due: false };
+  }
+  try {
+    syncDevStatus(projectPath, options.now === undefined ? {} : { now });
+    return { synced: true, due: false };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    let due = true;
+    try {
+      due = getDevStatus(projectPath, now).due;
+    } catch {
+      due = true;
+    }
+    return { synced: false, due, error: message };
+  }
+}
+
 /** 是否处于「节点」（开始 / 转折 / 结束）：需要主动同步 */
 export function isSyncNodePhase(phase: string | null): boolean {
   return phase === 'exec_running'

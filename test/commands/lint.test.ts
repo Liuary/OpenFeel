@@ -147,4 +147,101 @@ describe('lint 命令（stage-50 op-002 T17/R1）', () => {
     expect(out).toContain('扫描 1 个 kb 文件中的文件引用');
     expect(out).not.toContain('schemaVersion');
   });
+
+  // ── v1.6.0-stage-132 T3：lint fill（空壳清单，advisory，恒 exit 0） ──
+
+  /** 空壳需求正文（骨架形态：两节都是 `（待补充）`） */
+  function shellRequirementBody(id: string): string {
+    return [
+      `# ${id}：空壳需求`,
+      '',
+      '## 摘要',
+      '',
+      '（待补充）',
+      '',
+      '## 目标与验收',
+      '',
+      '（待补充）',
+      '',
+    ].join('\n');
+  }
+
+  /** 空壳阶段 overview（`## 目标` / `## 操作方案` 都是占位） */
+  const SHELL_OVERVIEW = ['## 目标', '', '（待补充）', '', '## 操作方案', '', '（待补充）', ''].join('\n');
+
+  /** 执行 `lint fill --json` 并把 stdout 解析为单文档 */
+  async function runFillJson(): Promise<Record<string, unknown>> {
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'fill', '--json']);
+    const raw = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    return JSON.parse(raw) as Record<string, unknown>;
+  }
+
+  it('T3 JSON：全绿 → 七键固定序 + exit 0（fill 是 advisory）', async () => {
+    const doc = await runFillJson();
+    expect(Object.keys(doc)).toEqual([
+      'schemaVersion', 'target', 'ok', 'checked', 'empty', 'missingPlan', 'stageDocs',
+    ]);
+    expect(doc).toMatchObject({
+      target: 'fill',
+      ok: true,
+      checked: 0,
+      empty: [],
+      missingPlan: [],
+      stageDocs: { overviewEmpty: [], planEmpty: [] },
+    });
+    // ★ 与 i18n/kb/req 三个目标不同：fill 恒 exit 0
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('T3 JSON：空壳需求 + 缺计划 + 空 overview → ok:false，但 exit 仍为 0', async () => {
+    const reqDir = join(tmpDir, '.openfeel', 'requirements');
+    mkdirSync(reqDir, { recursive: true });
+    writeFileSync(join(reqDir, 'REQ-001.md'), shellRequirementBody('REQ-001'), 'utf-8');
+    const stageDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01');
+    mkdirSync(stageDir, { recursive: true });
+    writeFileSync(join(stageDir, 'overview.md'), SHELL_OVERVIEW, 'utf-8');
+
+    const doc = await runFillJson();
+    expect(doc.ok).toBe(false);
+    expect(doc.checked).toBe(1);
+    expect(doc.empty).toEqual([
+      { id: 'REQ-001', emptySections: ['摘要', '目标与验收'] },
+    ]);
+    expect(doc.missingPlan).toEqual([{ id: 'REQ-001' }]);
+    expect(doc.stageDocs).toEqual({ overviewEmpty: [{ stageId: 'stage-01' }], planEmpty: [] });
+    // 仍有空壳也不设置非 0 退出码（存量 48 条不能让 lint 恒红）
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it('T3 人类：全绿输出 `fill: OK`；非全绿分组列出（每组最多 20 条 + 总数）', async () => {
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'fill']);
+    let out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('fill: OK');
+    expect(process.exitCode).toBeUndefined();
+
+    // 25 条空壳需求 → 组头带总数 25，明细仅前 20 条，超出部分以「其余 5 条」收口
+    const reqDir = join(tmpDir, '.openfeel', 'requirements');
+    mkdirSync(reqDir, { recursive: true });
+    for (let i = 1; i <= 25; i += 1) {
+      const id = `REQ-${String(i).padStart(3, '0')}`;
+      writeFileSync(join(reqDir, `${id}.md`), shellRequirementBody(id), 'utf-8');
+    }
+
+    logMock.mockClear();
+    process.exitCode = undefined;
+    await safeParse(['lint', 'fill']);
+    out = logMock.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(out).toContain('fill: 发现 50 项（已检查 25 个需求文件）');
+    expect(out).toContain('空壳需求（25）:');
+    expect(out).toContain('缺需求级计划（25）:');
+    expect(out).toContain('REQ-001（摘要、目标与验收）');
+    expect(out).toContain('REQ-020');
+    expect(out).not.toContain('REQ-021');
+    expect(out).toContain('…其余 5 条');
+    expect(process.exitCode).toBeUndefined();
+  });
 });

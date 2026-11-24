@@ -2,32 +2,33 @@
   "agents": {
     "openfeel-executor": {
       "agentName": "openfeel-executor",
-      "totalRuns": 74,
-      "successfulRuns": 74,
+      "totalRuns": 77,
+      "successfulRuns": 77,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 564508297,
-      "avgDurationMs": 7628491,
-      "durationSamples": 74
+      "totalDurationMs": 565880886,
+      "avgDurationMs": 7349102,
+      "durationSamples": 77
     },
     "openfeel-reviewer": {
       "agentName": "openfeel-reviewer",
-      "totalRuns": 85,
-      "successfulRuns": 85,
+      "totalRuns": 88,
+      "successfulRuns": 88,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 16380819,
-      "avgDurationMs": 192716,
-      "durationSamples": 85
+      "totalDurationMs": 16577122,
+      "avgDurationMs": 188376,
+      "durationSamples": 88
     },
     "openfeel-feel-tester": {
       "agentName": "openfeel-feel-tester",
-      "totalRuns": 16,
-      "successfulRuns": 16,
+      "totalRuns": 17,
+      "successfulRuns": 17,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 7094918,
-      "avgDurationMs": 443432
+      "totalDurationMs": 7100468,
+      "avgDurationMs": 417675,
+      "durationSamples": 17
     },
     "openfeel-archiver": {
       "agentName": "openfeel-archiver",
@@ -41,22 +42,23 @@
     },
     "openfeel-planner": {
       "agentName": "openfeel-planner",
-      "totalRuns": 136,
-      "successfulRuns": 136,
+      "totalRuns": 138,
+      "successfulRuns": 138,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 254082499,
-      "avgDurationMs": 1868254,
-      "durationSamples": 136
+      "totalDurationMs": 255876427,
+      "avgDurationMs": 1854177,
+      "durationSamples": 138
     },
     "openfeel-schemer": {
       "agentName": "openfeel-schemer",
-      "totalRuns": 33,
-      "successfulRuns": 33,
+      "totalRuns": 36,
+      "successfulRuns": 36,
       "failedRuns": 0,
       "totalRetries": 0,
-      "totalDurationMs": 14654898,
-      "avgDurationMs": 444088
+      "totalDurationMs": 15288220,
+      "avgDurationMs": 424673,
+      "durationSamples": 36
     }
   }
 }

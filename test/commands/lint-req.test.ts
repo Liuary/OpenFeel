@@ -106,7 +106,7 @@ describe('lint req 命令层（stage-115）', () => {
   }
 
   const JSON_KEYS = [
-    'schemaVersion', 'target', 'ok', 'issues', 'suspects', 'unknownCount', 'suspectCount',
+    'schemaVersion', 'target', 'ok', 'issues', 'suspects', 'unknownCount', 'suspectCount', 'fill',
   ];
 
   // ── op-002：fixture 级 ──
@@ -263,13 +263,14 @@ describe('lint req 命令层（stage-115）', () => {
     expect(process.exitCode).toBe(0);
   });
 
-  it('C9：--json 七键形状（键序 / 元素两键 / 无 suppressed/unclosed 键）', async () => {
+  it('C9：--json 八键形状（v1.6.0 新增 fill；键序 / 元素两键 / 无 suppressed/unclosed 键）', async () => {
     removeReqDir();
     const empty = await runJson();
     expect(Object.keys(empty)).toEqual(JSON_KEYS);
     expect(empty).toMatchObject({
       schemaVersion: 1, target: 'req', ok: true, issues: [], suspects: [],
       unknownCount: 0, suspectCount: 0,
+      fill: { emptyBody: [], emptyPlan: [] },
     });
     expect(empty).not.toHaveProperty('suppressed');
     expect(empty).not.toHaveProperty('unclosed');
@@ -285,8 +286,14 @@ describe('lint req 命令层（stage-115）', () => {
     expect(Object.keys(suspects[0])).toEqual(['path', 'message']);
     expect(typeof d.unknownCount).toBe('number');
     expect(typeof d.suspectCount).toBe('number');
+    // ★ v1.6.0-stage-132 / T3：新增 `fill` 键（**新键，不是语义变更**）：正文空壳 + 缺需求级计划；
+    //   只读 advisory，不参与 ok / 退出码（本用例 A 类已由 issues 决定 ok:false）。
+    expect(d.fill).toEqual({
+      emptyBody: [{ id: 'REQ-908', emptySections: ['摘要', '目标与验收'] }],
+      emptyPlan: [{ id: 'REQ-908' }],
+    });
     // 抑制统计与未闭合警告不进 JSON
-    expect(Object.keys(d)).toHaveLength(7);
+    expect(Object.keys(d)).toHaveLength(8);
     process.exitCode = 0;
   });
 

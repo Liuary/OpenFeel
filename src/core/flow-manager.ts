@@ -32,17 +32,23 @@ import {
 import { PublicLogger, formatDate } from './public-logger.js';
 import { t, getCliLang } from './i18n.js';
 export { type PipelinePhase, type MetaPhase, type StageStats } from './pipeline-schema.js';
-import { findStageStatusPath, findStageDirConflict, inspectStageDirOccupancy, parseStageId, normalizeStageId, isArchivedVersionOf, type StageDirOccupancy } from './plan/path.js';
+import { findStageStatusPath, findStagePlanPath, findRequirementPlanPath, getRequirementPlanRelPath, findStageDirConflict, inspectStageDirOccupancy, parseStageId, normalizeStageId, isArchivedVersionOf, type StageDirOccupancy } from './plan/path.js';
+import { EMPTY_TEMPLATE_LINE_LITERAL_RE, isStagePlanFilled, isRequirementPlanFilled } from './plan/filled.js';
+// 空模板标记的**单一来源**在 plan/filled.ts；此处保留 re-export 以不破坏既有消费方
+// （如 plan/scheme.ts 从 flow-manager 取 EMPTY_TEMPLATE_MARKER）。
+export { EMPTY_TEMPLATE_MARKER } from './plan/filled.js';
 import { atomicWriteFileSync } from './fs/atomic-write.js';
 import { withFileLock, projectLockPath } from './fs/file-lock.js';
 import { DEFAULT_CONFIG, ConfigDefaultsSchema, STAGE_FIELD_BY_CONFIG_KEY, WORKFLOW_MODES, type WorkflowMode } from './config.js';
 import { getGlobalProfilePath } from './global-paths.js';
 import type { RequirementData, StageVerificationRecord } from './req/types.js';
 import { VERIFICATION_KINDS } from './req/types.js';    // 验证种类值域单源（v1.5.8 / REQ-027；运行时值导入）
-import { syncRequirementStatus } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）
+import { syncRequirementStatus, AUTO_DONE_PRECONDITION } from './req/aggregate.js';   // 需求聚合回写入口（stage-83 T2；纯内存）+ 在办前置集单点
+import { planSha12 } from './req/requirement-ops.js';   // 计划指纹格式化单点（v1.6.0 / REQ-056 T6；禁止就地第二份 sha 逻辑）
 import { stageRequirementIds } from './req/stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { getSessionId } from './session.js';                  // 会话标识（stage-86 T4；core→core 零环）
 import { shouldAutoCommit } from './dev/sessions.js';         // 多会话登记 / 自动提交防污染（v1.5.8 / REQ-029）
+import { maybeSyncDevStatus } from './dev-status.js';         // 开发账本自动同步（v1.6.0 / REQ-059 T8；core→core 零环）
 
 /** 操作执行状态（B4/A1：新增 draft = 已创建未发布） */
 export type OpState = 'pending' | 'executing' | 'done' | 'failed' | 'draft';
@@ -278,6 +284,94 @@ export interface StageDoneGate {
   verificationMissing: boolean;
   /** 关联需求中「不存在 / 未 done」的 ID 列表（空 = 全部已完成；零关联恒空） */
   incompleteRequirements: string[];
+}
+
+/**
+ * 阶段计划门缺项（v1.6.0 / REQ-056 T5；**纯读判定**，与 {@link StageDoneGate} 同形）。
+ *
+ * 谓词单源：阶段侧 = `findStagePlanPath` + `isStagePlanFilled`；需求侧 =
+ * `findRequirementPlanPath` + `isRequirementPlanFilled`（判据全部来自 `plan/filled.ts`，
+ * 门内**不写**第二份字数/占位规则）。
+ */
+export interface StagePlanGate {
+  /** 阶段计划文件（三级回退）不存在 */
+  stagePlanMissing: boolean;
+  /** 阶段计划存在但未写实（占位行/信息量不足） */
+  stagePlanUnfilled: boolean;
+  /** 在办需求中缺少 `REQ-NNN.plan.md` 的 ID 列表 */
+  requirementsMissingPlan: string[];
+  /** 在办需求中计划存在但未写实的 ID 列表 */
+  requirementsUnfilledPlan: string[];
+}
+
+/**
+ * 阶段计划门拒绝（v1.6.0 / REQ-056 T5）。
+ *
+ * 继承 `Error`（`message` = 本地化文案行拼成），同时携带结构化 `gate` 载荷，
+ * 供命令层输出 `error.code='STAGE_PLAN_GATE'` 的 `detail`（四字段快照）。
+ */
+export class StagePlanGateError extends Error {
+  /** 被拒绝的阶段 ID（归一化后的键） */
+  readonly stage: string;
+  /** 缺项快照（与 `describeStagePlanGate` 同形） */
+  readonly gate: StagePlanGate;
+
+  constructor(stage: string, gate: StagePlanGate, lines: string[]) {
+    super(lines.join('\n'));
+    this.name = 'StagePlanGateError';
+    this.stage = stage;
+    this.gate = gate;
+  }
+}
+
+/**
+ * 计划门是否构成阻塞（单一判定点；核心门与命令层镜像共用，禁第二份或表达式）。
+ * @param gate {@link FlowManager.describeStagePlanGate} 的返回值
+ */
+export function isStagePlanGateBlocked(gate: StagePlanGate): boolean {
+  return gate.stagePlanMissing
+    || gate.stagePlanUnfilled
+    || gate.requirementsMissingPlan.length > 0
+    || gate.requirementsUnfilledPlan.length > 0;
+}
+
+/** `exec_running` 在 {@link PIPELINE_PHASES} 声明序中的下标（相位生命周期序 = 声明序） */
+const EXEC_RUNNING_PHASE_INDEX = PIPELINE_PHASES.indexOf('exec_running');
+
+/**
+ * 本次相位推进是否**跨越** `exec_running`（v1.6.0 / REV-014；计划门触发条件单点）。
+ *
+ * 语义：`fromPhase` 严格早于 `exec_running` ∧ `targetPhase` 等于或晚于 `exec_running`。
+ * - 覆盖 `--force` 单跳（`[to]`）：`plan_passed → review_pending` 同样跨越，必须触发计划门；
+ * - 已在 `exec_running` 及之后的阶段**不重复触发**（from 不早于 exec）——旧阶段零回归；
+ * - 回退到 `exec_running` 之前不算跨越（不拦回退）。
+ */
+function crossesExecRunning(fromPhase: PipelinePhase, targetPhase: PipelinePhase): boolean {
+  const from = PIPELINE_PHASES.indexOf(fromPhase);
+  const to = PIPELINE_PHASES.indexOf(targetPhase);
+  return from >= 0 && to >= 0 && from < EXEC_RUNNING_PHASE_INDEX && to >= EXEC_RUNNING_PHASE_INDEX;
+}
+
+/**
+ * 开发账本陈旧拒绝（v1.6.0 / REQ-059 T8）。
+ *
+ * 触发条件：`archiving → done` 时**先**跑一次 `maybeSyncDevStatus`，同步后仍 `due === true`
+ * （即同步本身失败，如 `.openfeel/dev/` 不可写）。正常路径同步成功 ⇒ `due=false` ⇒ 不触发。
+ * 与 `StagePlanGateError` 同形：`message` = 本地化文案行拼接，另带 `reason`（同步失败原因，
+ * 供命令层 `error.detail` 输出；**不吞异常**）。
+ */
+export class DevSyncStaleError extends Error {
+  /** 被拒绝的阶段 ID（归一化后的键） */
+  readonly stage: string;
+  /** 同步失败原因（可能为 null：到期但未捕获到异常消息） */
+  readonly reason: string | null;
+
+  constructor(stage: string, reason: string | null, lines: string[]) {
+    super(lines.join('\n'));
+    this.name = 'DevSyncStaleError';
+    this.stage = stage;
+    this.reason = reason;
+  }
 }
 
 /** 阶段验证记录写入错误码（命令层据此映射 exit 非 0 零写盘） */
@@ -1777,13 +1871,15 @@ export class FlowManager {
    * @param triggeredBy 触发者标识（如 'cli' / 'Feel'），默认 'flow-manager'
    * @param opts.reviewTier 本次调用的审查档位（**仅显式声明时写审计键** `review_tier`；缺省不写 ⟹ 既有条目逐字不变）
    * @param opts.reworkReason 审查通过后返工的整改原因（v1.3.3；仅写审计键 `rework_reason`，不参与状态机判定）
+   * @param opts.allowGateOverride 计划门留痕放行（v1.6.0 / REQ-056；**仅** `flow advance --force` 显式传入；
+   *   缺省 false = 拒绝。`--force` 的相位合法性跳过与此开关是两件事，此处不看 `--force` 本身）
    * @returns 是否触发 done 归档（true = 本次推进将阶段变为 done 且之前非 done，需在 save 后执行归档 commit）
    */
   advanceStagePhase(
     stageName: string,
     phase: PipelinePhase,
     triggeredBy?: string,
-    opts?: { reviewTier?: ReviewTier; reworkReason?: string },
+    opts?: { reviewTier?: ReviewTier; reworkReason?: string; allowGateOverride?: boolean },
   ): boolean {
     if (!this.data) {
       return false;
@@ -1832,6 +1928,10 @@ export class FlowManager {
     // 保存旧 phase 用于日志
     const fromPhase = stage.phase;
 
+    // 门留痕收集（v1.6.0）：仅在被拦后显式 `allowGateOverride` 放行时写入
+    // `appendLog.detail.gate_overrides`；正常通过路径零新增键（既有条目字节级不变）。
+    const gateOverrides: string[] = [];
+
     // v1.5.8 / REQ-027「完成必审验」硬门：**进入** done 要求
     //   ① 阶段验证记录 result === 'pass'；② 关联需求全部 done（零关联放行——空集守卫）。
     // 位置：blocking REV 门之后、任何状态写入之前（拒绝路径零写盘零审计）；**无 force 逃生口**。
@@ -1841,6 +1941,57 @@ export class FlowManager {
       if (gate.verificationMissing || gate.incompleteRequirements.length > 0) {
         throw new Error(this.formatStageDoneGate(key, gate).join('\n'));
       }
+    }
+
+    // v1.6.0 / REQ-059 T8「账本陈旧」硬门：**跨越进入** done 前要求开发账本不再到期。
+    // 顺序保证（裁定：门之前必先同步）：先跑一次 `maybeSyncDevStatus`——正常路径（同步成功）
+    // 立即把 due 刷成 false，因此**不会误拦**；只有同步本身失败（`.openfeel/dev` 不可写等）
+    // 才会拦，失败原因经 `DevSyncStaleError.reason` 带回，不再静默。
+    // 位置：done 门之后（done 门优先报缺审验证据）、任何状态写入之前（拒绝路径 flow.json 零写盘）。
+    // 放行只认显式 `allowGateOverride`（由 `flow advance --force` 传入），并在审计里留 `gate_overrides`。
+    if (targetPhase === 'done' && fromPhase !== 'done') {
+      const sync = maybeSyncDevStatus(this.projectPath);
+      if (sync.due) {
+        if (opts?.allowGateOverride !== true) {
+          throw new DevSyncStaleError(
+            key,
+            sync.error ?? null,
+            this.formatDevSyncStale(key, sync.error ?? null),
+          );
+        }
+        gateOverrides.push('dev_sync');
+        // v1.6.0 / REV-019：`flow advance` 出口已改为**只由本门同步一次**（命令层不再重复调用），
+        // 因此「不静默」的失败原因出口也上移到核心层：留痕放行时输出一行 stderr（文案同 i18n 模板）。
+        if (sync.error !== undefined) {
+          console.warn(t('flow.dev.syncFailedTmpl', getCliLang(this.projectPath), { err: sync.error }));
+        }
+      }
+    }
+
+    // v1.6.0 / REQ-056 T5「执行前有计划」硬门：**跨越进入** exec_running 要求
+    //   ① 阶段 `plan.md` 存在且写实；② 每个在办需求的 `REQ-NNN.plan.md` 存在且写实。
+    // 位置：done 门之后、任何状态写入之前（拒绝路径零写盘零审计）；已在 exec_running
+    // 及之后的阶段重复推进不复检（旧阶段不受影响）。
+    // 触发条件（REV-014）：按**相位路径跨越**判定（{@link crossesExecRunning}），
+    // 而非仅 `targetPhase === 'exec_running'`——否则 `--force` 单跳 `plan_passed → review_pending`
+    // 会完全绕过本门且无审计。
+    // `--force` 只跳过相位合法性，**不**绕过本门；放行只认显式 `allowGateOverride`，
+    // 且必须在审计里留下 `gate_overrides` + 缺项快照（谁在什么缺项下推进）。
+    let planGateOverride: StagePlanGate | null = null;
+    if (crossesExecRunning(fromPhase, targetPhase)) {
+      const planGate = this.describeStagePlanGate(key);
+      if (isStagePlanGateBlocked(planGate)) {
+        if (opts?.allowGateOverride !== true) {
+          throw new StagePlanGateError(key, planGate, this.formatStagePlanGate(key, planGate));
+        }
+        planGateOverride = planGate;
+        gateOverrides.push('plan');
+      }
+      // v1.6.0 / REQ-056 T6：计划门**放行**（含 `allowGateOverride` 留痕放行）即为在办需求
+      // 盖「执行前计划指纹」章——事后 `→ done` 前比对，计划被改动必须留下 `## 偏差与回写` 证据。
+      // 拒绝路径在上方已 throw（零写盘）；这里只改内存，落盘沿用命令层既有单次 save()，
+      // **不新增写盘点**（与 advanceStagePhase 的其他内存写同一批）。
+      this.stampRequirementPlanFingerprints();
     }
 
     // 更新 stage phase
@@ -1894,6 +2045,12 @@ export class FlowManager {
         ...(resumed === null ? {} : { resumed }),
         ...(opts?.reviewTier === undefined ? {} : { review_tier: opts.reviewTier }),
         ...(opts?.reworkReason === undefined ? {} : { rework_reason: opts.reworkReason }),
+        // v1.6.0 / REQ-056 T5 + REQ-059 T8：门留痕放行（仅在被拦后显式放行时写；
+        // 正常通过零新增键）。`gate_missing` 快照仅计划门有结构化缺项，账本门原因在 error.detail。
+        ...(gateOverrides.length === 0 ? {} : {
+          gate_overrides: gateOverrides,
+          ...(planGateOverride === null ? {} : { gate_missing: planGateOverride }),
+        }),
       },
     });
 
@@ -1977,6 +2134,165 @@ export class FlowManager {
   }
 
   /**
+   * 阶段计划门缺项查询（v1.6.0 / REQ-056 T5；**纯只读，零写盘**）。
+   *
+   * 单源谓词：`advanceStagePhase` / `resetStagePhase` 的核心门与命令层
+   * （`flow advance` / `flow stage reset`）的拒绝文案共用，禁第二份计划判据表达式。
+   *
+   * 「在办需求」口径（写死，plan §2 T5「每个在办需求」）：**全量需求扫描** ∧
+   * `status ∈ AUTO_DONE_PRECONDITION`（`scheduled` / `in_progress`）∧ 未 `waiver`。
+   * 不按阶段关联过滤——需求是工作单元、阶段是版本容器（一个阶段可容纳尚未 link 的需求），
+   * 因此执行前必须对**所有**可能被执行的在办需求持有计划。已 done / cancelled / rejected /
+   * waived 的需求不再需要计划（与 done 门的「已处置」口径一致）；draft 尚未进入执行范围。
+   *
+   * @param stageName 阶段 ID（短名 / 全名；与 advanceStagePhase 同款归一化 + 双键回退）
+   * @returns 缺项（阶段不存在 → 两侧皆空，由调用方的存在性校验负责）
+   */
+  describeStagePlanGate(stageName: string): StagePlanGate {
+    const data = this.data;
+    const normalized = normalizeStageId(stageName) ?? stageName;
+    const key = data?.stages?.[normalized] ? normalized : stageName;
+    const stage = data?.stages?.[key];
+
+    // ① 阶段计划：存在**且**写实（缺失与占位分列，A4b 用后者证明「存在 ≠ 写实」）
+    let stagePlanMissing = false;
+    let stagePlanUnfilled = false;
+    if (stage) {
+      const stagePlanPath = findStagePlanPath(this.projectPath, key);
+      if (stagePlanPath === null) {
+        stagePlanMissing = true;
+      } else {
+        try {
+          if (!isStagePlanFilled(readFileSync(stagePlanPath, 'utf-8'))) { stagePlanUnfilled = true; }
+        } catch {
+          stagePlanMissing = true;   // 读不到 = 等同于缺失（不因 IO 失败而放行）
+        }
+      }
+    }
+
+    // ② 在办需求计划：全局固定路径 + 统一写实判据
+    const requirementsMissingPlan: string[] = [];
+    const requirementsUnfilledPlan: string[] = [];
+    const requirements: RequirementData[] = Array.isArray(data?.requirements) ? data!.requirements : [];
+    for (const req of requirements) {
+      if (!req || typeof req.id !== 'string' || req.id === '') { continue; }
+      // 已 waived / 非在办 → 不需要执行前计划（只拦真正要做的）
+      if (req.waiver !== undefined) { continue; }
+      if (!(AUTO_DONE_PRECONDITION as readonly string[]).includes(req.status)) { continue; }
+      const planPath = findRequirementPlanPath(this.projectPath, req.id);
+      if (planPath === null) {
+        requirementsMissingPlan.push(req.id);
+        continue;
+      }
+      try {
+        if (!isRequirementPlanFilled(readFileSync(planPath, 'utf-8'))) {
+          requirementsUnfilledPlan.push(req.id);
+        }
+      } catch {
+        requirementsMissingPlan.push(req.id);
+      }
+    }
+
+    return { stagePlanMissing, stagePlanUnfilled, requirementsMissingPlan, requirementsUnfilledPlan };
+  }
+
+  /**
+   * 阶段计划门缺项 → 本地化文案行（命令层 / 核心抛错共用；不自带输出与退出码）。
+   * 最后一行恒为「出路」提示（补计划 / `--force` 留痕放行）。
+   *
+   * @param stageName 阶段 ID
+   * @param gate {@link describeStagePlanGate} 的返回值
+   * @param lang 语言标识（缺省按项目路径解析）
+   * @returns 逐行文案（无缺项 → 空数组）
+   */
+  formatStagePlanGate(stageName: string, gate: StagePlanGate, lang?: string): string[] {
+    const l = lang ?? getCliLang(this.projectPath);
+    const lines: string[] = [];
+    if (gate.stagePlanMissing) {
+      lines.push(t('flow.manager.stagePlanMissingTmpl', l, { stage: stageName }));
+    }
+    if (gate.stagePlanUnfilled) {
+      lines.push(t('flow.manager.stagePlanUnfilledTmpl', l, { stage: stageName }));
+    }
+    if (gate.requirementsMissingPlan.length > 0) {
+      lines.push(t('flow.manager.requirementsMissingPlanTmpl', l, {
+        stage: stageName,
+        items: gate.requirementsMissingPlan.join(', '),
+      }));
+    }
+    if (gate.requirementsUnfilledPlan.length > 0) {
+      lines.push(t('flow.manager.requirementsUnfilledPlanTmpl', l, {
+        stage: stageName,
+        items: gate.requirementsUnfilledPlan.join(', '),
+      }));
+    }
+    if (lines.length > 0) {
+      lines.push(t('flow.manager.stagePlanGateHint', l, { stage: stageName }));
+    }
+    return lines;
+  }
+
+  /**
+   * 开发账本陈旧 → 本地化文案行（v1.6.0 / REQ-059 T8；核心抛错与命令层共用）。
+   * 最后一行恒为「出路」提示（修复 `.openfeel/dev` 可写 / `--force` 留痕放行）。
+   *
+   * @param stageName 阶段 ID
+   * @param reason 同步失败原因（null / 空 → 模板里的 {reason} 渲染为空串）
+   * @param lang 语言标识（缺省按项目路径解析）
+   * @returns 逐行文案（首行主文案 + 出路提示）
+   */
+  formatDevSyncStale(stageName: string, reason: string | null, lang?: string): string[] {
+    const l = lang ?? getCliLang(this.projectPath);
+    // i18n 模板用 {name} 作占位，原始异常消息里可能含花括号（如 JSON 片段）→ 先剔除，避免残留占位。
+    const detail = reason === null || reason.trim() === ''
+      ? ''
+      : `（${reason.replace(/[{}]/g, '')}）`;
+    return [
+      t('flow.manager.devSyncStaleTmpl', l, { stage: stageName, reason: detail }),
+      t('flow.manager.devSyncStaleHint', l, { stage: stageName }),
+    ];
+  }
+
+  /**
+   * 为在办需求盖「执行前计划指纹」章（v1.6.0 / REQ-056 T6；**纯内存 + 只读 IO**）。
+   *
+   * 调用点唯一：`advanceStagePhase` 的 T5 计划门**放行**分支（含 `allowGateOverride`
+   * 留痕放行）——拒绝路径不到这里，因此「被拒但已盖章」的写盘泄漏不可能发生。
+   * 「在办需求」口径与 {@link describeStagePlanGate} 逐字一致：全量扫描 ∧
+   * `status ∈ AUTO_DONE_PRECONDITION` ∧ 未 `waiver`；计划缺失/不可读的条目**跳过盖章**
+   * （缺计划已被门拦下；`--force` 放行时也不伪造指纹）。
+   *
+   * 盖章内容：`{path, sha256(前 12 位), recorded_at}`；已有 `deviations` 计数**保留**
+   * （重复进入 exec_running 不能把 force 留痕次数清零）。落盘由调用方 save() 承担。
+   */
+  private stampRequirementPlanFingerprints(): void {
+    const data = this.data;
+    if (!data) { return; }
+    const requirements: RequirementData[] = Array.isArray(data.requirements) ? data.requirements : [];
+    const at = new Date().toISOString();
+    for (const req of requirements) {
+      if (!req || typeof req.id !== 'string' || req.id === '') { continue; }
+      if (req.waiver !== undefined) { continue; }
+      if (!(AUTO_DONE_PRECONDITION as readonly string[]).includes(req.status)) { continue; }
+      const planPath = findRequirementPlanPath(this.projectPath, req.id);
+      if (planPath === null) { continue; }
+      let md: string;
+      try {
+        md = readFileSync(planPath, 'utf-8');
+      } catch {
+        continue;                                  // 读不到 → 不盖章（不伪造指纹）
+      }
+      const deviations = typeof req.plan?.deviations === 'number' ? req.plan.deviations : undefined;
+      req.plan = {
+        path: getRequirementPlanRelPath(req.id),
+        sha256: planSha12(md),
+        recorded_at: at,
+        ...(deviations === undefined ? {} : { deviations }),
+      };
+    }
+  }
+
+  /**
    * 记录阶段验证证据（v1.5.8 / REQ-027；纯内存 + 单条审计 `stage_verification`，落盘由调用方 save()）。
    * 相位门：仅 `phase === 'archiving'` 可记录（阶段验证是归档前证据；done 之后不再接受补记）。
    * 校验顺序固定（任一失败 → 零变更零审计）：阶段存在 → 相位 → result / kind 值域 → by / note 非空。
@@ -2039,9 +2355,11 @@ export class FlowManager {
    * @param stageName 阶段 ID（短名/全名）
    * @param to 目标 phase 字符串
    * @param options.dryRun 仅计算不修改内存（命令层不 save）
+   * @param options.allowGateOverride 计划门留痕放行（v1.6.0 / REQ-056；**仅** `flow stage reset --force`
+   *   显式传入；缺省 false = 拒绝，闭合「复位绕过 exec 门」的后门）
    * @returns 复位结果（from/to/status/changed）
    */
-  resetStagePhase(stageName: string, to: string, options: { dryRun?: boolean } = {}): ResetStageResult {
+  resetStagePhase(stageName: string, to: string, options: { dryRun?: boolean; allowGateOverride?: boolean } = {}): ResetStageResult {
     if (!this.data) {
       throw new Error('flow.json 未加载');
     }
@@ -2078,8 +2396,29 @@ export class FlowManager {
 
     // 幂等：phase 与投影 status 均无变化 → no-op（dryRun 与真实路径一致）
     const changed = fromPhase !== targetPhase || stage.status !== projectedStatus;
+
+    // v1.6.0 / REQ-056 T5：复位到 exec_running 必须与 exec 门同口径复检计划（否则复位就是绕过口）。
+    // 位置：REV 阻塞检查之后、任何内存写入之前（拒绝路径零变更零审计）；幂等（from === to）自然不触发。
+    let planGateOverride: StagePlanGate | null = null;
+    if (targetPhase === 'exec_running' && fromPhase !== 'exec_running') {
+      const planGate = this.describeStagePlanGate(key);
+      if (isStagePlanGateBlocked(planGate)) {
+        if (options.allowGateOverride !== true) {
+          throw new StagePlanGateError(key, planGate, this.formatStagePlanGate(key, planGate));
+        }
+        planGateOverride = planGate;
+      }
+    }
+
     if (options.dryRun || !changed) {
       return { changed, from: fromPhase, to: targetPhase, status: projectedStatus };
+    }
+
+    // v1.6.0 / REQ-056 T6：复位到 exec_running 的**放行**同样补盖计划指纹（与 advanceStagePhase
+    // 的计划门同口径，否则「复位 → 执行 → done」可绕过偏差校验）。dryRun / no-op 已在上面早退，
+    // 因此不会出现「预演却已盖章」；落盘沿用命令层既有单次 save()。
+    if (targetPhase === 'exec_running' && fromPhase !== 'exec_running') {
+      this.stampRequirementPlanFingerprints();
     }
 
     // 写入（phase 权威 + status 投影）
@@ -2094,7 +2433,7 @@ export class FlowManager {
       time: '',
       agent: 'flow-manager',
       action: 'reset_stage_phase',
-      detail: { stageName: key, from: fromPhase, to: targetPhase, session_id: resetSessionId, ...(resetResumed === null ? {} : { resumed: resetResumed }) },
+      detail: { stageName: key, from: fromPhase, to: targetPhase, session_id: resetSessionId, ...(resetResumed === null ? {} : { resumed: resetResumed }), ...(planGateOverride === null ? {} : { gate_overrides: ['plan'], gate_missing: planGateOverride }) },
     });
 
     // 需求聚合对称回退（T2）：聚合视图重算——聚合 ≠ done ∧ 需求 status === done → 回退 in_progress；
@@ -5225,22 +5564,13 @@ function readStatusFieldValue(content: string, key: string): string | null {
 }
 
 /**
- * 空模板标记（**单一来源**）：B3 填充度检测、B4 publish 校验、healthCheck 空模板检查共用。
- * 见 op-005 验收 12（无第二套判定）。
+ * 空模板标记与整段字面量正则（**单一来源**）：定义在 `src/core/plan/filled.ts`。
+ * - `EMPTY_TEMPLATE_MARKER`：此处 re-export（见文件头 import 区）；
+ * - `EMPTY_TEMPLATE_LINE_LITERAL_RE`：整段字面量语义，供下方 `isTemplateEmpty` 对整段 `.test()`。
  */
-export const EMPTY_TEMPLATE_MARKER = '- [ ] 待补充';
-
-/**
- * 空模板标记的**整行锚定**正则（单一来源）：
- * 行首可含缩进（[ \t]*）、`-` 与 `[ ]` 之间允许空白、行尾允许空白并容忍 CRLF；
- * 仅当标记**独占一行**（含缩进）时判为未填充——避免正文**行内引用**该字面导致误报（cli/BUG-005，stage-54 E1）。
- * **已知边界**：代码围栏（```）内的独占行仍判为 empty（不引入围栏解析，见 stage-54 A1）。
- */
-const EMPTY_TEMPLATE_LINE_RE = /(?:^|\n)[ \t]*-\s*\[\s*\]\s*待补充[ \t]*(?=\r?\n|$)/;
-
 /** 模板是否仍含空模板标记（未填充；**整行锚定**，非子串） */
 export function isTemplateEmpty(content: string): boolean {
-  return EMPTY_TEMPLATE_LINE_RE.test(content);
+  return EMPTY_TEMPLATE_LINE_LITERAL_RE.test(content);
 }
 
 /**

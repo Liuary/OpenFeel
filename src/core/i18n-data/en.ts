@@ -433,6 +433,18 @@ export const flow: I18nDomain = {
   'dev.cleanLegacyConfirmTmpl':     { key: 'flow.dev.cleanLegacyConfirmTmpl',     zh: '', en: 'These legacy files will be deleted (unrecoverable; git history still keeps them): {files}\nRe-run with --yes to confirm; use --dry-run to only list them.' },
   'dev.cleanIncludeRequiresLegacyTmpl': { key: 'flow.dev.cleanIncludeRequiresLegacyTmpl', zh: '', en: '`--include-archive` must be used together with `--legacy`.' },
   'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '', en: 'Run `openfeel flow next` (or `flow status`) before a write operation (preflight missing or expired).' },
+
+  // Plan-before-exec gate (v1.6.0 / REQ-056 T5): entering exec_running requires a real plan
+  'manager.stagePlanMissingTmpl':    { key: 'flow.manager.stagePlanMissingTmpl',    zh: '', en: 'Cannot enter the execution phase for {stage}: the stage plan plan.md is missing; write the plan first, or add --force (logged override)' },
+  'manager.stagePlanUnfilledTmpl':   { key: 'flow.manager.stagePlanUnfilledTmpl',   zh: '', en: 'Cannot enter the execution phase for {stage}: the stage plan plan.md is not substantive (placeholder lines or too little content); fill in real content, or add --force (logged override)' },
+  'manager.requirementsMissingPlanTmpl': { key: 'flow.manager.requirementsMissingPlanTmpl', zh: '', en: 'Cannot enter the execution phase for {stage}: these in-flight requirements have no plan file ({items}); write .openfeel/plan/reqs/<REQ>.plan.md for each' },
+  'manager.requirementsUnfilledPlanTmpl': { key: 'flow.manager.requirementsUnfilledPlanTmpl', zh: '', en: 'Cannot enter the execution phase for {stage}: the plans of these in-flight requirements are not substantive ({items}); fill in Goal / Task breakdown / Acceptance criteria' },
+  'manager.stagePlanGateHint':       { key: 'flow.manager.stagePlanGateHint',       zh: '', en: 'Options: (1) write the plan files (recommended); (2) add --force for a logged override (flow.json.log records gate_overrides / gate_missing)' },
+
+  // Dev ledger stale gate (v1.6.0 / REQ-059 T8): before done the dev ledger must not be due
+  'manager.devSyncStaleTmpl':        { key: 'flow.manager.devSyncStaleTmpl',        zh: '', en: 'Cannot advance {stage} to done: the dev ledger is still due (due=true){reason}; make .openfeel/dev writable and retry, or add --force (logged override)' },
+  'manager.devSyncStaleHint':        { key: 'flow.manager.devSyncStaleHint',        zh: '', en: 'Options: (1) make .openfeel/dev writable and retry (recommended); (2) add --force for a logged override (flow.json.log records gate_overrides=[dev_sync])' },
+  'dev.syncFailedTmpl':              { key: 'flow.dev.syncFailedTmpl',              zh: '', en: '[openfeel] dev ledger sync failed: {err} (this write was not blocked; the done gate will re-check)' },
 };
 
 /* ==================== init ==================== */
@@ -800,6 +812,7 @@ export const help: I18nDomain = {
   'flow.stage.reset.argstageId': { key: 'help.flow.stage.reset.argstageId', zh: '', en: 'Stage ID (e.g. stage-01 or v1.0.0-stage-01)' },
   'flow.stage.reset.to':   { key: 'help.flow.stage.reset.to',   zh: '', en: 'Target phase (e.g. review_pending / test_pending / done); valid values: openfeel flow phases' },
   'flow.stage.reset.dryRun': { key: 'help.flow.stage.reset.dryRun', zh: '', en: 'Preview only; nothing is written' },
+  'flow.stage.reset.force': { key: 'help.flow.stage.reset.force', zh: '', en: 'Override the plan gate for entering exec_running (allowed and recorded as gate_overrides/gate_missing in flow.json.log)' },
   'flow.advance':          { key: 'help.flow.advance',          zh: '', en: 'Advance pipeline stage' },
   'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '', en: 'Operation ID (e.g. stage-01.op-001), for logging/display only' },
   'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '', en: 'Target phase (e.g. exec_running). Valid phases & transitions: openfeel flow phases' },
@@ -995,13 +1008,15 @@ export const help: I18nDomain = {
   'instructions.json':     { key: 'help.instructions.json',     zh: '', en: 'Output JSON format instead of XML' },
   'instructions.schema':   { key: 'help.instructions.schema',   zh: '', en: 'Schema name (default spec-driven)' },
 
-  'lint':                  { key: 'help.lint',                  zh: '', en: 'Project health checks (i18n key consistency, kb reference validity, requirement command names)' },
+  'lint':                  { key: 'help.lint',                  zh: '', en: 'Project health checks (i18n key consistency, kb reference validity, requirement command names, empty-doc list)' },
   'lint.i18n':             { key: 'help.lint.i18n',             zh: '', en: 'Validate i18n key consistency (empty values / zh-CN-only / en-only keys)' },
   'lint.i18n.json':        { key: 'help.lint.i18n.json',        zh: '', en: 'Output { schemaVersion, target, ok, issues: [{ path, message }] } as JSON' },
   'lint.kb':               { key: 'help.lint.kb',               zh: '', en: 'Detect stale file references in .openfeel/kb/' },
   'lint.kb.json':          { key: 'help.lint.kb.json',          zh: '', en: 'Output { schemaVersion, target, ok, issues: [{ path, message }] } as JSON' },
   'lint.req':              { key: 'help.lint.req',              zh: '', en: 'Validate command names in requirement bodies (resolved against the real command tree)' },
-  'lint.req.json':         { key: 'help.lint.req.json',         zh: '', en: 'Output { schemaVersion, target, ok, issues, suspects, unknownCount, suspectCount } as JSON' },
+  'lint.req.json':         { key: 'help.lint.req.json',         zh: '', en: 'Output { schemaVersion, target, ok, issues, suspects, unknownCount, suspectCount, fill } as JSON' },
+  'lint.fill':             { key: 'help.lint.fill',             zh: '', en: 'List empty requirement bodies / missing requirement plans / empty stage docs (advisory, exit code unchanged)' },
+  'lint.fill.json':        { key: 'help.lint.fill.json',        zh: '', en: 'Output { schemaVersion, target, ok, checked, empty, missingPlan, stageDocs } as JSON' },
 
   // migrate (legacy layout migration)
   'migrate':               { key: 'help.migrate',               zh: '', en: 'Legacy layout migration (detect/backup/migrate/rollback existing project legacy layout)' },
@@ -1067,6 +1082,7 @@ export const help: I18nDomain = {
   'req.complete.evidence': { key: 'help.req.complete.evidence', zh: '', en: 'Evidence (test command / report path / summary)' },
   'req.complete.independent': { key: 'help.req.complete.independent', zh: '', en: 'Independent review (recommended)' },
   'req.complete.self':   { key: 'help.req.complete.self',   zh: '', en: 'Self review (non-independent; marked in the archive summary)' },
+  'req.complete.force':  { key: 'help.req.complete.force',  zh: '', en: 'Force gates through with an audit trail (writes body_waiver / plan_waiver + audit; files still need filling in)' },
   'req.list':            { key: 'help.req.list',            zh: '', en: 'List requirements (filter by status/version/owner; --include-archived merges archived ones)' },
   'req.list.status':     { key: 'help.req.list.status',     zh: '', en: 'Filter by status (draft/scheduled/in_progress/done/blocked/cancelled/rejected)' },
   'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '', en: 'Filter by target version' },
@@ -1080,6 +1096,7 @@ export const help: I18nDomain = {
   'req.claim':           { key: 'help.req.claim',           zh: '', en: 'Claim a requirement (occupancy checked; rejected if claimed by another)' },
   'req.claim.argid':     { key: 'help.req.claim.argid',     zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.claim.owner':     { key: 'help.req.claim.owner',     zh: '', en: 'Owner (default: .openfeel/.info.json user -> git config user.name)' },
+  'req.claim.force':     { key: 'help.req.claim.force',     zh: '', en: 'Kept for compatibility: claim does not check the body (the body gate fires only on ->scheduled / ->in_progress / ->done transitions); this option currently has no effect' },
   'req.release':         { key: 'help.req.release',         zh: '', en: 'Release claim (no-op success if unclaimed)' },
   'req.release.argid':   { key: 'help.req.release.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.set':             { key: 'help.req.set',             zh: '', en: 'Update requirement fields (whitelist; transition legality checked by engine)' },
@@ -1096,6 +1113,7 @@ export const help: I18nDomain = {
   'req.advance':         { key: 'help.req.advance',         zh: '', en: 'Advance requirement status (legality by engine transition table; done: allowed with no linked stages, or once every linked stage reaches exec_running or later)' },
   'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '', en: 'Requirement ID (e.g. REQ-001)' },
   'req.advance.to':      { key: 'help.req.advance.to',      zh: '', en: 'Target status (legality checked by engine)' },
+  'req.advance.force':   { key: 'help.req.advance.force',   zh: '', en: 'Force gates through with an audit trail (body/plan gate writes a waiver, plan deviation +1; files still need filling in)' },
   'req.board':           { key: 'help.req.board',           zh: '', en: 'Requirement board (grouped by status; 7 fixed groups)' },
   'req.board.targetVersion': { key: 'help.req.board.targetVersion', zh: '', en: 'Filter by target version' },
   'req.board.json':      { key: 'help.req.board.json',      zh: '', en: 'Output JSON { schemaVersion, groups }' },
@@ -1131,6 +1149,20 @@ export const help: I18nDomain = {
   'req.rollover.to':     { key: 'help.req.rollover.to',     zh: '', en: 'Target version (e.g. v1.6.0)' },
   'req.rollover.id':     { key: 'help.req.rollover.id',     zh: '', en: 'Roll over only this requirement (mutually exclusive with --all)' },
   'req.rollover.all':    { key: 'help.req.rollover.all',    zh: '', en: 'Roll over every unfinished requirement of that version (mutually exclusive with --id)' },
+  // v1.6.0-stage-132 / T2: requirement body write-through (req body) and req add body sections
+  'req.body':            { key: 'help.req.body',            zh: '', en: 'Write a business section of the requirement body (meta sections are protected; every write appends to the change log)' },
+  'req.body.argid':      { key: 'help.req.body.argid',      zh: '', en: 'Requirement ID (e.g. REQ-001)' },
+  'req.body.section':    { key: 'help.req.body.section',    zh: '', en: 'Section name (e.g. 摘要 / 目标与验收 / 问题 / 初步规划; meta sections are not writable)' },
+  'req.body.text':       { key: 'help.req.body.text',       zh: '', en: 'Section body (Markdown; mutually exclusive with --file)' },
+  'req.body.file':       { key: 'help.req.body.file',       zh: '', en: 'Read the section body from a file (mutually exclusive with --text; relative paths resolve from the project root)' },
+  'req.body.append':     { key: 'help.req.body.append',     zh: '', en: 'Append to the end of the section (default replaces the whole section)' },
+  'req.body.replace':    { key: 'help.req.body.replace',    zh: '', en: 'Replace the whole section (default; mutually exclusive with --append)' },
+  'req.body.json':       { key: 'help.req.body.json',       zh: '', en: 'Output JSON { schemaVersion, id, section, path, lines, created }' },
+  'req.add.problem':     { key: 'help.req.add.problem',     zh: '', en: 'Body section ## 问题 (v1.6.0: filled body)' },
+  'req.add.goal':        { key: 'help.req.add.goal',        zh: '', en: 'Body section ## 目标与验收 -> 目标 subsection (v1.6.0: filled body)' },
+  'req.add.acceptance':  { key: 'help.req.add.acceptance',  zh: '', en: 'Body section ## 目标与验收 -> 验收 subsection (v1.6.0: filled body)' },
+  'req.add.plan':        { key: 'help.req.add.plan',        zh: '', en: 'Body section ## 初步规划 (v1.6.0: filled body)' },
+  'req.add.summary':     { key: 'help.req.add.summary',     zh: '', en: 'Body section ## 摘要 (v1.6.0: filled body; with --goal/--acceptance the body is filled in one step)' },
 };
 
 /* ==================== config ==================== */
@@ -1407,6 +1439,28 @@ export const req: I18nDomain = {
   'rollover.invalidVersionTmpl': { key: 'req.rollover.invalidVersionTmpl', zh: '', en: '--from {from} and --to {to} must be non-empty and different' },
   'rollover.notInVersionTmpl': { key: 'req.rollover.notInVersionTmpl', zh: '', en: '{id} targets version {current}, not {from}; cannot roll over' },
   'rollover.terminalTmpl': { key: 'req.rollover.terminalTmpl', zh: '', en: '{id} is in a terminal status ({status}); cannot roll over' },
+  // v1.6.0-stage-132 / T2: requirement body write-through (req body)
+  'body.doneTmpl':       { key: 'req.body.doneTmpl',          zh: '', en: 'Updated {id} body: ## {section} ({lines} line(s), {action}) -> {path}' },
+  'body.actionCreated':  { key: 'req.body.actionCreated',     zh: '', en: 'section created' },
+  'body.actionReplaced': { key: 'req.body.actionReplaced',    zh: '', en: 'replaced' },
+  'body.actionAppended': { key: 'req.body.actionAppended',    zh: '', en: 'appended' },
+  'body.noTextTmpl':     { key: 'req.body.noTextTmpl',        zh: '', en: 'One of --text <md> or --file <path> is required (the body cannot be empty)' },
+  'body.exclusiveTmpl':  { key: 'req.body.exclusiveTmpl',     zh: '', en: '--text and --file are mutually exclusive and one is required' },
+  'body.flagExclusiveTmpl': { key: 'req.body.flagExclusiveTmpl', zh: '', en: '--append and --replace cannot be used together' },
+  'body.protectedTmpl':  { key: 'req.body.protectedTmpl',     zh: '', en: '{section} is a meta section of the requirement body and cannot be modified via req body (writable: 摘要 / 目标与验收 / 问题 / 初步规划 and custom business sections)' },
+  'body.emptyTmpl':      { key: 'req.body.emptyTmpl',         zh: '', en: 'Section body is empty (--text / --file content cannot be blank)' },
+  'body.invalidFieldTmpl': { key: 'req.body.invalidFieldTmpl', zh: '', en: '{section} is an invalid section name or --file is unreadable (a section name must be non-empty and must not contain newlines or #)' },
+  // v1.6.0-stage-132 / T6: plan deviation write-back (machine-checkable evidence)
+  'err.planDeviationTmpl': { key: 'req.err.planDeviationTmpl', zh: '', en: 'Requirement {id} is not complete yet: the plan file was changed after execution, but "## 偏差与回写" is not filled in (needs >=40 non-whitespace characters and at least one YYYY-MM-DD record). Write it and retry, or run `openfeel req advance {id} --to done --force` to force through with an audit trail (plan.deviations += 1)' },
+  'warn.planUnstampedTmpl': { key: 'req.warn.planUnstampedTmpl', zh: '', en: 'Note: requirement {id} has no pre-execution plan fingerprint (plan is absent; historical requirement) — allowed this time and audited as plan_unstamped:true; it will be stamped automatically the next time the stage plan gate passes' },
+  'advance.forceRequiresStampTmpl': { key: 'req.advance.forceRequiresStampTmpl', zh: '', en: 'Requirement {id} has no plan fingerprint (plan absent): --force only forces plan-deviation through with an audit trail; nothing was written this time' },
+  'advance.planDeviationForcedSuffix': { key: 'req.advance.planDeviationForcedSuffix', zh: '', en: ' [plan deviation force-allowed with audit trail: plan.deviations += 1]' },
+  /* v1.6.0-stage-132 / T4 body gate + T7 requirement-plan gate (hard gate with --force audit trail) */
+  'err.bodyEmptyTmpl':   { key: 'req.err.bodyEmptyTmpl',     zh: '', en: 'Requirement {id} has no filled body, so it cannot enter scheduled / in_progress / done (unfilled sections: {sections}). Fill the body first, then retry: `openfeel req body {id} --section 摘要 --text "<problem, current state and conclusion, >=40 chars>"` and `openfeel req body {id} --section 目标与验收 --text "- A1 ... (at least one criterion with a command)"`; if it really must pass, use `--force` (supported by req advance / req complete; writes body_waiver + audit requirement_body_forced); claim does not check the body, so `--force` has no effect on claim' },
+  'err.planMissingTmpl': { key: 'req.err.planMissingTmpl',   zh: '', en: 'Requirement {id} needs a filled requirement-level plan before entering in_progress (a general or zero-linked-stage requirement has no stage exec gate to fall back on). Create `.openfeel/plan/reqs/{id}.plan.md` from the template with sections `## 目标` / `## 任务拆解` / `## 验收判据` (>=40 non-whitespace chars each, last one needs at least one criteria line); fill it and retry, or run `openfeel req advance {id} --to in_progress --force` to force through with an audit trail (writes plan_waiver + audit requirement_plan_forced)' },
+  'claim.bodyForcedSuffix': { key: 'req.claim.bodyForcedSuffix', zh: '', en: ' [body gate force-allowed with audit trail: body_waiver + audit requirement_body_forced]' },
+  'advance.gateForcedSuffix': { key: 'req.advance.gateForcedSuffix', zh: '', en: ' [gate force-allowed with audit trail: body_waiver / plan_waiver + audit]' },
+  'complete.gateForcedSuffix': { key: 'req.complete.gateForcedSuffix', zh: '', en: ' [gate force-allowed with audit trail: body_waiver / plan_waiver + audit]' },
 };
 
 /* ==================== dashboard domain: dashboard HTML rendering copy (v1.5.10 / stage-125 op-002) ==================== */

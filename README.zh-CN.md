@@ -79,6 +79,13 @@ openfeel flow next                                               # 5. 按调度�
 - **general**：无流水线的零散任务，仅需求级合法；
 - 需求关联阶段后，全部关联阶段 done 时自动收口需求。
 
+### 需求写实与执行前计划（v1.6.0）
+
+- **正文必须写实**：新建需求后用 `openfeel req body REQ-NNN --section 摘要 --text "…"`（再 `--section 目标与验收`）写实正文；空壳需求在**状态流转**（`→scheduled` / `→in_progress` / `→done`）时被 `REQ_BODY_GATE` 拦住（`--force` 留痕放行，文件仍须补写；认领不校验正文）。
+- **执行前必须有需求级计划**：`.openfeel/plan/reqs/REQ-NNN.plan.md` 写实后才可 `→in_progress`；阶段进入 `exec_running` 前还会检查阶段 `plan.md` 与全部在办需求计划（`STAGE_PLAN_GATE`），复位（`flow stage reset --to exec_running`）同口径。
+- **全模式强制 plan → exec → review**：`general` / `fast` / `full` 一律要求「需求级计划 → 执行 → 审查」，区别只在阶段级是否裁剪 scheme/test；`general` 仍**仅需求级合法**，阶段级转移表保持为空。
+- `--force` 只做**留痕放行**（waiver + `flow.json.log` 审计），**不能**绕过 done 门（review + verify）、blocking REV 与版本归档判据；存量空壳可用 `openfeel lint fill` 枚举。
+
 ## Claude Code 适配器（v1.1.6 起）
 
 > 与 opencode 适配器**并存**，**默认不启用**（须显式 `--tools claude`）。

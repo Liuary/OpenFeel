@@ -1435,3 +1435,16 @@ const SchemaSchema = z.object({
   `~/.openfeel/schemas/{name}/schema.yaml` → `node_modules/openfeel/schemas/{name}/schema.yaml`;
   otherwise throws `找不到 Schema "{name}": 已搜索路径 {paths}`
 - No CLI command in this repository consumes `ArtifactGraph`; the stage/op layer never reads `schemas/`.
+
+---
+
+## v1.6.0 增量（现行契约；以上 v1.2.1 正文保持冻结）
+
+> 实现锚点：`src/core/flow-manager.ts`（`describeStagePlanGate` / `advanceStagePhase` / `resetStagePhase`）、`src/commands/flow.ts`、`src/core/plan/filled.ts`。
+
+1. **执行前计划门（REQ-056 / REV-014）**：`advanceStagePhase` 在 done 门之后、写盘之前插入；条件是本次相位路径**跨越** `exec_running`（`crossesExecRunning`：`fromPhase` 严格早于 `exec_running` 且 `targetPhase` 等于或晚于 `exec_running`；`--force` 单跳如 `plan_passed → review_pending` 同样触发，已在 `exec_running` 及之后的阶段不重复触发），而非 `targetPhase === 'exec_running'`。要求阶段 `plan.md`（`findStagePlanPath` 三级回退）与每个在办需求（`scheduled`/`in_progress`，**全局扫描**，含零关联阶段与 `general`）的 `.openfeel/plan/reqs/REQ-NNN.plan.md` 存在**且写实**（`isStagePlanFilled` / `isRequirementPlanFilled`）。拒绝 ⇒ `STAGE_PLAN_GATE` / refusal / exit 1，`detail = {stagePlanMissing, stagePlanUnfilled, requirementsMissingPlan[], requirementsUnfilledPlan[]}`，**零写盘**（revision 不变）。
+2. **`--force` 语义**：`flow advance` / `flow stage reset` 把 `allowGateOverride: true` 传给核心层；放行时 `appendLog` 的条目 detail 追加 `gate_overrides:['plan']` 与 `gate_missing` 快照。**不是静默放行**，也不改变 done 门 / blocking REV 门 / 归档判据。`--dry-run` 只预览相位，不预演证据门。
+3. **复位同口径（REV-005 / 裁定①）**：`flow stage reset <stage> --to exec_running` 复检同一谓词；**不加 `--force` 拒绝**（零写盘，提示「补计划 / 加 `--force`」两条出路）；加 `--force` 时审计条目不叫 `advance_stage_phase` 而是 `reset_stage_phase`，detail 同样是 `gate_overrides` + `gate_missing`。
+4. **账本陈旧门（REQ-059）**：`advanceStagePhase` 入口**先**跑 `maybeSyncDevStatus()`，再在 done 门之前判 `targetPhase === 'done' && fromPhase !== 'done'` 且 `getDevStatus().due === true` ⇒ `DEV_SYNC_STALE` / refusal / exit 1，零写盘；同一 `allowGateOverride` 放行并在 `gate_overrides` 追加 `'dev_sync'`。正常路径同步成功即 `due=false`，不会触发（构造法单测见 `test/core/dev-status.test.ts`）。
+5. **盖章（REQ-056）**：计划门**通过时**对每个在办需求写 `requirements[*].plan = {path, sha256(前 12 位), recorded_at}`（已有 `deviations` 保留）；拒绝路径零写盘。
+6. **既有行为零改动**：`describeStageDoneGate`（`archiving → done` 的 verification + 关联需求全 done）、`status.md` 投影、`reset_stage_phase` / `advance_stage_phase` 既有字段、`--force` 跳过非法 phase 的既有语义均不变。

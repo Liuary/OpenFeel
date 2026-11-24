@@ -123,8 +123,8 @@ async function main() {
   await check('工具名合法（小写 + 数字 + 下划线）', () => {
     for (const tool of tools) assert(/^[a-z][a-z0-9_]*$/.test(tool.name), `非法工具名 ${tool.name}`);
   });
-  await check('工具数量符合设计（13）', () => {
-    assert(tools.length === 13, `期望 13 个工具，实际 ${tools.length}`);
+  await check('工具数量符合设计（15）', () => {
+    assert(tools.length === 15, `期望 15 个工具，实际 ${tools.length}`);
   });
 
   process.stdout.write('\n[2] parameters 落在 DSH 强制 schema 子集内\n');
@@ -323,6 +323,10 @@ async function main() {
       'compact 必须保留 feelMode（value/source）',
     );
     assert(compactStatusSnapshot({}).feelMode === null, '缺 feelMode 时应显式 null（形状稳定）');
+    // v1.6.0 / T10：动作型 next 进 compact 档（缺省 null 保持形状稳定）
+    assert(compact.nextAction === null, 'compact 缺 nextAction 时应显式 null');
+    const withAction = compactStatusSnapshot({ ...sample, nextAction: { kind: 'idle', tool: null, reason: 'x' } });
+    assert(withAction.nextAction.kind === 'idle', 'compact 必须保留 nextAction（动作型 next）');
   });
 
   await check('feel_status 暴露 detail=compact|full 开关', () => {
@@ -378,6 +382,49 @@ async function main() {
     assert(archiveTool, '缺少 feel_archive 工具');
     assert(archiveTool.parameters.properties.allow_unfinished?.type === 'boolean', 'feel_archive.allow_unfinished 应为 boolean');
     assert(/allow_unfinished/.test(archiveTool.description ?? ''), 'feel_archive.description 应提到 allow_unfinished');
+  });
+
+  await check('v1.6.0 / REQ-055+REQ-059：feel_dev 与 feel_req action=body 参数合法', () => {
+    const devTool = tools.find((tool) => tool.name === 'feel_dev');
+    assert(devTool, '缺少 feel_dev 工具');
+    assert(
+      JSON.stringify(devTool.parameters.properties.action.enum) === JSON.stringify(['sync', 'status']),
+      'feel_dev.action 枚举应为 sync|status',
+    );
+    assert(devTool.parameters.properties.project?.type === 'string', 'feel_dev.project 应为 string');
+    assert(/dev sync|dev status/.test(devTool.description ?? ''), 'feel_dev.description 应提到 dev sync / dev status');
+    assert(/wrote\[\]/.test(devTool.description ?? ''), 'feel_dev.description 应写明返回形状（含 wrote[]）');
+
+    const reqTool = tools.find((tool) => tool.name === 'feel_req');
+    assert(reqTool, '缺少 feel_req 工具');
+    const reqActions = reqTool.parameters.properties.action.enum;
+    assert(reqActions.includes('body'), 'feel_req.action 缺枚举值 body');
+    for (const key of ['section', 'text', 'file']) {
+      assert(reqTool.parameters.properties[key]?.type === 'string', `feel_req.${key} 应为 string`);
+    }
+    for (const key of ['append', 'replace']) {
+      assert(reqTool.parameters.properties[key]?.type === 'boolean', `feel_req.${key} 应为 boolean`);
+    }
+    assert(/feel_req action=body/.test(reqTool.description ?? ''), 'feel_req.description 应提到 action=body');
+
+    // v1.6.0-stage-132 / T13：`add` 一步写正文小节（CLI `req add --summary/--problem/--goal/--acceptance/--plan`）。
+    // 正文门要求 `## 摘要` 与 `## 目标与验收` 都写实，五个参数必须都是可选的 string。
+    for (const key of ['summary', 'problem', 'goal', 'acceptance', 'plan']) {
+      assert(reqTool.parameters.properties[key]?.type === 'string', `feel_req.${key} 应为 string`);
+      assert(!(reqTool.parameters.required ?? []).includes(key), `feel_req.${key} 不应是必填`);
+    }
+    assert(/add 时写入正文/.test(reqTool.parameters.properties.summary?.description ?? ''), 'feel_req.summary 的说明应点明 add 时写正文');
+    assert(/summary/.test(reqTool.description ?? ''), 'feel_req.description 应提到 add 的 summary 参数');
+  });
+
+  await check('v1.6.0 / REQ-057：compact 快照保留 dispatch 段（含 records）', () => {
+    const compact = compactStatusSnapshot({
+      focus: {},
+      dispatch: { required: true, total: 2, sincePhase: 1, missingRoles: [], records: [{ dispatchId: 'd-0001' }] },
+    });
+    assert(compact.dispatch?.required === true, 'compact.dispatch 缺失或 required 不为 true');
+    assert(compact.dispatch.total === 2 && compact.dispatch.sincePhase === 1, 'compact.dispatch 计数被裁剪');
+    assert(Array.isArray(compact.dispatch.records) && compact.dispatch.records.length === 1, 'compact.dispatch.records 应保留');
   });
 
   // v1.5.12 / stage-127 §3-B（V4）：真实 guard 状态未被本测试改写。

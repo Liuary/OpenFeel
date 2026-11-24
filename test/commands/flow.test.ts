@@ -36,6 +36,7 @@ import { t } from '../../src/core/i18n.js';
 import { FlowManager, FlowConcurrentModificationError, type FlowData, type PipelinePhase, type MetaPhase, type StageData, type ReviewItem } from '../../src/core/flow-manager.js';
 import { setConfigValue } from '../../src/core/config.js';
 import { addStage } from '../../src/core/plan/stage.js';
+import { parseStageId } from '../../src/core/plan/path.js';
 import { splitForArchive } from '../../src/core/flow-archive/grouping.js';
 import { writeArchiveFile } from '../../src/core/flow-archive/archive-ops.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../../src/core/flow-archive/archive-file.js';
@@ -122,6 +123,27 @@ describe('flow 命令（stage-41）', () => {
     }
     const raw = logMock.mock.calls.map((c) => c[0] as string).join('\n');
     return JSON.parse(raw) as Record<string, unknown>;
+  }
+
+  /**
+   * v1.6.0 / REQ-056 T5：写入**写实**的阶段计划文件。
+   * 新增「执行前有计划」硬门后，既有「跨越进入 exec_running」的用例必须满足门的前置；
+   * 只补前置文件，不改任何既有断言。无法解析的 id 走历史兜底 `stages/{stageId}/plan.md`。
+   */
+  function writeStagePlanFixture(stageId: string, projectPath: string = tmpDir): void {
+    const parsed = parseStageId(stageId);
+    const dir = parsed
+      ? join(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir)
+      : join(projectPath, '.openfeel', 'stages', stageId);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'plan.md'), [
+      '# 阶段计划',
+      '',
+      '## 一、目标',
+      '执行前必须有可被机器校验的计划文件；拒绝路径零写盘零审计，放行路径留痕 gate_overrides 与缺项快照。',
+      '## 二、任务拆解',
+      '先新增路径求解函数与门谓词，再在核心层插入门，最后镜像命令层并补齐测试与中英 i18n（同批追加）。',
+    ].join('\n'), 'utf-8');
   }
 
   // ── flow phases ──
@@ -1382,6 +1404,7 @@ describe('flow 命令（stage-41）', () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.1.2-stage-88');
     mgr.save();
+    writeStagePlanFixture('v1.1.2-stage-88');
     logMock.mockClear();
 
     await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-88', '--to', 'exec_running']);
@@ -1539,12 +1562,285 @@ describe('flow 命令（stage-41）', () => {
     const mgr = new FlowManager(tmpDir);
     mgr.addStage('v1.1.2-stage-82');
     mgr.save();
+    writeStagePlanFixture('v1.1.2-stage-82');
     const reviewsBefore = mgr.getData()!.reviews.length;
 
     await safeParse(['flow', 'advance', '--stage', 'v1.1.2-stage-82', '--to', 'exec_running']);
 
     const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
     expect(after.reviews.length).toBe(reviewsBefore);
+  });
+
+  // ── v1.6.0 / REQ-056 T5：进入 exec_running 的计划门（命令层镜像 + 复位同口径） ──
+
+  it('T056.7 flow advance --to exec_running 缺阶段计划 → exit 1 + 两条出路（零写盘）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-07');
+    mgr.getData()!.stages['v1.0.0-stage-07'].phase = 'scheme_passed' as PipelinePhase;
+    mgr.save();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-07', '--to', 'exec_running']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const errText = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errText).toContain('阶段计划');
+    expect(errText).toContain('--force');
+    // 拒绝路径零写盘（revision 与相位均不变）
+    const after = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    expect(after.meta.revision).toBe(before.meta.revision);
+    expect(after.stages['v1.0.0-stage-07'].phase).toBe('scheme_passed');
+  });
+
+  it('T056.8 --json 失败 → error.code=STAGE_PLAN_GATE、kind=refusal、detail 四字段', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-08');
+    mgr.getData()!.stages['v1.0.0-stage-08'].phase = 'scheme_passed' as PipelinePhase;
+    mgr.save();
+    logMock.mockClear();
+    errorMock.mockClear();
+    exitMock.mockClear();
+    const prevExitCode = process.exitCode;
+    process.exitCode = undefined;
+    setJsonMode(true);
+    try {
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-08', '--to', 'exec_running', '--json']);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(logMock).toHaveBeenCalledTimes(1);
+      const doc = JSON.parse(logMock.mock.calls[0][0] as string) as {
+        error: { code: string; kind: string; detail: Record<string, unknown> };
+      };
+      expect(doc.error.code).toBe('STAGE_PLAN_GATE');
+      expect(doc.error.kind).toBe('refusal');
+      expect(doc.error.detail).toEqual({
+        stagePlanMissing: true,
+        stagePlanUnfilled: false,
+        requirementsMissingPlan: [],
+        requirementsUnfilledPlan: [],
+      });
+    } finally {
+      resetJsonModeForTest();
+      process.exitCode = prevExitCode;
+    }
+  });
+
+  it('T056.9 --force → 留痕放行：phase 推进且审计含 gate_overrides / gate_missing', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-10');
+    mgr.getData()!.stages['v1.0.0-stage-10'].phase = 'scheme_passed' as PipelinePhase;
+    mgr.save();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-10', '--to', 'exec_running', '--force']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(after.stages['v1.0.0-stage-10'].phase).toBe('exec_running');
+    const entry = (after.log as Array<{ action: string; detail: Record<string, unknown> }>)
+      .filter((l) => l.action === 'advance_stage_phase' && l.detail.to === 'exec_running')
+      .pop();
+    expect(entry?.detail.gate_overrides).toEqual(['plan']);
+    expect(entry?.detail.gate_missing).toMatchObject({ stagePlanMissing: true, stagePlanUnfilled: false });
+  });
+
+  it('REV-014 跨相位路径（plan_passed → review_pending）无 --force → 拒绝 STAGE_PLAN_GATE（路径首经 exec_running）', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-09');
+    mgr.getData()!.stages['v1.0.0-stage-09'].phase = 'plan_passed' as PipelinePhase;
+    mgr.save();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-09', '--to', 'review_pending']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const errText = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errText).toContain('阶段计划');
+    expect(errText).toContain('--force');
+    const after = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    expect(after.meta.revision).toBe(before.meta.revision);        // 零写盘
+    expect(after.stages['v1.0.0-stage-09'].phase).toBe('plan_passed');
+  });
+
+  it('REV-014 --force 单跳 plan_passed → review_pending：按路径跨越触发计划门并留痕放行', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-15');
+    mgr.getData()!.stages['v1.0.0-stage-15'].phase = 'plan_passed' as PipelinePhase;
+    mgr.save();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-15', '--to', 'review_pending', '--force']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(after.stages['v1.0.0-stage-15'].phase).toBe('review_pending');
+    const entry = (after.log as Array<{ action: string; detail: Record<string, unknown> }>)
+      .filter((l) => l.action === 'advance_stage_phase' && l.detail.to === 'review_pending')
+      .pop();
+    expect(entry?.detail.gate_overrides).toEqual(['plan']);        // 单跳不再是无审计绕过面
+    expect(entry?.detail.gate_missing).toMatchObject({ stagePlanMissing: true });
+  });
+
+  it('T056.10 flow stage reset --to exec_running 无 --force → exit 1 + 两条出路 + 零写盘', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-11');
+    mgr.getData()!.stages['v1.0.0-stage-11'].phase = 'scheme_passed' as PipelinePhase;
+    mgr.save();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-11', '--to', 'exec_running']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const errText = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errText).toContain('阶段计划');
+    expect(errText).toContain('--force');
+    const after = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    expect(after.meta.revision).toBe(before.meta.revision);
+    expect(after.stages['v1.0.0-stage-11'].phase).toBe('scheme_passed');
+    // 零审计：reset_stage_phase 不入 log
+    expect((after.log as Array<{ action: string }>).some((l) => l.action === 'reset_stage_phase')).toBe(false);
+  });
+
+  it('T056.11 flow stage reset --to exec_running --force → 放行且 reset_stage_phase 带 gate_overrides', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-12');
+    mgr.getData()!.stages['v1.0.0-stage-12'].phase = 'scheme_passed' as PipelinePhase;
+    mgr.save();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'stage', 'reset', 'v1.0.0-stage-12', '--to', 'exec_running', '--force']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    const after = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'flow.json'), 'utf-8'));
+    expect(after.stages['v1.0.0-stage-12'].phase).toBe('exec_running');
+    const entry = (after.log as Array<{ action: string; detail: Record<string, unknown> }>)
+      .filter((l) => l.action === 'reset_stage_phase')
+      .pop();
+    expect(entry?.detail.gate_overrides).toEqual(['plan']);
+    expect(entry?.detail.gate_missing).toMatchObject({ stagePlanMissing: true });
+  });
+
+  // ── v1.6.0 / REQ-059 T8：archiving → done 的账本陈旧门（命令层出口 + --force 留痕） ──
+
+  /** archiving + 阶段验证 pass 的最小阶段（done 门可通过，只剩账本门可拦） */
+  function setupArchivingStage(stageId: string): void {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage(stageId);
+    const st = mgr.getData()!.stages[stageId];
+    st.phase = 'archiving' as PipelinePhase;
+    st.status = 'archiving';
+    st.verification = { result: 'pass', kind: 'test', by: 'tester', at: '', note: 'ok' };
+    mgr.save();
+  }
+
+  /**
+   * 构造法（A9b）：把 `.openfeel/dev/.sync.json` 变成**目录** → 同步必失败、账本恒 due。
+   * 正常 CLI 序列（同步成功 ⇒ due=false）无法复现该门，故只能用构造法取证。
+   */
+  function breakDevLedger(): void {
+    mkdirSync(join(tmpDir, '.openfeel', 'dev', '.sync.json'), { recursive: true });
+  }
+
+  it('T059.6 flow advance --to done 账本陈旧 → exit 1 + 出路提示（零写盘）', async () => {
+    setupArchivingStage('v1.0.0-stage-20');
+    breakDevLedger();
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    const before = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    errorMock.mockClear();
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-20', '--to', 'done']);
+
+    expect(exitMock).toHaveBeenCalledWith(1);
+    const errText = errorMock.mock.calls.map((c) => c[0] as string).join('\n');
+    expect(errText).toContain('开发账本');
+    expect(errText).toContain('--force');
+    // 拒绝路径零写盘：revision 与相位均不变
+    const after = JSON.parse(readFileSync(flowPath, 'utf-8'));
+    expect(after.meta.revision).toBe(before.meta.revision);
+    expect(after.stages['v1.0.0-stage-20'].phase).toBe('archiving');
+  });
+
+  it('T059.7 --json 失败 → error.code=DEV_SYNC_STALE、kind=refusal、detail 四字段', async () => {
+    setupArchivingStage('v1.0.0-stage-21');
+    breakDevLedger();
+    logMock.mockClear();
+    errorMock.mockClear();
+    exitMock.mockClear();
+    const prevExitCode = process.exitCode;
+    process.exitCode = undefined;
+    setJsonMode(true);
+    try {
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-21', '--to', 'done', '--json']);
+      expect(exitMock).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+      expect(errorMock).not.toHaveBeenCalled();
+      expect(logMock).toHaveBeenCalledTimes(1);
+      const doc = JSON.parse(logMock.mock.calls[0][0] as string) as {
+        error: { code: string; kind: string; detail: Record<string, unknown> };
+      };
+      expect(doc.error.code).toBe('DEV_SYNC_STALE');
+      expect(doc.error.kind).toBe('refusal');
+      expect(doc.error.detail.stage).toBe('v1.0.0-stage-21');
+      expect(doc.error.detail.to).toBe('done');
+      expect(doc.error.detail.due).toBe(true);
+      expect(typeof doc.error.detail.error).toBe('string');
+    } finally {
+      resetJsonModeForTest();
+      process.exitCode = prevExitCode;
+    }
+  });
+
+  it('T059.8 --force → 留痕放行（gate_overrides=[dev_sync]），同步失败仍输出一行 warn', async () => {
+    const flowPath = join(tmpDir, '.openfeel', 'flow.json');
+    setupArchivingStage('v1.0.0-stage-22');
+    breakDevLedger();
+    exitMock.mockClear();
+    const warnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-22', '--to', 'done', '--force']);
+
+      expect(exitMock).not.toHaveBeenCalled();
+      const after = JSON.parse(readFileSync(flowPath, 'utf-8'));
+      expect(after.stages['v1.0.0-stage-22'].phase).toBe('done');
+      const entry = (after.log as Array<{ action: string; detail: Record<string, unknown> }>)
+        .filter((l) => l.action === 'advance_stage_phase' && l.detail.to === 'done')
+        .pop();
+      expect(entry?.detail.gate_overrides).toEqual(['dev_sync']);
+      // 不静默：成功后出口的同步失败仍以一行 stderr 告知（文案来自 i18n 模板）
+      const warnText = warnMock.mock.calls.map((c) => c[0] as string).join('\n');
+      expect(warnText).toContain('开发账本同步失败');
+    } finally {
+      warnMock.mockRestore();
+    }
+  });
+
+  it('T059.9 成功出口自动同步：flow advance 后 .sync.json 落盘且 due=false', async () => {
+    const mgr = new FlowManager(tmpDir);
+    mgr.addStage('v1.0.0-stage-23');
+    mgr.getData()!.stages['v1.0.0-stage-23'].phase = 'exec_running' as PipelinePhase;
+    mgr.save();
+    const syncMeta = join(tmpDir, '.openfeel', 'dev', '.sync.json');
+    expect(existsSync(syncMeta)).toBe(false);
+    exitMock.mockClear();
+
+    await safeParse(['flow', 'advance', '--stage', 'v1.0.0-stage-23', '--to', 'review_pending']);
+
+    expect(exitMock).not.toHaveBeenCalled();
+    expect(existsSync(syncMeta)).toBe(true);
+    const meta = JSON.parse(readFileSync(syncMeta, 'utf-8')) as { last_sync: string; interval_minutes: number };
+    expect(Number.isFinite(Date.parse(meta.last_sync))).toBe(true);
+    expect(meta.interval_minutes).toBe(30);
   });
 
   // ── stage-52/op-012：REV-005 短名 stage 归一化（短名 = 全名） ──
@@ -1574,6 +1870,8 @@ describe('flow 命令（stage-41）', () => {
     mgr.addStage('v1.0.0-stage-02');
     mgr.addStage('v1.0.0-stage-03');
     mgr.save();
+    writeStagePlanFixture('v1.0.0-stage-02');
+    writeStagePlanFixture('v1.0.0-stage-03');
     exitMock.mockClear();
 
     await safeParse(['flow', 'advance', '--stage', 'stage-02', '--to', 'exec_running']);
@@ -1901,6 +2199,7 @@ describe('flow 命令（stage-41）', () => {
     st.status = 'review_failed';
     st.ops = { 'op-001': makeOp('op-001') as never };
     mgr.save();
+    writeStagePlanFixture(stageName);
   }
 
   it('op-014/T1: review add --auto-fix 短名前缀创建成功（REV-009 核心）且与全名等价', async () => {
@@ -1930,6 +2229,7 @@ describe('flow 命令（stage-41）', () => {
         st2.status = 'review_failed';
         st2.ops = { 'op-001': makeOp('op-001') as never };
         mgr2.save();
+        writeStagePlanFixture('v1.0.0-stage-01', dir2);
         exitMock.mockClear();
         errorMock.mockClear();
         await safeParse(['flow', 'review', 'add', '--op', 'v1.0.0-stage-01.op-001', '--title', 't', '--auto-fix', 'x']);
@@ -2065,6 +2365,7 @@ describe('flow 命令（stage-41）', () => {
     st.phase = 'review_passed';
     st.status = 'review_passed';
     mgr.save();
+    writeStagePlanFixture('v0.0.1-stage-03');
     exitMock.mockClear();
     await safeParse(['flow', 'advance', '--stage', 'v0.0.1-stage-03', '--to', 'exec_running', '--reason', '整改项 A（REV-001）']);
     expect(exitMock).not.toHaveBeenCalled();
@@ -2084,6 +2385,7 @@ describe('flow 命令（stage-41）', () => {
     st.phase = 'review_pending';
     st.status = 'review_failed';
     mgr.save();
+    writeStagePlanFixture('v0.0.1-stage-04');
     exitMock.mockClear();
     await safeParse(['flow', 'advance', '--stage', 'v0.0.1-stage-04', '--to', 'exec_running']);
     expect(exitMock).not.toHaveBeenCalled();
@@ -3656,6 +3958,7 @@ describe('flow 命令（stage-41）', () => {
         detail: { stageName: S86_STAGE, from: 'plan_review', to: 'scheme_pending' },
       });
       mgr.save();
+      writeStagePlanFixture(S86_STAGE);
     }
 
     it('M1: advance 实跑 → metrics.json 生成且非空（agent 归属 + phase 窗口）', async () => {

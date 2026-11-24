@@ -8,6 +8,9 @@ import {
   normalizeStageId,
   planDirToStageId,
   findStageStatusPath,
+  findStagePlanPath,
+  getRequirementPlanRelPath,
+  findRequirementPlanPath,
   validateStageId,
   suggestStageId,
   findStageDirConflict,
@@ -142,6 +145,65 @@ describe('findStageStatusPath（三级回退）', () => {
 
   it('三级均未命中返回 null', () => {
     expect(findStageStatusPath(tmpDir, 'v9.9.9-stage-99')).toBeNull();
+  });
+});
+
+describe('findStagePlanPath（三级回退，T5 / REQ-056）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-path-test-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  it('第 1 级：plan/{series}/stage-NN/plan.md 精确命中', () => {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-34');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'plan.md'), 'x', 'utf-8');
+    expect(findStagePlanPath(tmpDir, 'v1.0.0-stage-34')).toBe(join(dir, 'plan.md'));
+  });
+
+  it('第 2 级：旧平铺 plan/stage-01/plan.md 递归命中', () => {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'stage-01');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'plan.md'), 'x', 'utf-8');
+    expect(findStagePlanPath(tmpDir, 'stage-01')).toBe(join(dir, 'plan.md'));
+  });
+
+  it('第 3 级：stages/{stageId}/plan.md 历史兜底命中', () => {
+    const dir = join(tmpDir, '.openfeel', 'stages', 'v1.0.0-stage-03');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'plan.md'), 'x', 'utf-8');
+    expect(findStagePlanPath(tmpDir, 'v1.0.0-stage-03')).toBe(join(dir, 'plan.md'));
+  });
+
+  it('三级均未命中返回 null（CLI 不创建 plan.md，缺失是常态）', () => {
+    expect(findStagePlanPath(tmpDir, 'v9.9.9-stage-99')).toBeNull();
+    // status.md 存在不能顶替 plan.md
+    const dir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-05');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'status.md'), 'x', 'utf-8');
+    expect(findStagePlanPath(tmpDir, 'stage-05')).toBeNull();
+  });
+});
+
+describe('需求级计划路径（全局固定，T5 / REQ-056）', () => {
+  let tmpDir: string;
+  beforeEach(() => { tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-path-test-')); });
+  afterEach(() => { rmSync(tmpDir, { recursive: true, force: true }); });
+
+  it('getRequirementPlanRelPath：POSIX 相对路径单点派生，不随阶段/版本漂移', () => {
+    expect(getRequirementPlanRelPath('REQ-055')).toBe('.openfeel/plan/reqs/REQ-055.plan.md');
+  });
+
+  it('findRequirementPlanPath：存在才返回绝对路径', () => {
+    const dir = join(tmpDir, '.openfeel', 'plan', 'reqs');
+    mkdirSync(dir, { recursive: true });
+    expect(findRequirementPlanPath(tmpDir, 'REQ-055')).toBeNull();
+    writeFileSync(join(dir, 'REQ-055.plan.md'), 'x', 'utf-8');
+    expect(findRequirementPlanPath(tmpDir, 'REQ-055')).toBe(join(dir, 'REQ-055.plan.md'));
+    // 不读阶段目录下的同名文件（位置唯一）
+    const stageDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-55');
+    mkdirSync(stageDir, { recursive: true });
+    writeFileSync(join(stageDir, 'REQ-055.plan.md'), 'x', 'utf-8');
+    expect(findRequirementPlanPath(tmpDir, 'REQ-056')).toBeNull();
   });
 });
 

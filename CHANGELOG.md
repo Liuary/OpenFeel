@@ -1,3 +1,29 @@
+## [1.6.0] - 2026-11-24
+
+> 流程可信度版本：需求正文与执行前计划从「约定」变成**可校验的门**（硬门 + `--force` 留痕 + 审计），
+> 主会话「只调度」从提示升级为有台账的硬规则。需求 REQ-055~060。
+
+### Added
+- [stage-132] **`req body`（REQ-055）**：需求正文**唯一业务小节写入口**（`--section` + `--text`/`--file`，`--append`/`--replace`），元信息小节受保护，每次写入追加 `## 变更记录`；`--json` 出口 #45。配套 `lint req --json.fill` 与 `lint fill`（出口 #46）枚举空壳正文 / 缺需求级计划 / 空阶段文档（advisory，不改退出码）。
+- [stage-132] **执行前计划门（REQ-056）**：进入 `exec_running` 前阶段 `plan.md` 与在办需求的 `.openfeel/plan/reqs/REQ-NNN.plan.md` 必须存在**且写实**，否则 `STAGE_PLAN_GATE` 零写盘拒绝；`flow stage reset --to exec_running` 同口径。`→done` 前若计划被改动且未写 `## 偏差与回写` → `REQ_PLAN_DEVIATION`。
+- [stage-132] **`feel_dispatch`（REQ-057）**：派发即记账（`.openfeel/dev/dispatch.jsonl`，24h / 200 行清理，受 guard 保护），`feel_status` 返回 `dispatch{required,records,missingRoles}` 与动作型 `nextAction`；`feel_next.dispatch` 用真实 stage/phase/agent 填充。
+- [stage-132] **`feel_dev`（REQ-059）**：`action=sync|status` 暴露开发账本同步；`stage set` / `req advance|complete|review|verify|body` 成功出口自动同步 `.openfeel/dev/` 与 `dev_last.md`；新增 `DEV_SYNC_STALE` 门（仅同步失败时拦，`--force` 留痕放行）。
+- [stage-132] **每轮提醒（REQ-060）**：提示词压到 ≤1200 字符 / ≤25 行（实测 zh 700/817、en 1038/1154 含 Free Mode），并以 `ctx.systemPrompt.context` 注入降级档提醒（写类工具后 / 每 5 步）；五份调研结论落 `docs/research/*-2026-11-24.md`。
+
+### Changed
+- [stage-132] **需求生命周期强制链（REQ-058）**：`general` 需求与零关联阶段的 `fast`/`full` 需求在 `→in_progress` 前必须有写实计划（`REQ_PLAN_GATE`）；阶段级转移表**一字不改**（`general` 阶段级仍写不进去，属防御性拒绝）。
+- [stage-132] `req advance` / `complete` 增加 `--force`：正文门 / 计划门 / 偏差门均**留痕放行**（写 `body_waiver` / `plan_waiver` / `plan.deviations+1` + `flow.json.log` 审计），文件仍须补写。`claim` **不校验正文**（认领≠开工，保证 `req add --claim` 原子成功），正文门在 `→scheduled`/`→in_progress`/`→done` 触发。
+- [stage-132] `flow advance --force` 语义细化：只把 `allowGateOverride` 传给核心层做 `gate_overrides` / `gate_missing` 快照，**并不因此绕过 done 门、blocking REV 门与归档判据**。
+- [stage-132] JSON 契约计数对齐 **46 个成功出口 / 47 个注册 `--json` 选项**；`dsh/` 工具面 13 → **15**（`feel_dispatch` / `feel_dev`），`openfeel.requiresCli` 抬到 `>=1.6.0`。
+
+### Fixed
+- [stage-132] **计数基线漂移**：`dev clean`（v1.5.23 / REQ-041 已实现）补登为出口 #44，文档与测试计数重新自洽（此前文档 43/44 与测试 45/44 各自为政）。
+- [stage-132] `feel_prompt` 副本分叉风险：`dsh/lib/surface/prompt.js` 为单一源，`template-loader` 与 claude/opencode 四份 `feel.md` 以 parity 标记块镜像，新增 sha256 一致性测试。
+
+### Notes
+- 两包版本 lockstep（`openfeel` / `openfeel-dsh` → 1.6.0）。
+- 存量 48 份空壳正文**不批量回填**：`lint fill` 列举、下一次状态流转由 `REQ_BODY_GATE` 拦（补正文或 `--force` 留痕）；归档通道不受影响。
+
 ## [1.5.25] - 2026-11-20
 
 > 数据驱动的小版本：先用本地 DSH 历史会话量化「流程到底占多少时间」，再按实测结论做两件事——

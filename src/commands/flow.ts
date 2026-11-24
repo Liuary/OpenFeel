@@ -23,7 +23,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, copyFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, type PipelinePhase, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
+import { FlowManager, isFlowConcurrentError, normalizeAgentName, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, isStagePlanGateBlocked, StagePlanGateError, DevSyncStaleError, type PipelinePhase, type StatusReconcileItem, type ReviewItem, type FlowData, type HealthCheckItem, PHASE_PATH_MAX_DEPTH } from '../core/flow-manager.js';
 import { PipelinePhaseSchema, PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES, DEFAULT_EFFECTIVE_REVIEW_TIER, type ReviewTier } from '../core/pipeline-schema.js';
 import { validateStageId, suggestStageId, normalizeStageId, findStageStatusPath, isArchivedVersionOf } from '../core/plan/path.js';
 import { getConfigFieldLegalValues, setConfigValue, readExplicitConfigDefaults, type WorkflowMode } from '../core/config.js';
@@ -39,7 +39,7 @@ import { recordPreflight, readPreflight } from '../core/preflight.js';
 import { findPhaseEnteredAtMs } from '../core/phase-entered.js';
 import { computeProcessHealth, formatProcessHealth } from '../core/process-health.js';
 import { enforcePreflightOrFail } from './shared/preflight-gate.js';
-import { getDevStatus, isSyncNodePhase, syncDevStatus } from '../core/dev-status.js';
+import { maybeSyncDevStatus } from '../core/dev-status.js';
 import { ARCHIVE_SCHEMA_VERSION, type ArchiveFile } from '../core/flow-archive/archive-file.js';
 import { listArchivableCandidates, listBlockingOpenRevsForVersion, splitForArchive } from '../core/flow-archive/grouping.js';
 import { normalizeArchiveVersion, writeArchiveFile, addArchivedVersion, applyArchivePipelineDisposition, listArchiveVersions, readArchiveFile, maxRequirementSeq } from '../core/flow-archive/archive-ops.js';
@@ -938,13 +938,14 @@ export function registerFlowCommand(program: Command): void {
       }));
     });
 
-  // flow stage reset <stageId> --to <phase> [--dry-run]
+  // flow stage reset <stageId> --to <phase> [--dry-run] [--force]
   stageCmd
     .command('reset <stageId>')
     .description('复位阶段 phase（允许回退；受合法值域与 to=done 的 REV 阻塞约束）')
     .requiredOption('--to <phase>', '目标 phase（如 review_pending / test_pending / done）；合法值见 openfeel flow phases')
     .option('--dry-run', '仅预览，不写盘')
-    .action((stageId: string, options: { to: string; dryRun?: boolean }) => {
+    .option('--force', '越过进入 exec_running 的计划门（放行并在 flow.json.log 记录 gate_overrides/gate_missing）')
+    .action((stageId: string, options: { to: string; dryRun?: boolean; force?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -953,7 +954,10 @@ export function registerFlowCommand(program: Command): void {
       }
       const stageArg = normalizeStageId(stageId) ?? stageId;
       try {
-        const result = mgr.resetStagePhase(stageArg, options.to, { dryRun: options.dryRun });
+        const result = mgr.resetStagePhase(stageArg, options.to, {
+          dryRun: options.dryRun,
+          allowGateOverride: options.force === true,
+        });
         if (options.dryRun) {
           console.log(t('flow.stage.reset.previewTitle', lang));
           console.log(t('flow.stage.reset.previewTmpl', lang, {
@@ -982,6 +986,23 @@ export function registerFlowCommand(program: Command): void {
           to: result.to,
         }));
       } catch (err: unknown) {
+        // v1.6.0 / REQ-056 T5：复位到 exec_running 与 exec 门同口径复检计划；拒绝给两条出路
+        // （补计划文件 / 加 --force 留痕放行），零写盘。
+        if (err instanceof StagePlanGateError) {
+          const lines = mgr.formatStagePlanGate(stageArg, err.gate, lang);
+          failRefusal({
+            code: 'STAGE_PLAN_GATE',
+            message: lines[0] ?? err.message,
+            detail: {
+              stagePlanMissing: err.gate.stagePlanMissing,
+              stagePlanUnfilled: err.gate.stagePlanUnfilled,
+              requirementsMissingPlan: err.gate.requirementsMissingPlan,
+              requirementsUnfilledPlan: err.gate.requirementsUnfilledPlan,
+            },
+            stderrLines: lines,
+          });
+          return;
+        }
         // 并发写冲突：统一单点（i18n 文案 + 退出码 2）；JSON 模式置码返回 → 显式 return 防落入通用分支
         if (isFlowConcurrentError(err)) {
           handleConcurrentConflict(err, lang);
@@ -1275,6 +1296,31 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
+      // v1.6.0 / REQ-056 T5「执行前有计划」硬门（命令层镜像）：**进入** exec_running 要求
+      //   阶段 plan.md 与每个在办需求的 REQ-NNN.plan.md 存在且写实。
+      // 判据单源 = mgr.describeStagePlanGate / isStagePlanGateBlocked（与 advanceStagePhase 内同一谓词）；
+      // `--force` 不绕过拦截：它只把 allowGateOverride 传给核心层做**留痕放行**（gate_overrides）。
+      // 位置：done 门镜像之后、逐步推进之前；多步路径中 exec_running 为中间步时由循环 catch 兜底。
+      const entersExecRunning = phasePath.some((p, i) => p === 'exec_running' && (i > 0 ? phasePath[i - 1] : startPhase) !== 'exec_running');
+      if (entersExecRunning && options.force !== true) {
+        const planGate = mgr.describeStagePlanGate(stageArg);
+        if (isStagePlanGateBlocked(planGate)) {
+          const lines = mgr.formatStagePlanGate(stageArg, planGate, lang);
+          failRefusal({
+            code: 'STAGE_PLAN_GATE',
+            message: lines[0] ?? t('common.errorTmpl', lang, { msg: 'plan gate' }),
+            detail: {
+              stagePlanMissing: planGate.stagePlanMissing,
+              stagePlanUnfilled: planGate.stagePlanUnfilled,
+              requirementsMissingPlan: planGate.requirementsMissingPlan,
+              requirementsUnfilledPlan: planGate.requirementsUnfilledPlan,
+            },
+            stderrLines: lines,
+          });
+          return;
+        }
+      }
+
       // 逐步推进（B5-2 / A3）：唯一路径 → 依次调用 advanceStagePhase（保留每步校验/日志/checkpoint）
       // 中间态不回滚（A3）；失败 → 输出「已完成 / 失败点 / 剩余路径」+ exit 1
       // T1：recordRun 接线（命令层；--dry-run 已于上方提前 return——天然排除）
@@ -1298,11 +1344,49 @@ export function registerFlowCommand(program: Command): void {
             ? options.reason
             : undefined;
           if (reworkReason !== undefined) reasonUsed = true;
-          const stepOpts: { reviewTier?: ReviewTier; reworkReason?: string } = {};
+          // v1.6.0 / REQ-056 T5：`--force` → 计划门留痕放行（只传开关，判定仍在核心层）
+          const stepOpts: { reviewTier?: ReviewTier; reworkReason?: string; allowGateOverride?: boolean } = {
+            allowGateOverride: options.force === true,
+          };
           if (explicitTier) stepOpts.reviewTier = explicitTier;
           if (reworkReason !== undefined) stepOpts.reworkReason = reworkReason;
-          archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli', Object.keys(stepOpts).length > 0 ? stepOpts : undefined);
+          archived = mgr.advanceStagePhase(stageArg, next as PipelinePhase, 'cli', stepOpts);
         } catch (err: unknown) {
+          // v1.6.0 / REQ-056 T5：计划门拒绝按预期拒绝出口（exit 1 + STAGE_PLAN_GATE envelope），
+          // 不归内部错误（多步循环中 exec_running 为中间步时同样命中）。
+          if (err instanceof StagePlanGateError) {
+            const lines = mgr.formatStagePlanGate(stageArg, err.gate, lang);
+            failRefusal({
+              code: 'STAGE_PLAN_GATE',
+              message: lines[0] ?? err.message,
+              detail: {
+                stagePlanMissing: err.gate.stagePlanMissing,
+                stagePlanUnfilled: err.gate.stagePlanUnfilled,
+                requirementsMissingPlan: err.gate.requirementsMissingPlan,
+                requirementsUnfilledPlan: err.gate.requirementsUnfilledPlan,
+              },
+              stderrLines: lines,
+            });
+            return;
+          }
+          // v1.6.0 / REQ-059 T8：账本陈旧门（done 前同步失败）同样按预期拒绝出口
+          // （exit 1 + DEV_SYNC_STALE envelope）；`--force` 已在核心层留痕放行，走不到这里。
+          if (err instanceof DevSyncStaleError) {
+            const lines = mgr.formatDevSyncStale(stageArg, err.reason, lang);
+            failRefusal({
+              code: 'DEV_SYNC_STALE',
+              message: lines[0] ?? err.message,
+              detail: {
+                stage: stageArg,
+                to: 'done',
+                due: true,
+                error: err.reason,
+              },
+              stderrLines: lines,
+            });
+            return;
+          }
+
           // v1.5.23 / REQ-042（六期缺陷 A）：失败也要记账。
           // 旧实现只在成功分支 recordRun(..., 'success')，导致 metrics.json 的
           // failedRuns / 成功率永远是「零失败」——读出来不是空，是静默误导。
@@ -1388,15 +1472,16 @@ export function registerFlowCommand(program: Command): void {
         }
       }
 
-      // v1.5.0：状态记录瘦身——节点（开始/转折/结束）或超过 30 分钟时 CLI 自动同步简要状态；
-      // 失败不影响推进（状态记录不是门禁）。
-      try {
-        const projectPath = process.cwd();
-        if (getDevStatus(projectPath).due || isSyncNodePhase(options.to as PipelinePhase)) {
-          syncDevStatus(projectPath);
+      // v1.5.0 / v1.6.0（REQ-059 T8；REV-019）：状态记录瘦身——节点（开始/转折/结束）或超过 30 分钟时
+      // CLI 自动同步简要状态。失败**不阻断推进**（状态记录不是门禁），但也不再静默吞掉：
+      // 一行 stderr 告知原因；done 前的硬门（DEV_SYNC_STALE）在核心层承担拦截。
+      // 去重：`--to done` 已在 `advanceStagePhase` 的 done 门**先**跑过一次 `maybeSyncDevStatus`
+      // （同一命令、同一 projectPath），此处不再重复调用；其余出口仍需自动同步。
+      if (options.to !== 'done') {
+        const sync = maybeSyncDevStatus(process.cwd());
+        if (sync.error !== undefined) {
+          console.warn(t('flow.dev.syncFailedTmpl', lang, { err: sync.error }));
         }
-      } catch {
-        /* best-effort */
       }
 
       // T1：仅本命令内有记录时落盘一次（低并发非关键路径；推进失败提前 exit 则不 save）
@@ -1704,14 +1789,25 @@ export function registerFlowCommand(program: Command): void {
       const blocking = options.blocking !== undefined
         ? !(options.blocking === 'false' || options.blocking === false)
         : true;
-      const result = addReviewEntry(process.cwd(), {
-        opId: options.op,
-        stageId: options.stage,
-        title: options.title || t('flow.review.detail', lang) + `: ${options.op ?? options.stage}`,
-        priority: 'medium',
-        autoFixDetail: options.autoFix,
-        blocking,
-      });
+      let result: ReturnType<typeof addReviewEntry>;
+      try {
+        result = addReviewEntry(process.cwd(), {
+          opId: options.op,
+          stageId: options.stage,
+          title: options.title || t('flow.review.detail', lang) + `: ${options.op ?? options.stage}`,
+          priority: 'medium',
+          autoFixDetail: options.autoFix,
+          blocking,
+        });
+      } catch (err: unknown) {
+        // v1.6.0 / REQ-056 T5：--auto-fix 会跨越进入 exec_running；计划门拒绝时给可读拒绝而非未捕获栈
+        if (err instanceof StagePlanGateError) {
+          console.error(err.message);
+          process.exit(1);
+          return;
+        }
+        throw err;
+      }
 
       if (result.error) {
         // 错误路径：按错误码分流 i18n 文案（单点返回 code，命令层只负责呈现）

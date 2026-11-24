@@ -36,6 +36,7 @@ import { createOpenFeelGuard, resolveShellGate } from './guard.js';
 import { createFeelCommandHandler } from './surface/command.js';
 import { FEEL_PROMPT_NAME, FEEL_PROMPT_ORDER, renderBootstrapPrompt, renderFeelPrompt } from './surface/prompt.js';
 import { createTools } from './tools/index.js';
+import { REMINDER_CONTEXT_NAME, noteToolCall, reminderText } from './adapters/next-action.js';
 
 /** Loader 入口 id。 */
 export const name = 'openfeel-dsh';
@@ -288,6 +289,42 @@ export function apply(ctx, rawConfig) {
           enforce: config.enforce,
         });
       },
+    });
+  }
+
+  /* ── 每步提醒（v1.6.0 / T10） ──────────────────────────────── */
+
+  // 首选是 `tools/post-execute` + `additionalContexts`（宿主侧确实存在：
+  // `dsh-tools/src/events.ts` 的 `tools/post-execute`、`contracts.ts` 的
+  // `PostToolDecision.additionalContexts`）。但 `additionalContexts` 的元素必须是
+  // `UserMessage`，只能由 `@deepseek-ai/dsh-llm` 的 `createUserMessage()` 构造；
+  // 本插件零运行时依赖（`dsh/package.json` 无 dependencies），实测
+  // `createRequire(<adapter>/lib/index.js).resolve('@deepseek-ai/dsh-llm')` → MODULE_NOT_FOUND。
+  // 手搓未注册 `source.kind` 的 UserMessage 会流进 `agent/inbox/spliced` 持久事件，
+  // 无运行时证据前不赌它不破坏会话。故按 plan §5.3 **降级 1**：
+  // `ctx.systemPrompt.context()`（动态 user 快照、逐请求刷新、不进 system 前缀缓存），
+  // `tools/post-execute` 只做**观察**（不构造消息、不改结果）。证据见
+  // `.openfeel/tmp/stage-132/spike.md`。
+  const reminderAvailable = config.autoPrompt && config.activation !== 'off'
+    && typeof ctx.systemPrompt?.context === 'function';
+  if (reminderAvailable) {
+    ctx.systemPrompt.context({
+      name: REMINDER_CONTEXT_NAME,
+      order: FEEL_PROMPT_ORDER + 5,
+      // 逐请求求值：只在「写类工具之后 / 每 5 步」返回一行，其余为空串（零 token 开销）。
+      text: () => reminderText(),
+    });
+  } else if (config.autoPrompt && config.activation !== 'off') {
+    log.debug?.('宿主未提供 ctx.systemPrompt.context：每步提醒降级为无（不影响 feel_* 结果）。');
+  }
+  if (reminderAvailable && typeof ctx.on === 'function') {
+    ctx.on('tools/post-execute', (exec, _result, next) => {
+      try {
+        noteToolCall(exec?.name, config.mutatingTools);
+      } catch {
+        /* 提醒是提示级：观察失败绝不改变工具结果 */
+      }
+      return next();
     });
   }
 

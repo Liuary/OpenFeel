@@ -1075,14 +1075,15 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(i18nDoc.issues).toEqual([]);
   });
 
-  it('#41 lint req：七键 + issues/suspects 分离；A 类 ok:false+exit 1 / B 类 ok:true+exit 0', async () => {
-    // 空态（无 .openfeel/requirements/）：ok:true、两个集合空、两个计数 0
+  it('#41 lint req：八键（v1.6.0 新增 fill）+ issues/suspects 分离；A 类 ok:false+exit 1 / B 类 ok:true+exit 0', async () => {
+    // 空态（无 .openfeel/requirements/）：ok:true、两个集合空、两个计数 0、fill 空
     const empty = await doc(['lint', 'req', '--json']);
     expect(Object.keys(empty)).toEqual([
-      'schemaVersion', 'target', 'ok', 'issues', 'suspects', 'unknownCount', 'suspectCount',
+      'schemaVersion', 'target', 'ok', 'issues', 'suspects', 'unknownCount', 'suspectCount', 'fill',
     ]);
     expect(empty).toMatchObject({
       target: 'req', ok: true, issues: [], suspects: [], unknownCount: 0, suspectCount: 0,
+      fill: { emptyBody: [], emptyPlan: [] },
     });
     expect(process.exitCode).toBe(0);
 
@@ -1092,7 +1093,7 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     writeFileSync(join(reqDir, 'REQ-999.md'), '`stage deps` 与 `op create`\n', 'utf-8');
     const bad = await doc(['lint', 'req', '--json']);
     expect(Object.keys(bad)).toEqual([
-      'schemaVersion', 'target', 'ok', 'issues', 'suspects', 'unknownCount', 'suspectCount',
+      'schemaVersion', 'target', 'ok', 'issues', 'suspects', 'unknownCount', 'suspectCount', 'fill',
     ]);
     expect(bad.ok).toBe(false);
     const issues = bad.issues as Array<Record<string, unknown>>;
@@ -1114,6 +1115,92 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(onlyB.issues).toEqual([]);
     expect(onlyB.suspectCount).toBe(1);
     expect(process.exitCode).toBe(0);
+  });
+
+  it('#46 lint fill：七键固定序 + 空壳清单 advisory（ok:false 仍 exit 0）', async () => {
+    // 空态：initProject 后无需求文件 / 无阶段文档 → ok:true、两集合空
+    const empty = await doc(['lint', 'fill', '--json']);
+    expect(Object.keys(empty)).toEqual([
+      'schemaVersion', 'target', 'ok', 'checked', 'empty', 'missingPlan', 'stageDocs',
+    ]);
+    expect(empty).toMatchObject({
+      target: 'fill', ok: true, checked: 0, empty: [], missingPlan: [],
+      stageDocs: { overviewEmpty: [], planEmpty: [] },
+    });
+    expect(process.exitCode).toBe(0);
+
+    // 空壳需求 + 空 overview → ok:false，但 fill 是 advisory：退出码仍 0
+    const reqDir = join(tmpDir, '.openfeel', 'requirements');
+    mkdirSync(reqDir, { recursive: true });
+    writeFileSync(join(reqDir, 'REQ-001.md'), [
+      '# REQ-001：空壳需求',
+      '',
+      '## 摘要',
+      '',
+      '（待补充）',
+      '',
+      '## 目标与验收',
+      '',
+      '（待补充）',
+      '',
+    ].join('\n'), 'utf-8');
+    const stageDir = join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01');
+    mkdirSync(stageDir, { recursive: true });
+    writeFileSync(join(stageDir, 'overview.md'), [
+      '## 目标', '', '（待补充）', '', '## 操作方案', '', '（待补充）', '',
+    ].join('\n'), 'utf-8');
+
+    const bad = await doc(['lint', 'fill', '--json']);
+    expect(bad.ok).toBe(false);
+    expect(bad.checked).toBe(1);
+    expect(bad.empty).toEqual([{ id: 'REQ-001', emptySections: ['摘要', '目标与验收'] }]);
+    expect(bad.missingPlan).toEqual([{ id: 'REQ-001' }]);
+    expect(bad.stageDocs).toEqual({ overviewEmpty: [{ stageId: 'stage-01' }], planEmpty: [] });
+    expect(process.exitCode).toBe(0);
+  });
+
+  it('#45 req body：七键固定序 + 只写业务小节（受保护小节走 legacy 失败）', async () => {
+    const reqDir = join(tmpDir, '.openfeel', 'requirements');
+    mkdirSync(reqDir, { recursive: true });
+    writeFileSync(join(reqDir, 'REQ-001.md'), [
+      '# REQ-001：需求 REQ-001',
+      '',
+      '> 头部说明行（不可被 body 覆盖）',
+      '',
+      '## 状态',
+      '',
+      'draft',
+      '',
+      '## 摘要',
+      '',
+      '（待补充）',
+      '',
+      '## 目标与验收',
+      '',
+      '（待补充）',
+      '',
+      '## 变更记录',
+      '',
+      '- 2026-01-01T00:00:00.000Z 创建',
+      '',
+    ].join('\n'), 'utf-8');
+    seedRequirements([reqRow('REQ-001', { body_path: '.openfeel/requirements/REQ-001.md' })]);
+
+    const d = await doc(['req', 'body', 'REQ-001', '--section', '摘要', '--text', '写实摘要：正文可结构化写入，且只影响目标小节。', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'id', 'section', 'path', 'lines', 'created']);
+    expect(d.id).toBe('REQ-001');
+    expect(d.section).toBe('摘要');
+    expect(d.path).toBe('.openfeel/requirements/REQ-001.md');
+    expect(d.lines).toBe(1);
+    expect(d.created).toBe(false);
+
+    // 受保护小节：legacy 形态 + exit 1（零写盘）
+    const raw = await capture(['req', 'body', 'REQ-001', '--section', '状态', '--text', 'x', '--json']);
+    const failure = JSON.parse(raw) as Record<string, unknown>;
+    expect(Object.keys(failure)[0]).toBe('schemaVersion');
+    expect(failure.error).toBe('protected_section');
+    expect(failure.errorKind).toBe('refusal');
+    expect(process.exitCode).toBe(1);
   });
 
   it('#40 roadmap show：version/milestones 键序、3/4 列兼容、空态与版本不存在', async () => {

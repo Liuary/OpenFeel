@@ -7,9 +7,18 @@
  * 边界声明：不依赖归档层；模式属性（workflow_mode?）为调度属性——本层只做「值域校验 + 载体制门」，
  *   解析 / 下发单点在 FlowManager；不参与聚合判定。
  */
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import type { FlowData, PipelinePhase, StageData, StageRequirementLink } from '../flow-manager.js';  // 仅类型（编译期擦除）
 import { stageRequirementIds } from './stage-links.js';   // 阶段↔需求关联读取单点（v1.5.8 / REQ-028）
 import { WORKFLOW_MODES, type WorkflowMode } from '../config.js';   // 值域单源（运行时值导入，禁就地三值字面量）
+import { findRequirementPlanPath } from '../plan/path.js';
+import { getRequirementBodyPath } from './body-file.js';   // 正文路径单点派生（禁第二套路径规则）
+import {
+  REQUIREMENT_BODY_CRITERIA_SECTIONS, REQUIREMENT_BODY_SECTIONS,
+  REQUIREMENT_PLAN_DEVIATION_SECTION, extractSection, findEmptySections,
+  isRequirementBodyFilled, isRequirementPlanFilled, isSectionFilled,
+} from '../plan/filled.js';   // 写实判据单点（v1.6.0 / REQ-056；禁第二份占位/字数规则）
 import {
   REQ_ID_PATTERN, REQ_PRIORITIES, REQ_STATUSES, REVIEW_RESULTS, VERIFICATION_KINDS,
   type RequirementData, type RequirementPriority, type RequirementStatus,
@@ -24,10 +33,22 @@ export type RequirementErrorCode =
   | 'already_linked'   // **已退役**（v1.5.8 / REQ-028 多值模型下阶段可挂多个需求，link 不再返回）；保留取值以兼容既有映射面
   | 'invalid_status'   // 状态门拒绝（claim 终态 / 非法流转 / patch.status 非法值 / link 终态需求）
   | 'invalid_field'      // 字段门拒绝（白名单外键 / 非法值 / owner 空串 / title 空串）
-  | 'general_mode_conflict'; // 载体制门（stage-90）：general 仅限无关联阶段的需求 / general 需求不接受阶段关联
+  | 'general_mode_conflict' // 载体制门（stage-90）：general 仅限无关联阶段的需求 / general 需求不接受阶段关联
+  | 'plan_deviation'   // 计划偏差门（v1.6.0 / REQ-056 T6）：已盖章计划被执行改动且 `## 偏差与回写` 未写实
+  | 'body_empty'       // 正文门（v1.6.0 / REQ-055 T4；REV-013）：状态流转到 scheduled/in_progress/done 时正文 `## 摘要` / `## 目标与验收` 未写实（**claim 不校验**）
+  | 'plan_missing';    // 需求级计划门（v1.6.0 / REQ-058 T7）：general 或零关联阶段需求无写实计划（`in_progress` 前）
 
 /** 写路径原语结果（ok=false 时携错误码；命令层映射 exit 非 0 零写盘） */
 export type RequirementOpResult = { ok: true; changed: boolean } | { ok: false; code: RequirementErrorCode };
+
+/**
+ * 状态变更门码（`applyStatusChange` 的返回型；**null = 放行**）。
+ *
+ * 演进记录（REV-002 方案 A）：本曾是 `boolean`，唯一调用点把 `false` 一律映射
+ * `invalid_status`，新门（正文 / 计划）无返回通道。改为「码 | null」后仍是**单点映射**：
+ * 命令层不做第二判据，只按码分流文案。
+ */
+export type RequirementGateCode = 'invalid_status' | 'body_empty' | 'plan_missing' | 'plan_deviation';
 
 /** 拆分原语结果（成功携子需求**本体**列表；失败携错误码——**业务分流范式**，REV-87-002 定稿） */
 export type RequirementSplitResult =
@@ -287,6 +308,277 @@ export function canCompleteRequirement(data: FlowData, req: RequirementData): bo
   return requirementDoneBlocker(data, req) === null;
 }
 
+// ═══ 正文门 / 需求级计划门（v1.6.0 / REQ-055 T4 · REQ-058 T7）═══
+//
+// 两条门都是**需求生命周期**上的独立前置检查：
+//   正文门 → 计划门 → done 门（review + verify）→ 偏差门（T6）。
+// 它们是「执行前该有什么」的补丁，**不进入** `requirementDoneBlocker`
+// （因此 `describeStageDoneGate` 与版本归档判据一字未动，正文/计划债在归档通道上永远可达）。
+// 判据一律来自 `plan/filled.ts`（写实性唯一实现），本文件不新写占位/字数规则。
+
+/**
+ * 正文门触发集合（**写死**）：启动 / 推进 / 完成三个目标状态。
+ * `draft`（退回草稿）、`blocked` / `cancelled` / `rejected`（暂停与终止）**不判**——
+ * 门只拦「往前走」的方向；不按 `workflow_mode` 分支（`general` 与零关联阶段需求同样生效）。
+ * **认领（claim）不在集合内**（v1.6.0 / REV-013：认领 ≠ 开工；`req add --claim` 必须原子成功）。
+ */
+const BODY_GATE_TARGETS: readonly RequirementStatus[] = ['scheduled', 'in_progress', 'done'];
+
+/**
+ * 读取需求正文（**单点解析**；`null` = 无正文可判）。
+ *
+ * 语义边界（有意设定，写清以免误读）：
+ * - 未提供项目根 → `null`（需求层零 cwd 依赖，项目根恒由调用方显式传入；命令层恒传）；
+ * - 文件不存在且需求**未登记** `body_path` → `null`（`req add` 恒铺骨架，缺文件只出现在
+ *   直构夹具 / 存量异常数据上——那种需求「没有正文」而非「正文写空」，交 `lint req` 枚举）；
+ * - 已登记 `body_path` 却读不到 → 空串（无证据 ⇒ 判据必落 `body_empty`，保守拒绝）。
+ */
+function resolveBodyMarkdown(projectPath: string | undefined, req: RequirementData): string | null {
+  const root = typeof projectPath === 'string' ? projectPath.trim() : '';
+  if (root === '') { return null; }
+  const path = getRequirementBodyPath(root, req.id);   // 路径单点派生（禁第二套）
+  if (!existsSync(path)) { return req.body_path === undefined ? null : ''; }
+  try {
+    return readFileSync(path, 'utf-8');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * 正文写实门判据（**单点**；T4）。
+ *
+ * 触发集合写死为 {@link BODY_GATE_TARGETS}，且已 `body_waiver` 放行的需求不再判。
+ * 判据 = `isRequirementBodyFilled`（`## 摘要` + `## 目标与验收`，后者需 ≥1 条判据行）。
+ *
+ * @param projectPath 项目根（命令层恒传；核心层不读 cwd）
+ * @param req 需求条目
+ * @param targetStatus 目标状态（不在触发集合内恒放行）
+ * @returns `'body_empty'`（未写实）或 `null`（放行）
+ */
+export function requirementBodyBlocker(
+  projectPath: string | undefined,
+  req: RequirementData,
+  targetStatus: RequirementStatus,
+): 'body_empty' | null {
+  if (!BODY_GATE_TARGETS.includes(targetStatus)) { return null; }
+  if (req.body_waiver !== undefined) { return null; }        // --force 留痕放行
+  const md = resolveBodyMarkdown(projectPath, req);
+  if (md === null) { return null; }
+  return isRequirementBodyFilled(md) ? null : 'body_empty';
+}
+
+/**
+ * 正文未写实的小节名（错误明细 / 文案用；判据与 {@link requirementBodyBlocker} 同源）。
+ * 空数组 = 无正文可判或已写实。
+ */
+export function requirementBodyEmptySections(projectPath: string | undefined, req: RequirementData): string[] {
+  const md = resolveBodyMarkdown(projectPath, req);
+  if (md === null) { return []; }
+  return findEmptySections(md, REQUIREMENT_BODY_SECTIONS, REQUIREMENT_BODY_CRITERIA_SECTIONS);
+}
+
+/** 需求级计划门触发状态（**写死**）：开工前必须有写实计划；`done` 侧由 T6 偏差门负责。 */
+const PLAN_GATE_TARGET_STATUS: RequirementStatus = 'in_progress';
+
+/**
+ * 需求级计划门判据（**单点**；T7）。
+ *
+ * 适用面（裁定②，三种组合写死）：
+ *   ① `workflow_mode === 'general'`（有 / 无关联阶段均适用——general 无阶段可挂门）；
+ *   ② `fast` / `full` 且**关联阶段数 === 0**（没有阶段 exec 门可兜底）；
+ *   ③ 有阶段的 `fast` / `full` → **返回 null**（交给 T5 的阶段 `exec_running` 门，不双判、不重复文案）。
+ *
+ * 判据 = `findRequirementPlanPath` 存在 ∧ `isRequirementPlanFilled`（前三个必备小节写实），
+ * 且未被 `plan_waiver` 留痕放行。
+ *
+ * @returns `'plan_missing'` 或 `null`（放行）
+ */
+export function requirementPlanBlocker(
+  data: FlowData,
+  projectPath: string | undefined,
+  req: RequirementData,
+  targetStatus: RequirementStatus,
+): 'plan_missing' | null {
+  if (targetStatus !== PLAN_GATE_TARGET_STATUS) { return null; }
+  if (req.plan_waiver !== undefined) { return null; }        // --force 留痕放行
+  const linkedCount = Object.values(data.stages ?? {})
+    .filter((s) => stageRequirementIds(s).includes(req.id)).length;
+  const stageGateCovers = req.workflow_mode !== 'general' && linkedCount > 0;
+  if (stageGateCovers) { return null; }                     // 组合③：交给阶段门
+  const root = typeof projectPath === 'string' ? projectPath.trim() : '';
+  if (root === '') { return null; }                         // 无项目根 → 无法定位计划（命令层恒传）
+  const planPath = findRequirementPlanPath(root, req.id);
+  if (planPath === null) { return 'plan_missing'; }
+  let md: string;
+  try {
+    md = readFileSync(planPath, 'utf-8');
+  } catch {
+    return 'plan_missing';                                  // 读不到 = 无法证明写实
+  }
+  return isRequirementPlanFilled(md) ? null : 'plan_missing';
+}
+
+/** 门留痕放行入参（`req --force` 专用；`by` 缺省由命令层解析为项目用户） */
+export interface RequirementGateForceInput {
+  /** 决策人（命令层恒传；缺省不写 `by` 键） */
+  by?: string;
+  /** 放行原因（缺省 = 渠道名） */
+  reason?: string;
+  /** 正文门渠道（`claim` / `advance` / `complete`；进审计 `detail.gate`） */
+  gate?: 'claim' | 'advance' | 'complete';
+}
+
+/**
+ * 正文门留痕放行（`--force`；纯内存 + 单条审计，落盘恒由调用方 save()）。
+ *
+ * 只做两件事：`req.body_waiver = {at, by, reason}` + 审计 `requirement_body_forced`。
+ * **不补写正文、不改 `updated_at` 之外的任何字段**——force 是「本次放行」而非「写实」：
+ * 正文仍应由 `req body` 补写（`lint req` 的 `fill.emptyBody` 会继续列出它）。
+ *
+ * @returns `not_found`（不存在）/ `invalid_status`（终态需求，force 无意义）
+ */
+export function forceRequirementBodyWaiver(
+  data: FlowData,
+  id: string,
+  input?: RequirementGateForceInput,
+): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (isTerminalRequirementStatus(req.status)) { return { ok: false, code: 'invalid_status' }; }
+  const by = typeof input?.by === 'string' ? input.by.trim() : '';
+  const reason = typeof input?.reason === 'string' && input.reason.trim() !== ''
+    ? input.reason.trim()
+    : `${input?.gate ?? 'advance'}-force`;
+  const at = new Date().toISOString();
+  req.body_waiver = { at, by, reason };
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_body_forced', {
+    id,
+    gate: input?.gate ?? 'advance',
+    reason,
+    ...(by === '' ? {} : { by }),
+  });
+  return { ok: true, changed: true };
+}
+
+/**
+ * 需求级计划门留痕放行（`--force`；纯内存 + 单条审计 `requirement_plan_forced`）。
+ *
+ * 与 {@link forceRequirementBodyWaiver} 同构：写 `req.plan_waiver` + 审计，
+ * **不创建计划文件**——计划仍须按模板补写（`lint req` 的 `fill.emptyPlan` 会继续列出它）。
+ */
+export function forceRequirementPlanWaiver(
+  data: FlowData,
+  id: string,
+  input?: RequirementGateForceInput,
+): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (isTerminalRequirementStatus(req.status)) { return { ok: false, code: 'invalid_status' }; }
+  const by = typeof input?.by === 'string' ? input.by.trim() : '';
+  const reason = typeof input?.reason === 'string' && input.reason.trim() !== ''
+    ? input.reason.trim()
+    : `${input?.gate ?? 'advance'}-force`;
+  const at = new Date().toISOString();
+  req.plan_waiver = { at, by, reason };
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_plan_forced', {
+    id,
+    reason,
+    ...(by === '' ? {} : { by }),
+  });
+  return { ok: true, changed: true };
+}
+
+// ═══ 计划偏差门（v1.6.0 / REQ-056 T6）：执行后计划改动必须留下可机器校验证据 ═══
+
+/** 计划内容 sha256 前 12 位（与 `sha256sum` 输出前缀同口径；flow.json 盖章与判据共用的唯一格式化点） */
+export function planSha12(content: string): string {
+  return createHash('sha256').update(content, 'utf-8').digest('hex').slice(0, 12);
+}
+
+/** `## 偏差与回写` 至少一条 `YYYY-MM-DD` 记录（行首可带列表符号；只认整条日期行，不认正文里的偶然日期） */
+const PLAN_DEVIATION_DATE_RE = /^[ \t]*(?:[-*+]|\d+\.)?[ \t]*\d{4}-\d{2}-\d{2}\b/m;
+
+/**
+ * 计划偏差门判据（**单点**；v1.6.0 / REQ-056 T6，挂需求 `→ done` 前置）。
+ *
+ * 顺序约束（REV-001）：本函数只判「偏差证据」；调用方必须在 done 门
+ * （`requirementDoneBlocker`：review + verify）**已通过之后**调用——缺审/缺验仍返回
+ * 既有 `invalid_status`，不得被 `plan_deviation` 抢文案。
+ *
+ * 语义（判定顺序固定）：
+ *   ① `req.plan` 缺失（盖章引入前的历史需求）→ `null` 放行（命令层 warn + 审计 `plan_unstamped`）；
+ *   ② 计划文件缺失 / 不可读 → `'plan_deviation'`（盖章后失去可比对证据，不放行）；
+ *   ③ 当前 sha256 前 12 位 == `req.plan.sha256` → `null`（计划未改，零额外要求）；
+ *   ④ 否则要求 `## 偏差与回写` 写实（`isSectionFilled`，判据来自 `filled.ts`）**且**
+ *      至少一条 `YYYY-MM-DD` 记录；二者缺一 → `'plan_deviation'`。
+ *
+ * @param req 需求条目（读 `req.plan`）
+ * @param projectPath 项目根（由调用方传入；测试 / 命令层显式给出）
+ */
+export function requirementPlanDeviationBlocker(
+  req: RequirementData,
+  projectPath?: string,
+): 'plan_deviation' | null {
+  if (req.plan === undefined) { return null; }   // 未盖章历史需求：放行（不伪造证据）
+  // 需求层不得依赖当前工作目录（stage-90 正交纪律）：项目根由调用方显式传入；
+  // 未提供 → 无法证明计划未改，保守拒绝（命令层恒传项目根）。
+  const root = typeof projectPath === 'string' ? projectPath.trim() : '';
+  if (root === '') { return 'plan_deviation'; }
+  const planPath = findRequirementPlanPath(root, req.id);
+  if (planPath === null) { return 'plan_deviation'; }
+  let md: string;
+  try {
+    md = readFileSync(planPath, 'utf-8');
+  } catch {
+    return 'plan_deviation';                     // 读不到 = 无法证明计划未改
+  }
+  if (planSha12(md) === req.plan.sha256) { return null; }
+  const section = extractSection(md, REQUIREMENT_PLAN_DEVIATION_SECTION);
+  if (!isSectionFilled(section).filled) { return 'plan_deviation'; }
+  return PLAN_DEVIATION_DATE_RE.test(section ?? '') ? null : 'plan_deviation';
+}
+
+/** 需求写路径可选行为（T6；全部可选，既有调用零改动） */
+export interface RequirementWriteOptions {
+  /** 项目根（计划偏差判据定位 `REQ-NNN.plan.md` 用；未提供时已盖章需求保守拒绝） */
+  projectPath?: string;
+  /** 计划偏差门留痕放行（**仅** `req advance --force` 显式传入；缺省 false = 拒绝） */
+  allowPlanDeviation?: boolean;
+}
+
+/**
+ * 计划偏差留痕放行（`req advance --force` 专用；纯内存 + 单条审计，落盘恒由调用方 save()）。
+ *
+ * 只做两件事：`req.plan.deviations += 1`（缺省视 0）+ 审计
+ * `requirement_plan_deviation_forced`。**不改 sha256、不删偏差证据**——force 是
+ * 「本次放行」而非「洗白」：计划文件里的 `## 偏差与回写` 仍须在后续流程中补写。
+ *
+ * @returns 无 `req.plan` 盖章时 `invalid_status`（force 只对已盖章需求有意义）
+ */
+export function forceRequirementPlanDeviation(
+  data: FlowData,
+  id: string,
+  input?: { by?: string },
+): RequirementOpResult {
+  const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
+  if (!req) { return { ok: false, code: 'not_found' }; }
+  if (req.plan === undefined) { return { ok: false, code: 'invalid_status' }; }
+  const by = typeof input?.by === 'string' ? input.by.trim() : '';
+  const at = new Date().toISOString();
+  req.plan.deviations = (typeof req.plan.deviations === 'number' ? req.plan.deviations : 0) + 1;
+  req.updated_at = at;
+  appendRequirementLog(data, 'requirement_plan_deviation_forced', {
+    id,
+    sha256: req.plan.sha256,
+    deviations: req.plan.deviations,
+    ...(by === '' ? {} : { by }),
+  });
+  return { ok: true, changed: true };
+}
+
 // ═══ 审查 / 验证记录写路径（v1.5.8 / REQ-027「完成必审验」）═══
 
 /** 需求审查记录入参（命令层 / 适配器共用；值域校验在本层单点） */
@@ -480,8 +772,34 @@ export function splitRequirement(
   return { ok: true, children: created };
 }
 
-/** 认领需求（占用校验；同 owner 幂等；终态拒绝；他人占用零变更零审计） */
-export function claimRequirement(data: FlowData, id: string, owner: string): RequirementOpResult {
+/**
+ * 认领可选行为（v1.6.0 / REV-013：**已无门禁用途**，保留调用形状）。
+ *
+ * 认领 ≠ 开工：`claim` 只写 `owner/claimed_at`，**不校验**正文（正文门只挂
+ * `scheduled / in_progress / done` 的状态流转），因此 `req add --claim` 必须能原子成功。
+ * `projectPath` 保留仅为命令层「两处调用同形」（claim / advance 都显式传项目根），
+ * 便于将来若重新引入认领侧判据时无需改调用面。
+ */
+export interface ClaimRequirementOptions {
+  /** 项目根（REV-013 起认领不再读取正文，本字段当前**不参与判定**） */
+  projectPath?: string;
+}
+
+/**
+ * 认领需求（占用校验；同 owner 幂等；终态拒绝；他人占用零变更零审计）。
+ *
+ * v1.6.0 / REV-013（覆盖 T4 / REV-003 的认领正文门）：认领**不**校验正文——
+ * 「认领 ≠ 开工」，且 `req add --claim` 必须能一次原子成功。正文门只在
+ * {@link applyStatusChange} 的状态流转上拦（`scheduled / in_progress / done`）；
+ * `--force` 写下的 `body_waiver` 对后续 `advance`（含 `add --start` 的自动流转）继续生效。
+ */
+export function claimRequirement(
+  data: FlowData,
+  id: string,
+  owner: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 调用形状保留（REV-013）；本函数不再读正文
+  opts?: ClaimRequirementOptions,
+): RequirementOpResult {
   const name = typeof owner === 'string' ? owner.trim() : '';
   if (name === '') { return { ok: false, code: 'invalid_field' }; }
   const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
@@ -525,20 +843,58 @@ export function getAllowedNextStatuses(status: RequirementStatus): RequirementSt
   return [...(ALLOWED_TRANSITIONS[status] ?? [])];
 }
 
-/** 状态变更应用（唯一实现）：返回 false = invalid_status（含 done 门不满足） */
-function applyStatusChange(data: FlowData, req: RequirementData, to: RequirementStatus): boolean {
-  if (!(REQ_STATUSES as readonly string[]).includes(to)) { return false; }
-  if (to === req.status) { return false; }                       // 同值由调用方按幂等 no-op 处理
+/**
+ * 状态变更应用（**唯一实现**）。
+ *
+ * 判定顺序（写死；T6/T7 的 REV-001 顺序约束）：
+ *   ① 值域 / 同值 / 流转表外 → `invalid_status`
+ *   ② 正文门（T4，`requirementBodyBlocker`）→ `body_empty`
+ *   ③ 需求级计划门（T7，`requirementPlanBlocker`）→ `plan_missing`
+ *   ④ done 门（`requirementDoneBlocker`：review + verify，判据一字不改）→ `invalid_status`
+ *   ⑤ 计划偏差门（T6，`requirementPlanDeviationBlocker`）→ `plan_deviation`
+ * 前四步任一不通过即**零变更零审计**返回；`--force` 只经 ②③ 的 waiver 与 ⑤ 的
+ * `allowPlanDeviation` 留痕放行（各自另写审计条目）。
+ *
+ * @returns `null` = 放行；否则为门码（命令层单点映射文案）
+ */
+function applyStatusChange(
+  data: FlowData,
+  req: RequirementData,
+  to: RequirementStatus,
+  opts?: RequirementWriteOptions,
+): RequirementGateCode | null {
+  if (!(REQ_STATUSES as readonly string[]).includes(to)) { return 'invalid_status'; }
+  if (to === req.status) { return 'invalid_status'; }            // 同值由调用方按幂等 no-op 处理
   // 域外 status（存量脏数据 / 人工篡改）→ 查表得 undefined，守卫后与「表外组合」同语义，不抛 TypeError（REV-81-016）
   const allowed = ALLOWED_TRANSITIONS[req.status];
-  if (!allowed || !allowed.includes(to)) { return false; }
-  // 裁定 4 扩展（stage-93）：completion 判据单点（canCompleteRequirement），不再直呼路 1
-  if (to === 'done' && !canCompleteRequirement(data, req)) { return false; }
+  if (!allowed || !allowed.includes(to)) { return 'invalid_status'; }
+  // ② 正文门（v1.6.0 / REQ-055 T4）：在 done 门之前——空壳正文先被点名，不冒充「未审/未验」
+  const bodyGate = requirementBodyBlocker(opts?.projectPath, req, to);
+  if (bodyGate !== null) { return bodyGate; }
+  // ③ 需求级计划门（v1.6.0 / REQ-058 T7）：general / 零关联阶段需求的开工前置
+  const planGate = requirementPlanBlocker(data, opts?.projectPath, req, to);
+  if (planGate !== null) { return planGate; }
+  // ④ done 门（裁定 4 扩展，stage-93）：completion 判据单点（canCompleteRequirement），不再直呼路 1
+  if (to === 'done' && !canCompleteRequirement(data, req)) { return 'invalid_status'; }
+  // ⑤ 计划偏差门（v1.6.0 / REQ-056 T6）：done 门**已通过之后**才判（缺审/缺验仍返回 invalid_status）
+  if (to === 'done' && opts?.allowPlanDeviation !== true) {
+    const deviation = requirementPlanDeviationBlocker(req, opts?.projectPath);
+    if (deviation !== null) { return deviation; }
+  }
   const from = req.status;
+  // v1.6.0 / REQ-056 T6：未盖章历史需求（`req.plan` 缺省）在 done 时先落一条**标记记录**——
+  // 让「放行但未校验计划」可被事后追溯（不阻塞、不改状态语义，也保持
+  // `requirement_status` 条目形状逐字不变）。走到这里时一切门均已通过，落条不会
+  // 造成「被拒却已审计」。
+  if (to === 'done' && req.plan === undefined) {
+    appendRequirementLog(data, 'requirement_plan_unstamped', {
+      id: req.id, from, to, plan_unstamped: true,
+    });
+  }
   req.status = to;
   req.updated_at = new Date().toISOString();                      // 状态维度刷新（单次赋值纪律，REV-81-013）
   appendRequirementLog(data, 'requirement_status', { id: req.id, from, to });
-  return true;
+  return null;
 }
 
 /** 字段白名单（= RequirementData 可变字段名子集） */
@@ -552,6 +908,7 @@ export function updateRequirement(
   data: FlowData,
   id: string,
   patch: { status?: RequirementStatus; title?: string; target_version?: string; priority?: RequirementPriority; workflow_mode?: WorkflowMode },
+  opts?: RequirementWriteOptions,
 ): RequirementOpResult {
   // ① 内联 raw find（与 claim / release 同款）
   const req = (Array.isArray(data.requirements) ? data.requirements : []).find((r) => r?.id === id);
@@ -587,10 +944,11 @@ export function updateRequirement(
     if (hasLinked) { return { ok: false, code: 'general_mode_conflict' }; }
   }
 
-  // ⑥ 状态维度（= 当前则无变更；≠ 走单点 applyStatusChange）
+  // ⑤ 状态维度（= 当前则无变更；≠ 走单点 applyStatusChange——顺序 正文门 → 计划门 → done 门 → 偏差门）
   let statusChanged = false;
   if (p.status !== undefined && p.status !== req.status) {
-    if (!applyStatusChange(data, req, p.status)) { return { ok: false, code: 'invalid_status' }; }
+    const gate = applyStatusChange(data, req, p.status, opts);
+    if (gate !== null) { return { ok: false, code: gate }; }
     statusChanged = true;
   }
 
@@ -623,8 +981,13 @@ export function updateRequirement(
 }
 
 /** 显式人工推进（裁定 M）；语义与 update({status}) 完全一致（同表同门同审计，零第二套） */
-export function advanceRequirement(data: FlowData, id: string, to: RequirementStatus): RequirementOpResult {
-  return updateRequirement(data, id, { status: to });
+export function advanceRequirement(
+  data: FlowData,
+  id: string,
+  to: RequirementStatus,
+  opts?: RequirementWriteOptions,
+): RequirementOpResult {
+  return updateRequirement(data, id, { status: to }, opts);
 }
 
 // ═══ 发布门与顺延（v1.5.8 / REQ-030）═══

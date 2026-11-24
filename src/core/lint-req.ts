@@ -7,7 +7,11 @@
  * 分层约束（红线）：
  *  - 本模块是纯函数 + 常量：**零 commander 依赖**、**零 `../cli/index.js` import**
  *    （命令树由调用方以纯数据注入 —— 避免 `cli → commands → cli` 循环依赖）；
- *  - 不读写 `flow.json` / `status.md`；唯一 I/O 是 `lintRequirements` 读需求正文。
+ *  - 不读写 `flow.json` / `status.md`；I/O 只在 {@link lintRequirements}（读需求正文）
+ *    与 {@link lintRequirementBodies}（扫空壳，判据在 `plan/filled.ts`）。
+ *
+ * v1.6.0-stage-132 / T3：{@link lintRequirements} 在既有报告上追加 `fill`（需求正文 / 需求级计划的
+ * 空壳清单）。**advisory**：不进 `ok`、不驱动退出码（48 条存量空壳不能让 `lint req` 恒红）。
  *
  * A / B 分级（REV-010；REV-020 补「参数起点」判定）：
  *  - **A 类** `unknown-command`：首 token 是根命令，但逐词下降在某处断掉，且**断点父命令
@@ -21,6 +25,7 @@
 import { readdirSync, readFileSync, type Dirent } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { t } from './i18n.js';
+import { lintRequirementBodies, type RequirementBodyLintReport } from './plan/body-lint.js';
 
 /** 命令树节点（纯数据，便于断言与序列化；`children` 保持注册声明序） */
 export interface CommandNode {
@@ -90,6 +95,17 @@ export interface LintReqReport {
   /** 未闭合的 ignore-start 区间（stderr 警告源；**不进 JSON**，REV-011） */
   unclosedRegions: Array<{ path: string; line: number }>;
 }
+
+/**
+ * {@link lintRequirements} 的完整报告：纯函数报告 + **空壳清单**（v1.6.0-stage-132 / T3）。
+ *
+ * `fill` 是 advisory 附加块（只读扫描，判据单点在 `plan/filled.ts`）：
+ * - `empty`：正文未写实的需求（`emptySections` 为未写实小节名）；
+ * - `missingPlan`：无 `.openfeel/plan/reqs/REQ-NNN.plan.md` 的需求。
+ *
+ * 纯函数 {@link lintRequirementFiles} 不产生该字段（它不碰磁盘），故这里用交叉类型而不是改纯报告。
+ */
+export type LintReqReportWithFill = LintReqReport & { fill: RequirementBodyLintReport };
 
 /** 可选命令前缀（首 token 严格等于此值时才剥一次） */
 export const LINT_REQ_PREFIX = 'openfeel';
@@ -261,13 +277,20 @@ export function lintRequirementFiles(
 /**
  * 便利入口：读 `<projectPath>/.openfeel/requirements/*.md`（按文件名升序）后调纯函数。
  * 目录不存在 / 无 `*.md` → `files:0, candidates:0, issues:[], suspects:[]`（镜像 `lint kb` 的「无目录即通过」）。
+ *
+ * v1.6.0-stage-132 / T3：追加 `fill`（需求正文 `empty` + 缺需求级计划 `missingPlan`）。
+ * 该块**只读、advisory**，不参与 `ok` 判定，也不影响退出码。
  */
 export function lintRequirements(
   projectPath: string,
   tree: readonly CommandNode[],
   lang: string,
-): LintReqReport {
-  return lintRequirementFiles(readRequirementFiles(resolve(projectPath)), tree, lang);
+): LintReqReportWithFill {
+  const root = resolve(projectPath);
+  return {
+    ...lintRequirementFiles(readRequirementFiles(root), tree, lang),
+    fill: lintRequirementBodies(root),
+  };
 }
 
 /**

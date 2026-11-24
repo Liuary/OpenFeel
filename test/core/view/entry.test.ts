@@ -11,7 +11,7 @@ import {
   acceptReview,
   addReviewEntry,
 } from '../../../src/core/view/entry.js';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -455,6 +455,17 @@ describe('View Entry', () => {
         log: [],
       });
       mgr.save();
+
+      // v1.6.0 / REQ-056 T5：auto-fix 会跨越进入 exec_running → 需写实的阶段计划（新增硬门前置）
+      mkdirSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01'), { recursive: true });
+      writeFileSync(join(tmpDir, '.openfeel', 'plan', 'v1', 'stage-01', 'plan.md'), [
+        '# 阶段计划',
+        '',
+        '## 一、目标',
+        '执行前必须有可被机器校验的计划文件；拒绝路径零写盘零审计，放行路径留痕 gate_overrides 与缺项快照。',
+        '## 二、任务拆解',
+        '先新增路径求解函数与门谓词，再在核心层插入门，最后镜像命令层并补齐测试与中英 i18n（同批追加）。',
+      ].join('\n'), 'utf-8');
 
       const result = addReviewEntry(tmpDir, { opId: 'stage-01.op-001', title: 't', autoFixDetail: 'auto' });
       expect(result.error).toBeNull();

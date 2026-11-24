@@ -10,12 +10,12 @@
   `pnpm install`。**改代码后需重启 DSH 宿主**（Loader 按 URL 缓存 ESM 模块）。
 - **安装（另一种）**：经 DSH 插件管理器 `install_bundle` 装 `link:<repo>/dsh`；`file:` 会拷贝，
   改代码后须重装。
-- **落点**：`ctx.tools`（13 个 `feel_*` 工具）、`ctx.commands`（`/feel`）、
-  `ctx.systemPrompt`（`<feel_mode>` 纪律段）。不写任何领域状态。
+- **落点**：`ctx.tools`（15 个 `feel_*` 工具）、`ctx.commands`（`/feel`）、
+  `ctx.systemPrompt`（`<feel_mode>` 纪律段 + 每轮提醒段）。不写任何领域状态。
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
-  （v1.5.10 起 43 个成功出口 / 44 个注册 `--json` 选项）；本适配器只消费、不重实现。
+  （v1.6.0 起 46 个成功出口 / 47 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.5.22）。
+  的 `openfeel.requiresCli`（≥1.6.0；`req body` / `feel_req body` / 五个新门禁码是硬依赖）。
 
 ## 设计边界
 
@@ -32,9 +32,10 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
   - **第 1 层 · 文件工具**：`edit` / `write` / `apply_patch` / `str_replace_editor`。
   - **第 2 层 · shell**：`bash` / `pwsh`（默认受守，四类判定见下）。
   - **第 3 层 · 受保护路径**：`.openfeel/flow.json`（含 `.bak`）、`**/status.md`、`.openfeel/chore.json`、
-    `dev/.preflight.json` / `dev/sessions.json` / `dev/guard-state.json`、`flow-archive/**`、
+    `dev/.preflight.json` / `dev/sessions.json` / `dev/guard-state.json` / **`dev/dispatch.jsonl`（v1.6.0 派发台账）**、`flow-archive/**`、
     `checkpoints/**`、`requirements/*.md`、`log/guard-audit.jsonl` —— **任意相位硬拒**
     （D-126-05：防 agent 手写状态/写窗口自提权），拒绝文案指向对应的人类 CLI 路径。
+    `dev/dispatch.jsonl` 只能由 `feel_dispatch`（适配器进程内 fs 直写）维护；`requirements/*.md` 的提示文案指向 `feel_req action=body`。
   其余分层：
   - **bootstrap 例外**：工作区无 `.openfeel/` 时，全部目标为「新增文件」（`apply_patch` 还要求全部为
     `*** Add File:`）→ 放行并提示补账本；已存在文件、`.openfeel/**`、Update/Delete/Move 仍拒绝；
@@ -145,7 +146,7 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
   （重启会话不够，Loader 按 URL 缓存 ESM 模块）；重启后首条判定即写 `guard-state.json`，
   可用 `feel_status.guard` 核对 `registered` / `cwdSource` / `stale`（`stale` 由 pid/loaded_hash 判定，可自愈）。
 - **命令执行推荐**（v1.3.5）：系统提示段新增「Windows：优先 `bash`（Git Bash），其次 `pwsh`（PowerShell 7）；macOS/Linux 用 `bash`；默认不用 `cmd.exe`」；同一任务保持同一 shell。
-- **状态与记录**（v1.5.0）：只有 Feel 写状态；子 agent 不读不写 `dev_last*` / `current.md` / `status.md` / `flow.json`；日志不强制；`feel_next` / `feel_status` 暴露 `statusSync.due`（30 分钟），到期只提示更新交接摘要 + `openfeel dev sync`。
+- **状态与记录**（v1.5.0；v1.6.0 收口）：只有 Feel 写状态；子 agent 不读不写 `dev_last*` / `current.md` / `status.md` / `flow.json`；日志不强制；`feel_next` / `feel_status` 暴露 `statusSync.due`（30 分钟）。**同步入口是 `feel_dev action=sync`（工具），不是 shell**——`/feel` 与提示段都不再让 agent 跑 `openfeel dev sync`（写命令经 shell 会被门禁拒）；`stage set` / `req advance|complete|review|verify|body` / `flow advance` 成功出口已自动同步（v1.6.0 / REQ-059），`due` 通常已为 `false`。
 - **流程入口闸**（v1.5.2）：`feel_status` / `feel_next` 在无活跃阶段时返回 `workflowGate`；无阶段写 `docs/research/**` 被拒（chore 不能绕过；拒绝写 `guard-audit.jsonl`，`event=guard_deny`）。
 - **派发/恢复**（v1.5.3）：`feel_next.dispatch`（goal/context/boundaries/returnFormat；子 agent 禁读状态文件、返回 ≤10 行）；`feel_status.recovery`（lastTransition / handoff / nextAction）。
 - **快照/空转**（v1.5.4）：`feel_status` / `feel_next` 返回 `revision` / `snapshotAt` / `stale`；`plan_pending` 停留 >10 分钟提示空转。
@@ -156,6 +157,48 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 - **多会话收束 P0**（v1.5.8 / REQ-029）：`feel_status` / `feel_next` 末位追加 `sessions`（`[{id, cwd, lastSeen, stage}]`，读 `.openfeel/dev/sessions.json`；文件缺失 → `[]`）；**每次 `feel_*` 执行**都 upsert 一条本会话心跳（读写失败静默、不阻断主流程）。该文件是运行时状态（`.gitignore` 忽略），与 CLI 侧 `src/core/dev/sessions.ts` **同一格式**（`{ schemaVersion: 1, sessions }`）；CLI 的 `autoCommitOnDone` 据此在检测到其它存活会话时跳过自动提交。
 - **完成必审验**（v1.5.8 / REQ-027）：`feel_req` 新增 `action=review`（`result`/`by`/`note`/`independent`）与 `action=verify`（`result`/`kind`/`by`/`note`/`evidence`），`feel_stage` 新增 `action=verify`（仅 archiving 相位）；需求 `done` 门要求 review + verification 均 `pass`，阶段 `archiving → done` 要求阶段验证 `pass` 且关联需求全部 `done`（`--force` 不绕过）。review 缺省按**自我审查**处理并显式传 `--self`（归档摘要标注 `self-review`）。
 - **需求随版本归档 + 发布门**（v1.5.8 / REQ-030）：归档前先 `feel_req action=release-check`（只读，恒 exit 0）；该版本仍有未完成需求时缺省拒绝归档，先 `feel_req action=rollover`（`from`/`to`/`id`|`all`）顺延，或 `feel_archive action=create` 显式 `allow_unfinished=true`。归档会把该版本**终态**需求移入归档文件；`feel_req action=list` 传 `include_archived=true` 合并查看，`action=show` 对已归档需求回退读归档文件（`archived: true`）。需求 ID 由 `flow.json.meta.last_req_seq` 单调分配，归档后不复用。
+
+## v1.6.0：派发台账、提示词预算与每轮提醒
+
+### 工具面（15 个，v1.6.0 新增 2 个）
+
+| 工具 | 覆盖的 CLI | 能力域 |
+|---|---|---|
+| `feel_dispatch` | 无 CLI（适配器进程内直写 `.openfeel/dev/dispatch.jsonl`） | **派发台账**：`{stage, phase, targetAgent, role, goal, files, returnFormat, taskId?}` → 追加一行 JSONL 并返回 `dispatchId`；同 `leadSessionId + taskId + goal` 在 5 分钟内去重；24h / 上限 200 行清理 |
+| `feel_dev` | `dev sync`（`cli.write`）/ `dev status`（文本 + 读 `.sync.json`） | **开发账本**：`action=sync|status`；返回 `{ok, lastSync, due, changed, wrote}` |
+
+其余 13 个见 [`README.md`](README.md) 的工具表；`feel_req` 另新增 `action=body`（`cli.write(['req','body',...])`，走 T2 的正文写入口）。
+
+### 提示词预算（`lib/surface/prompt.js`，v1.6.0 / T10）
+
+| 语言 | enabled | disabled（含 Free Mode 附录） | 判据 |
+|---|---|---|---|
+| `zh-CN` | **720 字符 / 14 行** | **837 字符 / 17 行** | ≤1200 字符 且 ≤25 行 |
+| `en` | **1027 字符 / 13 行** | **1143 字符 / 16 行** | 同上 |
+
+正文常量 `FEEL_BODY_ZH` / `FEEL_BODY_EN` 是单一源：`src/core/template-loader.ts` 与 claude/opencode 四份 `feel.md` 用 `<!-- feel-prompt-parity:begin/end -->` 包住同一段文本，`test/cli/feel-prompt-parity.test.ts` 断言 5 处 sha256 一致（防副本分叉）。
+
+### 每轮提醒：首选档不可用 → 降级 1（已落地）
+
+| 档位 | 机制 | 结论 |
+|---|---|---|
+| 首选 | `ctx.tools.post-execute` → `additionalContexts` | **不可用**：`additionalContexts` 需 `UserMessage`（`createUserMessage` 来自 `@deepseek-ai/dsh-llm`），适配器零运行时依赖、profile 是 `link:`，`realpath` 上溯解析不到该包（`MODULE_NOT_FOUND`）。`post-execute` 仍注册为**只观察**（记步数 / 判断写类工具），不改结果 |
+| **降级 1（采用）** | `ctx.systemPrompt.context({name:'openfeel-feel-next', order: FEEL_PROMPT_ORDER+5, text})` | 每次装配求值的函数；**写类工具之后**或**每 5 步**注入一行 `阶段 <stage> / <phase>｜下一步：subagent(goal=…)`，其余请求返回空串（零 token 开销） |
+| 降级 2 | 只在 `feel_*` 返回体加 `nextLine` | 未采用（覆盖率低） |
+
+spike 原始证据（含 upgrade 条件）见 `.openfeel/tmp/stage-132/spike.md`；两处注册都以 `typeof … === 'function'` 守卫，宿主不支持时静默降级为无提醒。
+
+### 派发台账 schema（`.openfeel/dev/dispatch.jsonl`）
+
+每行一条 UTF-8 / LF JSON（读侧跳过畸形行；文件不存在视同空）：
+
+```json
+{"dispatchId":"d-0001","ts":"2026-11-24T04:31:52.000Z","leadSessionId":"<session.id>","origin":"root","stage":"v1.6.0-stage-132","phase":"exec_running","targetAgent":"executor-a-cli","role":"executor","taskId":"T5","goal":"<一句话任务，含验收命令>","files":["src/core/plan/path.ts"],"returnFormat":"≤10 行：结论/改动文件/验证/阻塞","dispatchDepth":1}
+```
+
+- **写入者唯一**：适配器 `lib/adapters/dispatch-ledger.js`（原子 temp + rename，仿 `sessions.js`）；该文件在 `PROTECTED_OPENFEEL_PATHS` 内，agent 工具直写 → `deny`。
+- **`origin` / `dispatchDepth`**：按 schema 保留缺省 `root` / `1`；**从宿主会话头读取的路径未在真实宿主验证**（spike T9 遗留），因此不构成实测证据，也不据此改审计 schema 版本。
+- **`feel_status.dispatch`** = `{required, records, missingRoles}`：`required` 恒 `true`（**提示级，不做硬拦**，用户裁定②）；`records` = 24h 内行数；`missingRoles` = 本快照应有但台账缺的 agent 角色。`feel_status` / `feel_next` 另给动作型 `nextAction`（`{kind:'dispatch'|'command'|'idle', tool, goal, prompt, reason}`），`next` 字符串键保留以不破坏既有断言。
 
 ## 目录
 
@@ -169,22 +212,24 @@ OpenFeel 采用「核心层 + 适配器层」架构（`claude/`、`kilo/`、`.op
 | `lib/adapters/cli.js` | CLI 执行器：可执行文件解析、UTF-8/无色/无日志、退出码与 envelope 语义 |
 | `lib/adapters/workspace.js` | 会话工作区 → OpenFeel 项目根 |
 | `lib/adapters/dashboard.js` | 状态快照（消费 `flow next --json`）+ 「下一步」决策 |
+| `lib/adapters/dispatch-ledger.js` | 派发台账（`.openfeel/dev/dispatch.jsonl` 读写 / 去重 / prune，v1.6.0） |
+| `lib/adapters/next-action.js` | 动作型 `nextAction` 纯函数 + 每轮提醒状态（v1.6.0 / REQ-060） |
 | `lib/adapters/host-state.js` | 宿主启动标记：适配器 `lib/` 指纹写入 `~/.openfeel/adapter-host-dsh.json`（v1.3.4） |
-| `lib/tools/index.js` | 13 个工具与 CLI argv 翻译 |
+| `lib/tools/index.js` | **15** 个工具与 CLI argv 翻译 |
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
-| `lib/surface/prompt.js` | `<feel_mode>` 系统提示段 |
-| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（46 + 112 + 138 + 10 断言，v1.5.11 / stage-126 后实测） |
+| `lib/surface/prompt.js` | `<feel_mode>` 系统提示段（v1.6.0 压到 ≤1200 字符 / ≤25 行） |
+| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（断言数随版本增长，以 `dsh/test/*` 实测输出为准） |
 | `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证
 
 ```bash
 cd dsh
-node test/contract.js      # 46 — DSH schema 契约（真实 assertSupportedJsonSchema）
-node test/verify.js        # 112 — 行为（真实 CLI + 真实 .openfeel 副本）
-node test/guard.js         # 138 — 写入门禁（fake ToolExecution + 临时工作区）
-node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载
+node test/contract.js      # 53 — DSH schema 契约（真实 assertSupportedJsonSchema；v1.6.0 实测）
+node test/verify.js        # 129 — 行为（真实 CLI + 真实 .openfeel 副本；v1.6.0 实测）
+node test/guard.js         # 180 — 写入门禁（fake ToolExecution + 临时工作区；v1.6.0 实测）
+node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载（取不到 tools 服务时跳过，exit 0）
 ```
 
 ## 发布说明

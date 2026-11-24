@@ -3,7 +3,7 @@
  *
  * 本测试**不模拟** DSH：它用宿主 asar 里提取出的**真实** `cordis` 与
  * `@deepseek-ai/dsh-tools` 构造一个真实注册表，然后把适配器的 `apply()`
- * 挂上去，断言 13 个工具真的注册成功、并且能被 `schemas()` 投影出来。
+ * 挂上去，断言 15 个工具真的注册成功、并且能被 `schemas()` 投影出来。
  *
  * 为什么必须有这一层：适配器直接调用 `ctx.tools.register()`，而该调用的
  * 校验逻辑（`assertSupportedJsonSchema`）与模型侧投影都发生在真实实现里。
@@ -36,6 +36,8 @@ const EXPECTED_TOOLS = [
   'feel_review',
   'feel_plan',
   'feel_model',
+  'feel_dispatch',
+  'feel_dev',
 ];
 
 /**
@@ -226,7 +228,7 @@ async function main() {
     process.stdout.write(`  ✗ 缺少工具：${missing.join(', ')}\n`);
     failed += 1;
   } else {
-    process.stdout.write('  ✓ 13 个工具全部注册\n');
+    process.stdout.write('  ✓ 15 个工具全部注册\n');
   }
 
   // 每个投影出来的 schema 必须可被 provider 安全序列化：无 type:null

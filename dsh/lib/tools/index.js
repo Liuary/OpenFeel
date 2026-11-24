@@ -11,10 +11,24 @@
  * 3. 在拒绝时给出**可操作的下一步**（改哪个参数、先跑哪条命令）。
  */
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+
 import { FeelError } from '../adapters/cli.js';
 import { legalNextPhases, planNextStep, readSnapshot } from '../adapters/dashboard.js';
 import { readStatusSync } from '../adapters/dev-status.js';
 import { buildDispatchTemplate } from '../adapters/dispatch.js';
+// v1.6.0 / T10：动作型 next（`nextAction`）与每步提醒的状态喂入
+import { deriveNextAction, nextActionLine, rememberFocus, toWireNext } from '../adapters/next-action.js';
+// v1.6.0 / REQ-057：派发台账（与 CLI `.openfeel/dev/dispatch.jsonl` 同一文件格式）
+import {
+  DISPATCH_LEDGER_REL_PATH,
+  DISPATCH_ROLES,
+  appendDispatch,
+  dispatchLedgerPath,
+  dispatchSummary,
+  readDispatches,
+} from '../adapters/dispatch-ledger.js';
 import { readRecovery } from '../adapters/recovery.js';
 import { readPreflightInfo } from '../adapters/preflight.js';
 import { buildObservability } from '../adapters/observability.js';
@@ -26,7 +40,11 @@ import { resolveGuardCwd } from '../guard.js';
 import { touchSession as touchSessionCwd } from '../adapters/session-cwd-registry.js';
 import { resolveWorkspace } from '../adapters/workspace.js';
 // v1.5.8 / REQ-029：多会话登记（与 CLI `.openfeel/dev/sessions.json` 同一文件格式）
-import { readSessions as readSessionEntries, touchSession as touchSessionFile } from '../adapters/sessions.js';
+import {
+  readSessions as readSessionEntries,
+  resolveSessionId,
+  touchSession as touchSessionFile,
+} from '../adapters/sessions.js';
 import {
   boolean,
   compileParameters,
@@ -144,6 +162,177 @@ function safeObservability(snapshot) {
 }
 
 /**
+ * 派发台账提示段（v1.6.0 / REQ-057）。
+ *
+ * **提示级，不做硬拦**（用户裁定 ②）：`required` 恒 true 只表示「建议走台账」，
+ * 不阻断任何工具调用。台账读取失败降级为空台账（观测数据绝不影响 feel_status）。
+ *
+ * 形状与 `dispatchSummary` 单点对齐：`{required, total, sincePhase, missingRoles, records}`。
+ *
+ * @param {string} projectRoot
+ * @param {{ stage?: string, phase?: string }} [focus]
+ * @returns {{ required: true, total: number, sincePhase: number, missingRoles: string[], records: Array<Record<string, any>> }}
+ */
+function safeDispatchSection(projectRoot, focus = {}) {
+  try {
+    return dispatchSummary(projectRoot, { stage: focus.stage ?? '', phase: focus.phase ?? '' });
+  } catch {
+    return { required: true, total: 0, sincePhase: 0, missingRoles: [...DISPATCH_ROLES], records: [] };
+  }
+}
+
+/**
+ * 写命令 + `--json`（v1.6.0 / T9）。
+ *
+ * 为什么要绕一层：`cli.json` 不跑 preflight 自愈，而 `cli.write` 只回人类文本。
+ * `req body` 是写命令且需要结构化出口（path/lines/created），所以用 `write`
+ * 保证「账本过期先真实读一次状态」的既有语义，再从 stdout 解析 JSON 文档。
+ * 解析失败不抛错（出口契约归 CLI），返回 `null` 由调用方降级。
+ *
+ * @param {import('../adapters/cli.js').FeelCli} cliInstance
+ * @param {string[]} argv 必须含 `--json`
+ * @param {object} options CLI 执行选项
+ * @returns {Promise<Record<string, any> | null>}
+ */
+async function writeJsonDoc(cliInstance, argv, options) {
+  const out = await cliInstance.write(argv, options);
+  const text = typeof out?.text === 'string' ? out.text.trim() : '';
+  if (text === '') return null;
+  try {
+    const doc = JSON.parse(text);
+    return doc !== null && typeof doc === 'object' && !Array.isArray(doc) ? doc : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 账本同步会重写的「文档类」目标（`dev_last.md` + `dev/current.md`）。
+ *
+ * **不把 `.sync.json` 算进去**：它是同步元数据（每次 sync 必写），
+ * 而 `wrote[]` 的语义是「哪些账本文档内容真的变了」（plan §5.5）。
+ *
+ * 用户目录名由 CLI 从 `.info.json` / 环境推导，适配器不重复那套规则：
+ * 直接枚举每个用户的 `dev_last.md`（`.openfeel/users/<user>/dev_last.md`，存在即纳入候选）。
+ *
+ * @param {string} projectRoot
+ * @returns {string[]} 绝对路径候选（可能不存在）
+ */
+function devDocCandidates(projectRoot) {
+  const files = [];
+  const usersDir = join(projectRoot, '.openfeel', 'users');
+  let entries = [];
+  try {
+    entries = readdirSync(usersDir, { withFileTypes: true });
+  } catch {
+    entries = [];
+  }
+  for (const entry of entries) {
+    if (entry.isDirectory()) files.push(join(usersDir, entry.name, 'dev_last.md'));
+  }
+  files.push(join(projectRoot, '.openfeel', 'dev', 'current.md'));
+  return files;
+}
+
+/**
+ * 快照账本文档内容（不存在 → `null`；读失败 → `null`）。
+ * @param {string} projectRoot
+ * @returns {Map<string, string | null>}
+ */
+function snapshotDevDocs(projectRoot) {
+  /** @type {Map<string, string | null>} */
+  const snapshot = new Map();
+  for (const file of devDocCandidates(projectRoot)) {
+    try {
+      snapshot.set(file, readFileSync(file, 'utf-8'));
+    } catch {
+      snapshot.set(file, null);
+    }
+  }
+  return snapshot;
+}
+
+/**
+ * 对比同步前后的账本文档，得出**实际变更**的相对路径（POSIX 风格）。
+ * @param {Map<string, string | null>} before
+ * @param {Map<string, string | null>} after
+ * @param {string} projectRoot
+ * @returns {string[]}
+ */
+function diffDevDocs(before, after, projectRoot) {
+  const wrote = [];
+  for (const [file, content] of after) {
+    if (content === null) continue;
+    if (before.get(file) === content) continue;
+    const rel = relative(projectRoot, file);
+    wrote.push(rel.split(sep).join('/'));
+  }
+  return wrote;
+}
+
+/**
+ * `feel_dispatch` 的当前阶段/相位解析（v1.6.0 / REQ-057）。
+ *
+ * 参数显式给出时零 CLI 调用；缺省时读一次 `flow next --json`（与 feel_next 同源权威）。
+ * 无阶段上下文或 CLI 不可用时留空，台账行照样记录（不因派发工具阻塞调度）。
+ *
+ * @param {import('../adapters/cli.js').FeelCli} cli
+ * @param {object} opts CLI 执行选项
+ * @param {Record<string, any>} args
+ * @returns {Promise<{ stage: string, phase: string }>}
+ */
+async function resolveDispatchFocus(cli, opts, args) {
+  let stage = optionalArg(args, 'stage') ?? '';
+  let phase = optionalArg(args, 'phase') ?? '';
+  if (stage !== '' && phase !== '') return { stage, phase };
+  try {
+    const doc = await cli.json(['flow', 'next', '--json'], opts);
+    if (stage === '' && typeof doc?.stage === 'string') stage = doc.stage;
+    if (phase === '' && typeof doc?.phase === 'string') phase = doc.phase;
+  } catch {
+    // 取不到阶段 / 旧版 CLI / 未初始化：留空即可，派发记录仍然成立
+  }
+  return { stage, phase };
+}
+
+/**
+ * 打派发方的来源标识（v1.6.0 / REQ-057）。
+ *
+ * `origin` / `delegationDepth` 的 DSH 读取路径**尚未由 spike 验证**（plan §2 T9：
+ * 不可读则省略字段；本步按 schema 要求保留，用 `'root'` / `1` 作保守缺省，
+ * 可读时取真实值）。绝不为读这两个字段改变主流程。
+ *
+ * @param {object} exec
+ * @returns {{ origin: string, dispatchDepth: number }}
+ */
+function dispatchOriginOf(exec) {
+  const session = exec?.agent?.session ?? {};
+  const header = session.header ?? {};
+  const origin = typeof header.origin === 'string' && header.origin !== ''
+    ? header.origin
+    : (typeof session.origin === 'string' && session.origin !== '' ? session.origin : 'root');
+  const rawDepth = header.delegationDepth ?? session.delegationDepth ?? header.delegation_depth;
+  const dispatchDepth = Number.isInteger(rawDepth) && rawDepth >= 0 ? rawDepth : 1;
+  return { origin, dispatchDepth };
+}
+
+/**
+ * 派发方会话标识（`exec.agent.session.id` 优先，缺省沿用 CLI 三级链的会话标识）。
+ * @param {object} exec
+ * @param {string} projectRoot
+ * @returns {string}
+ */
+function dispatchSessionOf(exec, projectRoot) {
+  const id = exec?.agent?.session?.id;
+  if (typeof id === 'string' && id !== '') return id;
+  try {
+    return resolveSessionId(projectRoot);
+  } catch {
+    return '';
+  }
+}
+
+/**
  * 展示层对齐（v1.5.17）：`feel_mode=disabled` 时 CLI 的 preflight 有效模式已降级为 warn
  * （`src/core/preflight.ts:resolvePreflightMode`），而适配器读到的是**宿主 env**（可能仍是 strict）。
  * 这里同步展示为 warn，避免出现「报告 strict 却实际放行」的矛盾视图。
@@ -222,6 +411,10 @@ export function compactStatusSnapshot(snapshot) {
     stale: snapshot?.stale === true,
     // v1.5.8 / REQ-029：会话登记（compact 档同样暴露，体积可控——只含存活/近期会话）
     sessions: snapshot?.sessions ?? [],
+    // v1.6.0 / REQ-057：派发台账提示段（提示级，不做硬拦；键缺失时显式 null 保持形状）
+    dispatch: snapshot?.dispatch ?? null,
+    // v1.6.0 / T10：动作型 next（`dispatch` / `command` / `idle`）——与 wire 的 `next` 同源
+    nextAction: snapshot?.nextAction ?? null,
   };
   // 需求概览是显式开关（with_requirements），compact 档同样只在请求时带上
   if (snapshot?.requirements !== undefined) {
@@ -381,6 +574,17 @@ export function createTools(context) {
         // touchSessionFile 内部已 try/catch 静默，读失败同样降级为 []（绝不阻断主流程）。
         touchSessionFile(resolved.cwd, snapshot.focus?.stage ?? '');
         snapshot.sessions = readSessionEntries(resolved.cwd);
+        // v1.6.0 / REQ-057：派发台账提示段（required / total / sincePhase / missingRoles / records）。
+        // 提示级：只告知「本相位哪些角色还没派发过」，不做任何硬拦（用户裁定 ②）。
+        snapshot.dispatch = safeDispatchSection(resolved.cwd, {
+          stage: snapshot.focus?.stage,
+          phase: snapshot.focus?.phase,
+        });
+        // v1.6.0 / T10：动作型 next（`dispatch` / `command` / `idle`）。
+        // 同时喂给每步提醒（`rememberFocus`），让「该派发了」出现在决策点。
+        snapshot.nextAction = deriveNextAction(snapshot);
+        rememberFocus(snapshot, snapshot.nextAction);
+        snapshot.recovery.nextAction = nextActionLine(snapshot.nextAction);
         const focus = snapshot.focus;
         // v1.5.12 / stage-127 §3-E：标题按 workflowGate.reason 选择，与 feel_next 同源（headlineWarning）
         const gateWarning = headlineWarning(snapshot);
@@ -392,9 +596,8 @@ export function createTools(context) {
         return {
           data,
           summary: `${staleWarning}${gateWarning}${guardWarning}pipeline=${snapshot.pipeline.phase || '(空)'} 活跃阶段=${focus.stage || '(无)'} phase=${focus.phase || '(空)'} mode=${snapshot.mode.current}(${snapshot.mode.source}) 负责=${focus.responsibleAgent} 可推进到=[${(focus.legalNextPhases ?? []).join(', ') || '无'}]`,
-          next: focus.phase === 'done' || focus.phase === ''
-            ? null
-            : { tool: 'feel_next', arguments: {}, why: '获取「下一步该谁做」的明确建议。' },
+          // v1.6.0 / T10：`next` 保留（旧键），内容改成动作型（dispatch/command；idle → null）
+          next: toWireNext(snapshot.nextAction),
         };
       });
     },
@@ -436,12 +639,21 @@ export function createTools(context) {
         snapshot.recovery = readRecovery(resolved.cwd);
         snapshot.preflight = preflight;
         snapshot.observability = safeObservability(snapshot);
+        // v1.6.0 / T10：动作型 next 依赖派发台账（与 feel_status 同源；读本地 jsonl，零新增 CLI）。
+        // 注意：`plan.dispatch` 是派发模板（buildDispatchTemplate），台账走 `snapshot.dispatch`。
+        snapshot.dispatch = safeDispatchSection(resolved.cwd, {
+          stage: snapshot.focus?.stage,
+          phase: snapshot.focus?.phase,
+        });
         const plan = planNextStep(snapshot);
         plan.workflowGate = snapshot.workflowGate;
         plan.feelMode = snapshot.feelMode ?? null;
         plan.guard = snapshot.guard;
         plan.preflight = snapshot.preflight;
-        snapshot.recovery.nextAction = plan.suggestedCommand ?? null;
+        // v1.6.0 / T10：动作型 next（与 feel_status 同一纯函数、同一提醒状态）
+        plan.nextAction = deriveNextAction(snapshot);
+        rememberFocus(snapshot, plan.nextAction);
+        snapshot.recovery.nextAction = nextActionLine(plan.nextAction);
         plan.recovery = snapshot.recovery;
         plan.dispatch = buildDispatchTemplate(snapshot);
         plan.observability = snapshot.observability;
@@ -466,9 +678,10 @@ export function createTools(context) {
         return {
           data: plan,
           summary: plan.summary,
-          next: plan.toolCall === null || plan.toolCall === undefined
+          // v1.6.0 / T10：优先动作型 next；`idle` 时才回落到既有 toolCall（不破坏旧语义）
+          next: toWireNext(plan.nextAction) ?? (plan.toolCall === null || plan.toolCall === undefined
             ? null
-            : { tool: plan.toolCall.tool, arguments: plan.toolCall.arguments, why: `推进到 ${plan.toolCall.arguments.to}` },
+            : { tool: plan.toolCall.tool, arguments: plan.toolCall.arguments, why: `推进到 ${plan.toolCall.arguments.to}` }),
         };
       });
     },
@@ -863,9 +1076,9 @@ export function createTools(context) {
   const feelReq = {
     name: 'feel_req',
     description:
-      '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配，**单调计数器 meta.last_req_seq**：归档移走条目后也不复用 ID）；list 过滤列表（include_archived=true 合并已随版本归档的需求）；show 详情（已归档需求回退读归档文件）；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：关联阶段须已进入 exec_running 及之后相位即可完成——阶段是版本容器，不必先 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）；review 记录需求审查；verify 记录需求验证（**v1.5.8 完成必审验：done 门额外要求 review.result=pass 且 verification.result=pass**）；release-check 发布门（软，只读）：列出该版本 done / 未完成 / 其它需求；rollover 顺延：把未完成需求的 target_version 改到新版本并记录 carried_from。',
+      '需求分发系统（openfeel req，7 状态）。action=add 创建需求（ID 自动分配，**单调计数器 meta.last_req_seq**：归档移走条目后也不复用 ID；可带 summary / problem / goal / acceptance / plan 一步写入正文小节——正文门要求 `## 摘要` 与 `## 目标与验收` 都写实，缺 summary 时 add start=true 会被 REQ_BODY 拦）；body 写入需求正文的业务小节（`.openfeel/requirements/*.md` 是 guard 受保护路径，`feel_req action=body` 是唯一写入口：section 必填，text 与 file 二选一，append/replace 互斥）；list 过滤列表（include_archived=true 合并已随版本归档的需求）；show 详情（已归档需求回退读归档文件）；board 看板（7 组固定顺序）；next 推荐下一个可接取需求；claim 认领（占用校验、无 TTL）；release 释放；set 更新白名单字段；link 关联/解绑阶段；advance 显式推进状态（**done 门：关联阶段须已进入 exec_running 及之后相位即可完成——阶段是版本容器，不必先 done**）；split 拆分（子需求直接入 scheduled，父需求仅留 parent_id 溯源）；review 记录需求审查；verify 记录需求验证（**v1.5.8 完成必审验：done 门额外要求 review.result=pass 且 verification.result=pass**）；release-check 发布门（软，只读）：列出该版本 done / 未完成 / 其它需求；rollover 顺延：把未完成需求的 target_version 改到新版本并记录 carried_from。',
     parameters: {
-      action: stringEnum(['add', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split', 'review', 'verify', 'complete', 'waive', 'trivial', 'release-check', 'rollover'], '操作。', { required: true }),
+      action: stringEnum(['add', 'body', 'list', 'show', 'board', 'next', 'claim', 'release', 'set', 'link', 'advance', 'split', 'review', 'verify', 'complete', 'waive', 'trivial', 'release-check', 'rollover'], '操作。', { required: true }),
       id: string('需求 ID（如 REQ-001）。show/claim/release/set/advance/split/review/verify/rollover 必需（rollover 与 all 互斥）。'),
       title: string('需求标题（add 必需；set 为改标题）。'),
       target_version: string('预估版本（如 v1.3.0；纯展示/过滤维度，非门禁）。'),
@@ -890,9 +1103,22 @@ export function createTools(context) {
       evidence: string('verify 的证据（测试命令 / 报告路径）。'),
       independent: boolean('review 是否独立审查（缺省 false = 自我审查，须显式标注 self-review）。'),
       claim: boolean('add 时立即认领（v1.5.23）。'),
-      start: boolean('add 时直接进入 in_progress（自动 scheduled → in_progress；v1.5.25）。'),
+      start: boolean('add 时直接进入 in_progress（自动 scheduled → in_progress；v1.5.25；正文未写实会被 REQ_BODY 门拒绝）。'),
+      // v1.6.0-stage-132 / T13：add 时直接写正文业务小节（CLI `req add --summary/--problem/--goal/--acceptance/--plan`）。
+      // 正文门（REQ_BODY_GATE）在 scheduled / in_progress / done 生效，缺省字段不传。
+      summary: string('add 时写入正文 `## 摘要` 小节（Markdown；正文门要求它写实）。'),
+      problem: string('add 时写入正文 `## 问题` 小节（Markdown）。'),
+      goal: string('add 时写入正文 `## 目标与验收` 的「目标」子节（Markdown；正文门要求该节写实）。'),
+      acceptance: string('add 时写入正文 `## 目标与验收` 的「验收」子节（Markdown；至少 1 条 `- ` / `验收` 开头的判据行）。'),
+      plan: string('add 时写入正文 `## 初步规划` 小节（Markdown）。'),
       reason: string('waive / trivial 的原因（标记时必需）。'),
       revoke: boolean('waive / trivial 时撤销标记。'),
+      // v1.6.0 / REQ-055（T2）：需求正文的唯一写入口（`.openfeel/requirements/*.md` 是受保护路径）
+      section: string('req body 的小节名（如 摘要 / 目标与验收；元信息小节不可写）。body 必需。'),
+      text: string('req body 的小节正文（Markdown；与 file 二选一）。'),
+      file: string('req body 的正文来源文件（与 text 二选一；相对路径按项目根解析）。'),
+      append: boolean('req body 追加到该小节末尾（缺省替换整节）。'),
+      replace: boolean('req body 显式替换整节（缺省行为；与 append 互斥）。'),
       project: string('项目根目录。'),
     },
     output: { schema: envelopeSchema(), render: renderEnvelope },
@@ -910,9 +1136,59 @@ export function createTools(context) {
           pushFlag(argv, '--claim', args.claim);
           pushOption(argv, '--stage', args.stage);
           pushFlag(argv, '--start', args.start);
+          // v1.6.0-stage-132 / T13：正文业务小节在 CLI 侧先于 `--start` 落盘，
+          // 所以「add 带 summary/goal/acceptance + start」不再被正文门（REQ_BODY）拦。
+          pushOption(argv, '--summary', args.summary);
+          pushOption(argv, '--problem', args.problem);
+          pushOption(argv, '--goal', args.goal);
+          pushOption(argv, '--acceptance', args.acceptance);
+          pushOption(argv, '--plan', args.plan);
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return { data: { output: out.text }, summary: '需求已创建。' };
+          });
+        }
+        case 'body': {
+          // v1.6.0 / REQ-055（T2）：正文写入唯一入口。
+          // `.openfeel/requirements/*.md` 是 guard 受保护路径，agent 工具直写会被拒，
+          // shell 跑 openfeel 写命令同样被拒 —— 这是给正文开的唯一通道。
+          const id = requireArg(args, 'id', action);
+          const section = requireArg(args, 'section', action);
+          const text = optionalArg(args, 'text');
+          const file = optionalArg(args, 'file');
+          if (text === undefined && file === undefined) {
+            throw new FeelError('req body 需要 text 或 file 之一（小节正文来源）', {
+              kind: 'usage',
+              code: 'FEEL_BAD_USAGE',
+            });
+          }
+          if (text !== undefined && file !== undefined) {
+            throw new FeelError('req body 的 text 与 file 互斥：只能给一个', {
+              kind: 'usage',
+              code: 'FEEL_BAD_USAGE',
+            });
+          }
+          if (args.append === true && args.replace === true) {
+            throw new FeelError('req body 的 append 与 replace 互斥：只能给一个', {
+              kind: 'usage',
+              code: 'FEEL_BAD_USAGE',
+            });
+          }
+          const argv = ['req', 'body', id, '--section', section, '--json'];
+          pushOption(argv, '--text', text);
+          pushOption(argv, '--file', file);
+          pushFlag(argv, '--append', args.append);
+          pushFlag(argv, '--replace', args.replace);
+          return envelope(action, async () => {
+            const doc = await writeJsonDoc(cli, argv, opts);
+            const created = doc?.created === true;
+            const lines = typeof doc?.lines === 'number' ? doc.lines : null;
+            const path = typeof doc?.path === 'string' ? doc.path : null;
+            const mode = created ? '新建小节' : (args.append === true ? '追加' : '替换');
+            return {
+              data: { ok: true, id, section, path, lines, created },
+              summary: `需求 ${id} 的「${section}」已${mode}${lines === null ? '' : `（${lines} 行）`}${path === null ? '' : ` → ${path}`}。`,
+            };
           });
         }
         case 'list': {
@@ -1665,6 +1941,152 @@ export function createTools(context) {
     presentCall: (args) => presentCall(`Feel 模型 ${args.action}`, args.action, args.agent),
   };
 
+  /* ══════════════════════════ 14. feel_dispatch ══════════════════════════ */
+
+  const feelDispatch = {
+    name: 'feel_dispatch',
+    description:
+      '派发台账：把「派给谁、派什么、允许写哪些文件」记进 `.openfeel/dev/dispatch.jsonl`（一行一条 JSON，字段见 plan §5.4）。action=record 记录一次派发（同 `leadSessionId+taskId+goal` 5 分钟内去重，返回既有 `dispatchId`）；action=list 读最近 20 条。该文件受 guard 保护：只能经本工具写入，`write`/`edit`/shell 直写会被拒绝。台账是**提示级观测**（不做硬拦），`feel_status.dispatch` 汇总 `required / total / sincePhase / missingRoles / records`。',
+    parameters: {
+      action: stringEnum(['record', 'list'], '操作。', { required: true }),
+      target_agent: string('目标子 agent 名（如 executor-a-cli）。record 必需。'),
+      role: stringEnum(DISPATCH_ROLES, '目标角色。record 必需。'),
+      goal: string('一句话任务（含验收命令，可直接粘贴进 subagent prompt）。record 必需。'),
+      task_id: string('任务编号（如 T9），用于 5 分钟去重。record 必需。'),
+      files: stringArray('本任务允许写的文件 / 目录清单（可选，写入台账的 files[]）。'),
+      stage: string('阶段 ID（可选；缺省取当前活跃阶段，读一次 flow next）。'),
+      phase: string('相位（可选；缺省取当前阶段相位）。'),
+      project: string('项目根目录。'),
+    },
+    output: { schema: envelopeSchema(), render: renderEnvelope },
+    async execute(args, exec) {
+      const resolved = target(exec, args);
+      requireInitialized(resolved);
+      const action = args.action;
+      const opts = { cwd: resolved.cwd, signal: exec.signal };
+
+      switch (action) {
+        case 'record': {
+          const targetAgent = requireArg(args, 'target_agent', action);
+          const role = requireArg(args, 'role', action);
+          const goal = requireArg(args, 'goal', action);
+          const taskId = requireArg(args, 'task_id', action);
+          if (!DISPATCH_ROLES.includes(role)) {
+            throw new FeelError(`非法 role: ${role}（合法值：${DISPATCH_ROLES.join(' / ')}）`, {
+              kind: 'usage',
+              code: 'FEEL_INVALID_ARGUMENT',
+            });
+          }
+          return envelope(action, async () => {
+            const focus = await resolveDispatchFocus(cli, opts, args);
+            const origin = dispatchOriginOf(exec);
+            const result = appendDispatch(resolved.cwd, {
+              leadSessionId: dispatchSessionOf(exec, resolved.cwd),
+              origin: origin.origin,
+              stage: focus.stage,
+              phase: focus.phase,
+              targetAgent,
+              role,
+              taskId,
+              goal,
+              files: Array.isArray(args.files) ? args.files : [],
+              returnFormat: '≤10 行：结论/改动文件/验证/阻塞',
+              dispatchDepth: origin.dispatchDepth,
+            });
+            const where = focus.stage === '' ? '(无阶段)' : `${focus.stage}/${focus.phase || '(无相位)'}`;
+            const summary = result.duplicate
+              ? `重复派发（5 分钟内同 leadSessionId+taskId+goal）：沿用 ${result.dispatchId}（${where}）。`
+              : `已记录派发 ${result.dispatchId}：${role} → ${targetAgent}（${where}）。`;
+            return {
+              data: { dispatchId: result.dispatchId, path: result.path, duplicate: result.duplicate },
+              summary,
+              next: { tool: 'feel_status', arguments: {}, why: '确认 dispatch.records / missingRoles 已更新。' },
+            };
+          });
+        }
+        case 'list': {
+          return envelope(action, async () => {
+            const all = readDispatches(resolved.cwd);
+            const records = all.slice(-20);
+            return {
+              data: { total: all.length, limit: 20, path: dispatchLedgerPath(resolved.cwd), records },
+              summary: `派发台账共 ${all.length} 条，返回最近 ${records.length} 条（${DISPATCH_LEDGER_REL_PATH}）。`,
+            };
+          });
+        }
+        default:
+          throw new FeelError(`未知 action: ${action}`, { kind: 'usage', code: 'FEEL_UNKNOWN_ACTION' });
+      }
+    },
+    presentCall: (args) => presentCall('Feel 派发台账', args.action, args?.target_agent),
+  };
+
+  /* ══════════════════════════ 15. feel_dev ══════════════════════════ */
+
+  const feelDev = {
+    name: 'feel_dev',
+    description:
+      '开发账本（openfeel dev）：把提示里「更新交接摘要后运行 openfeel dev sync」这条**死指令**变成可执行工具。action=sync 立即同步受管 AUTO 块（`.openfeel/users/<u>/dev_last.md` + `.openfeel/dev/current.md`）并刷新 `.openfeel/dev/.sync.json`；action=status 只读查看 lastSync / due（与 CLI `openfeel dev status` 同源 `.openfeel/dev/.sync.json`）。CLI 的 `dev status` 没有 `--json`（零 JSON 契约），所以适配器跑真实命令作权威、结构化字段直接读同一份 `.sync.json`。返回 `{ok, lastSync, due, changed, wrote[]}`。',
+    parameters: {
+      action: stringEnum(['sync', 'status'], '操作。sync=立即同步账本；status=只读查看是否到期。', { required: true }),
+      project: string('项目根目录。'),
+    },
+    output: { schema: envelopeSchema(), render: renderEnvelope },
+    async execute(args, exec) {
+      const resolved = target(exec, args);
+      requireInitialized(resolved);
+      const action = args.action;
+      const opts = { cwd: resolved.cwd, signal: exec.signal };
+
+      if (action === 'status') {
+        return envelope(action, async () => {
+          // 真实命令校验「CLI 可用 + 项目已初始化」；字段与 CLI 同源（同一 .sync.json）。
+          await cli.text(['dev', 'status'], opts);
+          const status = readStatusSync(resolved.cwd);
+          return {
+            data: {
+              ok: true,
+              lastSync: status.lastSync,
+              due: status.due,
+              changed: false,
+              wrote: [],
+            },
+            summary: `账本同步状态：lastSync=${status.lastSync ?? '(无)'} due=${status.due}（间隔 ${status.intervalMinutes} 分钟）。`,
+            next: status.due
+              ? { tool: 'feel_dev', arguments: { action: 'sync' }, why: '状态记录已到期：立即同步一次。' }
+              : null,
+          };
+        });
+      }
+
+      if (action !== 'sync') {
+        throw new FeelError(`未知 action: ${action}`, { kind: 'usage', code: 'FEEL_UNKNOWN_ACTION' });
+      }
+
+      return envelope(action, async () => {
+        // `wrote[]` 是**观测结果**，不是承诺：状态未变时 CLI 跳过重写（blockChanged），
+        // 因此这里用同步前后内容对比得出真实变更，不硬编码「写到哪两个文件」。
+        const before = snapshotDevDocs(resolved.cwd);
+        await cli.write(['dev', 'sync'], opts);
+        const wrote = diffDevDocs(before, snapshotDevDocs(resolved.cwd), resolved.cwd);
+        const status = readStatusSync(resolved.cwd);
+        return {
+          data: {
+            ok: true,
+            lastSync: status.lastSync,
+            due: status.due,
+            changed: wrote.length > 0,
+            wrote,
+          },
+          summary: wrote.length === 0
+            ? `账本已同步：状态未变（无文件重写），lastSync=${status.lastSync ?? '(无)'}。`
+            : `账本已同步：重写 ${wrote.length} 个文件（${wrote.join(' / ')}），lastSync=${status.lastSync ?? '(无)'}。`,
+        };
+      });
+    },
+    presentCall: (args) => presentCall(`Feel 账本 ${args.action}`, args.action),
+  };
+
   const tools = [
     feelStatus,
     feelNext,
@@ -1679,6 +2101,8 @@ export function createTools(context) {
     feelReview,
     feelPlan,
     feelModel,
+    feelDispatch,
+    feelDev,
     // 注册表既不编译也不校验 parameters（本插件不经 defineTool），
     // 因此在交给注册表前统一转成子集接受的裸 JSON Schema。
   ].map((tool) => ({ ...tool, parameters: compileParameters(tool.parameters) }));

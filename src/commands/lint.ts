@@ -1,6 +1,6 @@
 /**
  * lint 命令组注册
- * openfeel lint i18n | kb | req
+ * openfeel lint i18n | kb | req | fill
  *
  * - lint i18n: 校验 src/core/i18n-data/zh-CN.ts 与 en.ts 键一致性
  *   （空值、中文版独有键、英文版独有键）
@@ -8,6 +8,8 @@
  *   检测引用的文件是否仍然存在，输出过期引用列表
  * - lint req: 扫描 .openfeel/requirements/*.md 的行内反引号命令路径，沿**真实命令树**
  *   解析，报出不存在的命令（A 类阻塞 / B 类 advisory；抑制标记两档）
+ * - lint fill: 列出空壳需求正文 / 缺需求级计划 / 空阶段文档（v1.6.0-stage-132 T3）。
+ *   **advisory：有问题也 exit 0**（存量空壳不能让 lint 恒红）；JSON 的 `ok` 仍可被 CI 消费
  */
 import { Command } from 'commander';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -22,6 +24,13 @@ import {
   type LintReqIssue,
   type LintReqReport,
 } from '../core/lint-req.js';
+import {
+  lintRequirementBodies,
+  lintStageDocs,
+  type RequirementBodyLintEntry,
+  type RequirementPlanLintEntry,
+  type StageDocLintReport,
+} from '../core/plan/body-lint.js';
 
 /** 结构化问题条目（JSON 契约形态 `{path,message}`） */
 interface LintIssue {
@@ -49,6 +58,20 @@ interface LintKbReport {
   /** 过期引用明细（人类输出与 issues 的共同来源） */
   stale: Array<{ file: string; ref: string; line: number }>;
 }
+
+/**
+ * `lint fill` 报告（v1.6.0-stage-132 T3；与 `lint req` 的 `fill` 块同源，仅分组形态不同）。
+ * `checked` = 扫描的需求正文文件数；`stageDocs` 只含**存在但未写实**的阶段文档。
+ */
+interface LintFillReport {
+  checked: number;
+  empty: RequirementBodyLintEntry[];
+  missingPlan: RequirementPlanLintEntry[];
+  stageDocs: StageDocLintReport;
+}
+
+/** 人类输出每组最多列出的条数（其余只报总数） */
+const FILL_LIST_LIMIT = 20;
 
 export function registerLintCommand(program: Command): void {
   const lint = program
@@ -134,14 +157,51 @@ export function registerLintCommand(program: Command): void {
           suspects: report.suspects.map(toIssue),
           unknownCount: report.unknownCount,
           suspectCount: report.suspectCount,
+          // ★ v1.6.0-stage-132 / T3：空壳清单（**新增键**，advisory，不驱动 ok / 退出码）
+          fill: {
+            emptyBody: report.fill.empty.map((entry) => ({ id: entry.id, emptySections: entry.emptySections })),
+            emptyPlan: report.fill.missingPlan.map((entry) => ({ id: entry.id })),
+          },
         }));
       } else {
         printLintReq(report, lang);
+        printLintReqFill(report.fill);
       }
       // R1 口径：仅 A 类影响退出码（B 类低置信只提示，绝不阻塞）
+      //               fill 亦为 advisory：空壳清单不改变退出码。
       if (report.issues.length > 0) {
         process.exitCode = 1;
       }
+    });
+
+  // lint fill — 空壳需求正文 / 缺需求级计划 / 空阶段文档（v1.6.0-stage-132 T3）
+  lint
+    .command('fill')
+    .description('列出空壳需求正文 / 缺需求级计划 / 空阶段文档（advisory，不改退出码）')
+    .option('--json', '以 JSON 输出 { schemaVersion, target, ok, checked, empty, missingPlan, stageDocs }')
+    .action((options: { json?: boolean }) => {
+      const projectPath = process.cwd();
+      const body = lintRequirementBodies(projectPath);
+      const report: LintFillReport = {
+        checked: body.checked,
+        empty: body.empty,
+        missingPlan: body.missingPlan,
+        stageDocs: lintStageDocs(projectPath),
+      };
+      if (options.json) {
+        emitJson(withSchemaVersion({
+          target: 'fill',
+          ok: isFillGreen(report),
+          checked: report.checked,
+          empty: report.empty,
+          missingPlan: report.missingPlan,
+          stageDocs: report.stageDocs,
+        }));
+      } else {
+        printLintFill(report);
+      }
+      // ★ 退出码语义（与 i18n/kb/req 三个目标**刻意不同**）：fill 是 advisory 清单，
+      //   存量空壳（本仓 48+ 条）不得让 lint 恒红，故**恒 exit 0**；`ok:false` 仅在 JSON 里供 CI 消费。
     });
 }
 
@@ -298,6 +358,71 @@ function printLintReq(report: LintReqReport, lang: string): void {
   }
   for (const suspect of report.suspects) {
     console.log(`  ${suspect.path} ${suspect.message}`);
+  }
+}
+
+/**
+ * 打印 `lint req` 的空壳 advisory 块（v1.6.0-stage-132 / T3）。
+ *
+ * 文案为**本批内联**（dispatch 边界内不改 `i18n-data`，键随后续文档/i18n 任务同批补齐）；
+ * 该块只提示、不影响 `ok` 与退出码 —— 全绿时恰好一行 `fill: OK`。
+ */
+function printLintReqFill(fill: {
+  empty: RequirementBodyLintEntry[];
+  missingPlan: RequirementPlanLintEntry[];
+}): void {
+  const total = fill.empty.length + fill.missingPlan.length;
+  if (total === 0) {
+    console.log('fill: OK');
+    return;
+  }
+  console.log(
+    `fill: 空壳需求 ${fill.empty.length} 个 / 缺需求级计划 ${fill.missingPlan.length} 个`
+    + '（advisory，详见 `openfeel lint fill`）',
+  );
+  printFillGroup('空壳需求', fill.empty.map((entry) => `${entry.id}（${entry.emptySections.join('、')}）`));
+  printFillGroup('缺需求级计划', fill.missingPlan.map((entry) => entry.id));
+}
+
+/** `lint fill` 报告是否全绿（四组清单均为空） */
+function isFillGreen(report: LintFillReport): boolean {
+  return report.empty.length === 0
+    && report.missingPlan.length === 0
+    && report.stageDocs.overviewEmpty.length === 0
+    && report.stageDocs.planEmpty.length === 0;
+}
+
+/**
+ * 打印 `lint fill` 人类输出（分组、每组最多 {@link FILL_LIST_LIMIT} 条 + 剩余数）。
+ * 全绿输出一行 `fill: OK`；**退出码恒 0**（见命令注册处注释）。
+ */
+function printLintFill(report: LintFillReport): void {
+  const total = report.empty.length
+    + report.missingPlan.length
+    + report.stageDocs.overviewEmpty.length
+    + report.stageDocs.planEmpty.length;
+  if (total === 0) {
+    console.log(`fill: OK（已检查 ${report.checked} 个需求文件；阶段文档无空壳）`);
+    return;
+  }
+  console.log(`fill: 发现 ${total} 项（已检查 ${report.checked} 个需求文件）`);
+  printFillGroup('空壳需求', report.empty.map((entry) => `${entry.id}（${entry.emptySections.join('、')}）`));
+  printFillGroup('缺需求级计划', report.missingPlan.map((entry) => entry.id));
+  printFillGroup('空 overview', report.stageDocs.overviewEmpty.map((entry) => entry.stageId));
+  printFillGroup('空 plan', report.stageDocs.planEmpty.map((entry) => entry.stageId));
+}
+
+/** 打印一组清单（标题含总数；超出上限只打「其余 N 条」） */
+function printFillGroup(title: string, items: readonly string[]): void {
+  if (items.length === 0) {
+    return;
+  }
+  console.log(`${title}（${items.length}）:`);
+  for (const item of items.slice(0, FILL_LIST_LIMIT)) {
+    console.log(`  ${item}`);
+  }
+  if (items.length > FILL_LIST_LIMIT) {
+    console.log(`  …其余 ${items.length - FILL_LIST_LIMIT} 条`);
   }
 }
 

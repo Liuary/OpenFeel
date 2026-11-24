@@ -13,6 +13,7 @@ import { dirname, join } from 'node:path';
 
 import { classifyShellCommand, clearGuardCache, createOpenFeelGuard, isPresentationalAssetPath, normalizeForComparison, parsePatchTargets, resolveGuardCwd } from '../lib/guard.js';
 import { touchSession } from '../lib/adapters/sessions.js';
+import { appendDispatch } from '../lib/adapters/dispatch-ledger.js';
 import {
   CWD_REGISTRY_LIMIT,
   cwdRegistrySize,
@@ -576,12 +577,36 @@ check('D-126-05：dev 账本（preflight / sessions / guard-state）在 exec_run
   }
 });
 
+check('v1.6.0 / REQ-057：dev/dispatch.jsonl 工具写拒绝、适配器 fs 直写放行', () => {
+  const cwd = project('protect-dispatch', execFlow);
+  const denied = projectOnly(execution('write', cwd, { path: '.openfeel/dev/dispatch.jsonl' }));
+  assert.equal(typeof denied, 'string', '工具直写派发台账应被拒绝');
+  assert.match(String(denied), /派发台账|feel_dispatch/);
+  // 适配器内部 appendDispatch 不经 guard（防自锁）：台账必须能正常落盘。
+  const appended = appendDispatch(cwd, {
+    leadSessionId: 'session-test',
+    stage: 'v1-stage-1',
+    phase: 'exec_running',
+    targetAgent: 'executor-a',
+    role: 'executor',
+    taskId: 'T9',
+    goal: 'guard 自锁用例',
+    files: [],
+  });
+  assert.match(appended.dispatchId, /^d-\d{4}$/);
+  const ledger = join(cwd, '.openfeel', 'dev', 'dispatch.jsonl');
+  assert.ok(existsSync(ledger), 'appendDispatch 应写成功（fs 直写不经 guard）');
+  assert.equal(JSON.parse(readFileSync(ledger, 'utf-8').trim()).taskId, 'T9');
+  // 回归：新增条目不影响既有 dev 名单判定
+  assert.equal(typeof projectOnly(execution('write', cwd, { path: '.openfeel/dev/sessions.json' })), 'string');
+});
+
 check('D-126-05：flow-archive / checkpoints / requirements/*.md 在 exec_running 下仍拒', () => {
   const cwd = project('protect-ledgers', execFlow);
   const cases = [
     ['.openfeel/flow-archive/v1.5.10.json', /feel_archive/],
     ['.openfeel/checkpoints/v1-stage-1-20260101T000000-exec_running.json', /feel_checkpoint/],
-    ['.openfeel/requirements/REQ-001.md', /feel_req/],
+    ['.openfeel/requirements/REQ-001.md', /feel_req action=body/],
   ];
   for (const [path, pattern] of cases) {
     const reason = projectOnly(execution('edit', cwd, { path }));

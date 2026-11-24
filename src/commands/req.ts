@@ -10,6 +10,7 @@
  * 退出码：成功 0；校验 / 占用 / 存在性失败 1（恒经 `process.exitCode`）；并发写冲突 2（共享单点）。
  */
 import { Command } from 'commander';
+import { existsSync, rmSync } from 'node:fs';
 import { t, getCliLang } from '../core/i18n.js';
 import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 import { FlowManager, isFlowConcurrentError, type FlowData } from '../core/flow-manager.js';
@@ -24,10 +25,12 @@ import {
   waiveRequirement, revokeRequirementWaiver,
   markRequirementTrivial, clearRequirementTrivial,
   raiseRequirementSeqFloor,
+  forceRequirementPlanDeviation,
+  forceRequirementBodyWaiver, forceRequirementPlanWaiver, requirementBodyEmptySections,
   type RequirementErrorCode,
 } from '../core/req/requirement-ops.js';
 import { REQ_STATUSES, REQ_ID_PATTERN, type RequirementStatus, type RequirementPriority, type RequirementData } from '../core/req/types.js';
-import { writeRequirementBodySkeleton } from '../core/req/body-file.js';
+import { writeRequirementBodySkeleton, updateRequirementBody, getRequirementBodyPath, RequirementBodyUpdateError } from '../core/req/body-file.js';
 import { computeRequirementAggregate, listLinkedStages } from '../core/req/aggregate.js';
 import { stageRequirementIds } from '../core/req/stage-links.js';
 import { findArchivedRequirement, listArchivedRequirements, archivedRequirementMaxSeq } from '../core/flow-archive/archive-ops.js';
@@ -35,6 +38,7 @@ import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { getUserName } from '../core/workspace/identity.js';
 import { normalizeStageId } from '../core/plan/path.js';
 import { getSessionId, resolveActorName } from '../core/session.js';
+import { maybeSyncDevStatus } from '../core/dev-status.js';
 
 /** 当前会话标识（写入审查/验证记录，用于人机区分与回溯；v1.5.24 / REQ-049） */
 function currentSession(): string {
@@ -126,6 +130,29 @@ function doneGateMessage(lang: string, data: FlowData, id: string, current: stri
 }
 
 /**
+ * 正文门拒绝文案（v1.6.0 / stage-132 T4）。
+ * 判据单源 = `requirementBodyBlocker`（引擎）；本层只把「未写实的小节名」拼进 i18n 模板，
+ * 并给出可复制的 `req body` 补写命令（A2 的「提示用 req body 补写」要求）。
+ */
+function bodyGateMessage(lang: string, data: FlowData, id: string): string {
+  const req = getRequirement(data, id);
+  const sections = req ? requirementBodyEmptySections(process.cwd(), req) : [];
+  return t('req.err.bodyEmptyTmpl', lang, {
+    id,
+    sections: sections.length > 0 ? sections.join('、') : '摘要、目标与验收',
+  });
+}
+
+/**
+ * 需求级计划门拒绝文案（v1.6.0 / stage-132 T7）。
+ * `openfeel req plan` 尚不存在，因此文案给出**按模板创建文件**的具体路径与必备小节
+ * （真实指引优于虚构命令）。
+ */
+function planGateMessage(lang: string, id: string): string {
+  return t('req.err.planMissingTmpl', lang, { id });
+}
+
+/**
  * 保存并收敛并发：成功返回 true；并发冲突 → 单点处理（JSON 置码 2 返回 / 非 JSON exit 2），
  * 其他异常 → 通用文案 exit 1 并返回 false。返回 false 时调用方须早返回。
  */
@@ -140,6 +167,18 @@ function saveOrFail(mgr: FlowManager, lang: string): boolean {
       failGeneric(lang, err);
     }
     return false;
+  }
+}
+
+/**
+ * v1.6.0 / REQ-059 T8：**写成功出口**自动同步开发账本（`.openfeel/dev/**` + `dev_last.md`）。
+ * 需求写操作已成功，因此同步失败**不改变退出码**，只输出一行 stderr（不再静默吞掉）。
+ * 调用点仅限写命令成功出口（advance / complete / review / verify / body），读命令不调。
+ */
+function syncDevAfterWrite(projectPath: string, lang: string): void {
+  const sync = maybeSyncDevStatus(projectPath);
+  if (sync.error !== undefined) {
+    console.warn(t('flow.dev.syncFailedTmpl', lang, { err: sync.error }));
   }
 }
 
@@ -159,7 +198,12 @@ export function registerReqCommand(program: Command): void {
     .option('--claim', '创建后立即认领（v1.5.23：一次开单+认领）')
     .option('--stage <stageId>', '创建后立即关联到该阶段（v1.5.23：一次开单+关联）')
     .option('--start', '创建后直接进入 in_progress（自动 scheduled → in_progress；v1.5.25 / REQ-053）')
-    .action((title: string, options: { targetVersion?: string; priority?: string; workflowMode?: string; claim?: boolean; stage?: string; start?: boolean }) => {
+    .option('--summary <md>', '正文 ## 摘要 小节（v1.6.0：正文写实；与 --goal/--acceptance 配合即可一步写实）')
+    .option('--problem <md>', '正文 ## 问题 小节（v1.6.0：正文写实）')
+    .option('--goal <md>', '正文 ## 目标与验收 → 目标 子节（v1.6.0：正文写实）')
+    .option('--acceptance <md>', '正文 ## 目标与验收 → 验收 子节（v1.6.0：正文写实）')
+    .option('--plan <md>', '正文 ## 初步规划 小节（v1.6.0：正文写实）')
+    .action((title: string, options: { targetVersion?: string; priority?: string; workflowMode?: string; claim?: boolean; stage?: string; start?: boolean; summary?: string; problem?: string; goal?: string; acceptance?: string; plan?: string }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -182,10 +226,13 @@ export function registerReqCommand(program: Command): void {
           workflow_mode: options.workflowMode as WorkflowMode | undefined,
         });
         // v1.5.23 / REQ-043（六期反馈 #1）：一次开单 + 认领 + 关联
+        // v1.6.0 / REV-013：claim / advance 都**显式传项目根**（不靠 cwd 推导）——
+        // claim 自 REV-013 起不校验正文（认领 ≠ 开工），但传根保证调用面同形；
+        // advance 的正文门（scheduled / in_progress / done）必须能定位正文文件。
         let claimedOwner: string | undefined;
         if (options.claim === true) {
           const owner = getUserName(process.cwd());
-          const c = claimRequirement(data, created.id, owner);
+          const c = claimRequirement(data, created.id, owner, { projectPath: process.cwd() });
           if (!c.ok) {
             failGeneric(lang, new Error(t('req.add.claimFailedTmpl', lang, { id: created.id })));
             return;
@@ -212,13 +259,66 @@ export function registerReqCommand(program: Command): void {
           }
           linkedStage = stageKey;
         }
+        // 正文骨架 + 可选业务小节：**先于** `--start` 落盘。
+        // 原因（REV-013）：`add --start` 走真实状态流转，正文门必须判到「本轮写下的正文」
+        // 而不是「还没有正文文件 ⇒ 无正文可判 ⇒ 放行」的空档；同时 `--goal/--acceptance`
+        // 等先写入，带正文内容的 `--start` 不会被误拦。
+        let bodyPath: string;
+        const bodyFilePath = getRequirementBodyPath(process.cwd(), created.id);
+        const bodyExistedBefore = existsSync(bodyFilePath);
+        /** 失败路径清理本轮新建的正文文件（不把孤儿正文留给下一次同 ID 复用） */
+        const discardNewBody = (): void => {
+          if (bodyExistedBefore) { return; }
+          try { rmSync(bodyFilePath, { force: true }); } catch { /* 清理失败不掩盖主错误 */ }
+        };
+        try {
+          bodyPath = writeRequirementBodySkeleton(process.cwd(), created);
+        } catch (err) {
+          failGeneric(lang, err);
+          return;
+        }
+        // v1.6.0-stage-132 / T2：可选正文业务小节（未给的保持骨架占位；元信息小节不碰）
+        try {
+          const bodyActor = resolveActorName(process.cwd(), undefined);
+          const writeSection = (section: string, text: string): void => {
+            updateRequirementBody(process.cwd(), created, {
+              section,
+              text,
+              createSectionIfMissing: true,
+              by: bodyActor,
+            });
+          };
+          if (options.summary !== undefined) {
+            // v1.6.0-stage-132 / T2（REQ-061）：## 摘要 与 ## 目标与验收 都写实 ⇒ add --start 可一步过正文门
+            writeSection('摘要', options.summary);
+          }
+          if (options.problem !== undefined) {
+            writeSection('问题', options.problem);
+          }
+          if (options.goal !== undefined || options.acceptance !== undefined) {
+            // --goal 与 --acceptance 合并进 目标与验收 的两个子标题
+            const parts: string[] = [];
+            if (options.goal !== undefined) { parts.push(`### 目标\n\n${options.goal.trim()}`); }
+            if (options.acceptance !== undefined) { parts.push(`### 验收\n\n${options.acceptance.trim()}`); }
+            writeSection('目标与验收', parts.join('\n\n'));
+          }
+          if (options.plan !== undefined) {
+            writeSection('初步规划', options.plan);
+          }
+        } catch (err) {
+          discardNewBody();
+          failGeneric(lang, err);
+          return;
+        }
         // v1.5.25 / REQ-053：一次开单到 in_progress（scheduled → in_progress 属引擎流转，
-        // 命令层不另写判据；失败则整体不 save）
+        // 命令层不另写判据；失败则整体不 save，并清掉本轮新建的正文文件）
+        // v1.6.0 / REV-013：显式传项目根 —— 空壳正文在 scheduled 步即被正文门拦下。
         let startedStatus: string | undefined;
         if (options.start === true) {
           for (const step of ['scheduled', 'in_progress'] as const) {
-            const moved = advanceRequirement(data, created.id, step);
+            const moved = advanceRequirement(data, created.id, step, { projectPath: process.cwd() });
             if (!moved.ok) {
+              discardNewBody();
               failCode(lang, moved.code, {
                 not_found: t('req.err.notFoundTmpl', lang, { id: created.id }),
                 invalid_field: t('req.err.invalidFieldTmpl', lang, { id: created.id }),
@@ -226,19 +326,13 @@ export function registerReqCommand(program: Command): void {
                   id: created.id, to: step, current: created.status, targets: getAllowedNextStatuses(created.status).join(', '),
                 }),
                 general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id: created.id }),
+                body_empty: bodyGateMessage(lang, data, created.id),
+                plan_missing: planGateMessage(lang, created.id),
               });
               return;
             }
           }
           startedStatus = 'in_progress';
-        }
-        // 正文骨架：认领/关联都成功后再落盘（失败路径不留孤儿正文）
-        let bodyPath: string;
-        try {
-          bodyPath = writeRequirementBodySkeleton(process.cwd(), created);
-        } catch (err) {
-          failGeneric(lang, err);
-          return;
         }
         if (!saveOrFail(mgr, lang)) {
           return;
@@ -453,12 +547,13 @@ export function registerReqCommand(program: Command): void {
       emitRequirement(active, listLinkedStages(data, id).map((l) => l.id), getRequirements(data).filter((r) => r.parent_id === id), null);
     });
 
-  // ── req claim <id> [--owner <name>] ──
+  // ── req claim <id> [--owner <name>] [--force] ──
   req
     .command('claim <id>')
     .description('认领需求（占用校验；已被他人认领则拒绝）')
     .option('--owner <owner>', '认领人（缺省：.openfeel/.info.json user → git config user.name）')
-    .action((id: string, options: { owner?: string }) => {
+    .option('--force', '正文门留痕放行（写 body_waiver + 审计 requirement_body_forced；仍应先补写正文）')
+    .action((id: string, options: { owner?: string; force?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -485,14 +580,34 @@ export function registerReqCommand(program: Command): void {
         }
         owner = resolved;
       }
-      // 返回码分流（命令层仅映射，零校验）：占用 / 终态 / owner 空串均由引擎单点判定
-      const r = claimRequirement(data, id, owner);
+      const projectPath = process.cwd();
+      // 返回码分流（命令层仅映射，零校验）：占用 / 终态均由引擎单点判定。
+      // v1.6.0 / REV-013：claim **不再校验正文**（认领 ≠ 开工），因此 `body_empty` 分支
+      // 目前不可达——保留 `--force` 选项与分支只为兼容旧脚本（选项键仍在 help 锁内）。
+      let r = claimRequirement(data, id, owner, { projectPath });
+      let bodyForced = false;
+      if (!r.ok && r.code === 'body_empty' && options.force === true) {
+        // v1.6.0 / T4（A2c）：--force = 留痕放行（body_waiver + 审计），随后用同一谓词重试
+        const forced = forceRequirementBodyWaiver(data, id, {
+          by: resolveActorName(projectPath), reason: 'claim-force', gate: 'claim',
+        });
+        if (!forced.ok) {
+          failCode(lang, forced.code, {
+            not_found: t('req.err.notFoundTmpl', lang, { id }),
+            invalid_status: t('req.claim.terminalTmpl', lang, { id, status: getRequirement(data, id)?.status ?? '' }),
+          });
+          return;
+        }
+        r = claimRequirement(data, id, owner, { projectPath });
+        bodyForced = r.ok;
+      }
       if (!r.ok) {
         failCode(lang, r.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
           already_claimed: t('req.err.alreadyClaimedTmpl', lang, { id }),
           invalid_field: t('req.err.invalidFieldTmpl', lang, { id }),
           invalid_status: t('req.claim.terminalTmpl', lang, { id, status: getRequirement(data, id)?.status ?? '' }),
+          body_empty: bodyGateMessage(lang, data, id),
         });
         return;
       }
@@ -504,7 +619,8 @@ export function registerReqCommand(program: Command): void {
       if (!saveOrFail(mgr, lang)) {
         return;
       }
-      console.log(t('req.claim.doneTmpl', lang, { id, owner }));
+      console.log(t('req.claim.doneTmpl', lang, { id, owner })
+        + (bodyForced ? t('req.claim.bodyForcedSuffix', lang) : ''));
     });
 
   // ── req release <id> ──
@@ -581,7 +697,7 @@ export function registerReqCommand(program: Command): void {
         target_version: options.targetVersion,
         priority: options.priority as RequirementPriority | undefined,
         workflow_mode: options.workflowMode as WorkflowMode | undefined,
-      });
+      }, { projectPath: process.cwd() });
       if (!r.ok) {
         const current = getRequirement(data, id)?.status ?? '';
         // done 门专用文案（stage-93 BUG-002）：静态表放行 done 而仍被拒 ⇒ 唯一可能是完成门
@@ -590,6 +706,11 @@ export function registerReqCommand(program: Command): void {
         failCode(lang, r.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
           invalid_field: t('req.err.invalidFieldTmpl', lang, { id }),
+          // v1.6.0 / REQ-056 T6：`set --status done` 与 advance 同判据（done 门通过后才可能到这）
+          plan_deviation: t('req.err.planDeviationTmpl', lang, { id }),
+          // v1.6.0 / stage-132 T4 · T7：正文门 / 需求级计划门（`set` 无 --force，文案指向 advance --force）
+          body_empty: bodyGateMessage(lang, data, id),
+          plan_missing: planGateMessage(lang, id),
           invalid_status: doneGate
             ? doneGateMessage(lang, data, id, current)
             : t('req.err.invalidStatusTmpl', lang, {
@@ -702,12 +823,13 @@ export function registerReqCommand(program: Command): void {
       }
     });
 
-  // ── req advance <id> --to <status> ──
+  // ── req advance <id> --to <status> [--force] ──
   req
     .command('advance <id>')
     .description('显式推进需求状态（合法目标由引擎流转表判定；done：零关联可直接完成，关联阶段进入 exec_running 及之后相位即可完成）')
     .requiredOption('--to <status>', '目标状态（合法目标由引擎判定）')
-    .action((id: string, options: { to: string }) => {
+    .option('--force', '门留痕放行（正文/计划门写 waiver、计划偏差 +1；均留审计，文件仍须补写）')
+    .action((id: string, options: { to: string; force?: boolean }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
       if (!mgr.isLoaded()) {
@@ -724,8 +846,48 @@ export function registerReqCommand(program: Command): void {
       const before = getRequirement(data, id)?.status;
       // v1.5.6-stage-114：写前 preflight（ID 校验已在门前）
       if (!enforcePreflightOrFail(process.cwd(), lang)) return;
-      // 命令层零校验：合法目标 + done 门均在引擎单点
-      const r = advanceRequirement(data, id, options.to as RequirementStatus);
+      const projectPath = process.cwd();
+      // v1.6.0 / REQ-056 T6：未盖章历史需求（plan? 缺省）在 done 时**放行但提示**——
+      // 不阻塞存量，审计另记 `plan_unstamped:true`（在 requirement_status 条目里）。
+      const planUnstamped = options.to === 'done' && getRequirement(data, id)?.plan === undefined;
+      // 命令层零校验：合法目标 + 正文门 + 计划门 + done 门 + 计划偏差门均在引擎单点
+      let r = advanceRequirement(data, id, options.to as RequirementStatus, { projectPath });
+      let planDeviationForced = false;
+      let gateForced = false;
+      // v1.6.0 / stage-132 T4 · T7：正文门 / 计划门的 --force 通道——
+      // 写入 waiver（留痕）+ 审计后，用**同一谓词**重新求值（门本体不重写）。
+      // 同一次流转可能**连撞两门**（空壳正文 + 无计划）：循环上限 = 门数（2），逐个留痕放行。
+      for (let i = 0; i < 2 && !r.ok && options.force === true
+        && (r.code === 'body_empty' || r.code === 'plan_missing'); i += 1) {
+        const forced = r.code === 'body_empty'
+          ? forceRequirementBodyWaiver(data, id, { by: resolveActorName(projectPath), reason: 'advance-force', gate: 'advance' })
+          : forceRequirementPlanWaiver(data, id, { by: resolveActorName(projectPath), reason: 'advance-force', gate: 'advance' });
+        if (!forced.ok) {
+          failCode(lang, forced.code, {
+            not_found: t('req.err.notFoundTmpl', lang, { id }),
+            invalid_status: t('req.err.invalidStatusTmpl', lang, {
+              id, to: options.to, current: before ?? '',
+              targets: before !== undefined ? getAllowedNextStatuses(before).join(', ') : '',
+            }),
+          });
+          return;
+        }
+        r = advanceRequirement(data, id, options.to as RequirementStatus, { projectPath });
+        gateForced = r.ok;
+      }
+      if (!r.ok && r.code === 'plan_deviation' && options.force === true) {
+        // 留痕放行：先记偏差次数 + 审计（判据本体不重写），再走同一门放行通道
+        const forced = forceRequirementPlanDeviation(data, id, { by: resolveActorName(projectPath) });
+        if (!forced.ok) {
+          failCode(lang, forced.code, {
+            not_found: t('req.err.notFoundTmpl', lang, { id }),
+            invalid_status: t('req.advance.forceRequiresStampTmpl', lang, { id }),
+          });
+          return;
+        }
+        r = advanceRequirement(data, id, options.to as RequirementStatus, { projectPath, allowPlanDeviation: true });
+        planDeviationForced = r.ok;
+      }
       if (!r.ok) {
         // done 门专用文案（stage-93 BUG-002）：静态表放行 done 而仍被拒 ⇒ 唯一可能是完成门
         const doneGate = options.to === 'done'
@@ -733,6 +895,11 @@ export function registerReqCommand(program: Command): void {
           && (getAllowedNextStatuses(before) as readonly string[]).includes('done');
         failCode(lang, r.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
+          // v1.6.0 / REQ-056 T6：计划被执行改动且 `## 偏差与回写` 未写实（done 门已通过后才可能到这）
+          plan_deviation: t('req.err.planDeviationTmpl', lang, { id }),
+          // v1.6.0 / stage-132 T4 · T7：正文门 / 需求级计划门（补写指引 + 可复制的命令）
+          body_empty: bodyGateMessage(lang, data, id),
+          plan_missing: planGateMessage(lang, id),
           invalid_status: doneGate
             ? doneGateMessage(lang, data, id, before ?? '')
             : t('req.err.invalidStatusTmpl', lang, {
@@ -751,7 +918,14 @@ export function registerReqCommand(program: Command): void {
       if (!saveOrFail(mgr, lang)) {
         return;
       }
-      console.log(t('req.advance.doneTmpl', lang, { id, from: before ?? '', to: options.to }));
+      if (planUnstamped) {
+        console.warn(t('req.warn.planUnstampedTmpl', lang, { id }));
+      }
+      console.log(t('req.advance.doneTmpl', lang, { id, from: before ?? '', to: options.to })
+        + (planDeviationForced ? t('req.advance.planDeviationForcedSuffix', lang) : '')
+        + (gateForced ? t('req.advance.gateForcedSuffix', lang) : ''));
+      // v1.6.0 / REQ-059 T8：流转成功即自动同步开发账本
+      syncDevAfterWrite(projectPath, lang);
     });
 
   // ── req waive <id> --reason <text> [--by] [--revoke] ──（v1.5.23 / REQ-043 / 六期 #8）
@@ -840,7 +1014,7 @@ export function registerReqCommand(program: Command): void {
         : t('req.trivial.doneTmpl', lang, { id, reason: options.reason ?? '' }));
     });
 
-  // ── req complete <id> --result pass --note <t> [--kind] [--evidence] [--by] [--independent|--self] ──
+  // ── req complete <id> --result pass --note <t> [--kind] [--evidence] [--by] [--independent|--self] [--force] ──
   // v1.5.23 / REQ-043（六期反馈 #1）：一次收口 = review + verify + advance(done)。
   // 复用既有判据单点（recordRequirementReview / recordRequirementVerification / advanceRequirement
   // → canCompleteRequirement）；任一步失败即返回，**不 save ⇒ flow.json 零变更**。
@@ -854,9 +1028,10 @@ export function registerReqCommand(program: Command): void {
     .option('--evidence <path>', '证据（测试命令 / 报告路径 / 摘要）')
     .option('--independent', '独立审查（推荐）')
     .option('--self', '自我审查（非独立；归档摘要标注 self-review）')
+    .option('--force', '门留痕放行（正文/计划门写 waiver + 审计；文件仍须补写）')
     .action((id: string, options: {
       result: string; kind?: string; note: string; by?: string; evidence?: string;
-      independent?: boolean; self?: boolean;
+      independent?: boolean; self?: boolean; force?: boolean;
     }) => {
       const lang = getCliLang(process.cwd());
       const mgr = createManager();
@@ -886,13 +1061,39 @@ export function registerReqCommand(program: Command): void {
         process.exitCode = 1;
         return;
       }
+      const projectPath = process.cwd();
+      /** 门的 --force 通道（T4 正文 / T7 计划）：写 waiver + 审计后由调用方用同一谓词重试 */
+      const forceGate = (code: 'body_empty' | 'plan_missing'): boolean => {
+        const forced = code === 'body_empty'
+          ? forceRequirementBodyWaiver(data, id, { by, reason: 'complete-force', gate: 'complete' })
+          : forceRequirementPlanWaiver(data, id, { by, reason: 'complete-force', gate: 'complete' });
+        if (!forced.ok) {
+          failCode(lang, forced.code, {
+            not_found: t('req.err.notFoundTmpl', lang, { id }),
+            invalid_status: t('req.complete.statusTmpl', lang, { id, status: getRequirement(data, id)?.status ?? '' }),
+          });
+          return false;
+        }
+        return true;
+      };
+      let gateForced = false;
       for (const step of ['scheduled', 'in_progress'] as const) {
         if (stateNow !== 'draft' && stateNow !== 'scheduled') break;
-        const moved = advanceRequirement(data, id, step);
+        let moved = advanceRequirement(data, id, step, { projectPath });
+        // 同一流转可能连撞两门（正文 + 计划）：循环上限 = 门数（2），逐个留痕放行
+        for (let i = 0; i < 2 && !moved.ok && options.force === true
+          && (moved.code === 'body_empty' || moved.code === 'plan_missing'); i += 1) {
+          if (!forceGate(moved.code)) return;
+          moved = advanceRequirement(data, id, step, { projectPath });
+          gateForced = moved.ok;
+        }
         if (!moved.ok) {
           failCode(lang, moved.code, {
             not_found: t('req.err.notFoundTmpl', lang, { id }),
             invalid_field: t('req.err.invalidFieldTmpl', lang, { id }),
+            // v1.6.0 / stage-132 T4 · T7：自动补链同样过正文门 / 计划门（不因「一条命令」而绕过）
+            body_empty: bodyGateMessage(lang, data, id),
+            plan_missing: planGateMessage(lang, id),
             invalid_status: t('req.err.invalidStatusTmpl', lang, {
               id, to: step, current: stateNow, targets: getAllowedNextStatuses(stateNow as RequirementStatus).join(', '),
             }),
@@ -928,12 +1129,23 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       const current = getRequirement(data, id)?.status ?? '';
-      const advanced = advanceRequirement(data, id, 'done');
+      let advanced = advanceRequirement(data, id, 'done', { projectPath });
+      for (let i = 0; i < 2 && !advanced.ok && options.force === true
+        && (advanced.code === 'body_empty' || advanced.code === 'plan_missing'); i += 1) {
+        if (!forceGate(advanced.code)) return;
+        advanced = advanceRequirement(data, id, 'done', { projectPath });
+        gateForced = advanced.ok;
+      }
       if (!advanced.ok) {
         // 走到这里 = 审验记录已写但状态没推进：不 save（零写盘），按 done 门文案说明缺什么
         failCode(lang, advanced.code, {
           not_found: t('req.err.notFoundTmpl', lang, { id }),
           invalid_field: t('req.err.invalidFieldTmpl', lang, { id }),
+          // v1.6.0 / REQ-056 T6：计划偏差门（done 门通过后）
+          plan_deviation: t('req.err.planDeviationTmpl', lang, { id }),
+          // v1.6.0 / stage-132 T4 · T7：正文门 / 计划门（先于 done 门）
+          body_empty: bodyGateMessage(lang, data, id),
+          plan_missing: planGateMessage(lang, id),
           invalid_status: doneGateMessage(lang, data, id, current),
           general_mode_conflict: t('req.err.generalModeConflictTmpl', lang, { id }),
         });
@@ -945,7 +1157,9 @@ export function registerReqCommand(program: Command): void {
       const suffix = independent ? '' : t('req.review.selfSuffix', lang);
       console.log(t('req.complete.doneTmpl', lang, {
         id, result: options.result, kind: options.kind ?? 'manual',
-      }) + suffix);
+      }) + suffix + (gateForced ? t('req.complete.gateForcedSuffix', lang) : ''));
+      // v1.6.0 / REQ-059 T8：收口成功即自动同步开发账本
+      syncDevAfterWrite(projectPath, lang);
     });
 
   // ── req review <id> --result pass|fail --by <who> --note <text> [--independent|--self] ──
@@ -1001,6 +1215,8 @@ export function registerReqCommand(program: Command): void {
       }
       const suffix = options.independent === true ? '' : t('req.review.selfSuffix', lang);
       console.log(t('req.review.doneTmpl', lang, { id, result: options.result, by }) + suffix);
+      // v1.6.0 / REQ-059 T8：审查记录写入成功即自动同步开发账本
+      syncDevAfterWrite(process.cwd(), lang);
     });
 
   // ── req verify <id> --result pass|fail --kind test|manual|build --by <who> --note <text> [--evidence <path>] ──
@@ -1050,6 +1266,8 @@ export function registerReqCommand(program: Command): void {
         return;
       }
       console.log(t('req.verify.doneTmpl', lang, { id, kind: options.kind, result: options.result, by }));
+      // v1.6.0 / REQ-059 T8：验证记录写入成功即自动同步开发账本
+      syncDevAfterWrite(process.cwd(), lang);
     });
 
   // ── req split <id> --into <title> [--into <title>...] [--json] ──
@@ -1368,6 +1586,126 @@ export function registerReqCommand(program: Command): void {
       }));
       for (const moved of r.moved) {
         console.log(t('req.rollover.itemTmpl', lang, { id: moved.id, status: moved.status, title: moved.title }));
+      }
+    });
+
+  // ── req body <id> --section <name> (--text <md> | --file <path>) [--append|--replace] [--json] ──
+  // v1.6.0-stage-132 / T2：需求正文**唯一写入口**（元信息小节受保护；每次写入追加 `## 变更记录`）
+  req
+    .command('body <id>')
+    .description('写入需求正文的业务小节（元信息小节受保护；每次写入追加变更记录）')
+    .requiredOption('--section <name>', '小节名（如 摘要 / 目标与验收 / 问题 / 初步规划；元信息小节不可写）')
+    .option('--text <md>', '小节正文（Markdown；与 --file 二选一）')
+    .option('--file <path>', '从文件读取小节正文（与 --text 二选一；相对路径按项目根解析）')
+    .option('--append', '追加到该小节末尾（缺省替换整节）')
+    .option('--replace', '替换整节（缺省；与 --append 互斥）')
+    .option('--json', '以 JSON 输出 { schemaVersion, id, section, path, lines, created }')
+    .action((id: string, options: { section: string; text?: string; file?: string; append?: boolean; replace?: boolean; json?: boolean }, command: Command) => {
+      const lang = getCliLang(process.cwd());
+      const asJson = asJsonOf(options, command);
+      const mgr = createManager();
+      if (!mgr.isLoaded()) {
+        failNoInit(lang, asJson);
+        return;
+      }
+      if (!isValidReqId(id)) {
+        if (asJson) {
+          failJson({ error: 'invalid-argument', field: 'id', value: id });
+        } else {
+          console.error(t('req.invalidIdTmpl', lang, { input: id }));
+          process.exitCode = 1;
+        }
+        return;
+      }
+      const data = mgr.getData()!;
+      const req_ = getRequirement(data, id);
+      if (!req_) {
+        if (asJson) {
+          failJson({ error: 'not_found', id });
+        } else {
+          console.error(t('req.err.notFoundTmpl', lang, { id }));
+          process.exitCode = 1;
+        }
+        return;
+      }
+      // argument-shape 守卫（非业务校验）：--text / --file 恰一；--append / --replace 互斥
+      const hasText = options.text !== undefined;
+      const hasFile = options.file !== undefined;
+      if (!hasText && !hasFile) {
+        if (asJson) {
+          failJson({ error: 'empty_text', id, section: options.section });
+        } else {
+          console.error(t('req.body.noTextTmpl', lang));
+          process.exitCode = 1;
+        }
+        return;
+      }
+      if (hasText && hasFile) {
+        if (asJson) {
+          failJson({ error: 'invalid_field', id, section: options.section, field: 'file' });
+        } else {
+          console.error(t('req.body.exclusiveTmpl', lang));
+          process.exitCode = 1;
+        }
+        return;
+      }
+      if (options.append === true && options.replace === true) {
+        if (asJson) {
+          failJson({ error: 'invalid_field', id, section: options.section, field: 'append' });
+        } else {
+          console.error(t('req.body.flagExclusiveTmpl', lang));
+          process.exitCode = 1;
+        }
+        return;
+      }
+      // v1.5.6-stage-114：写前 preflight（参数 / ID 校验已在门前）
+      if (!enforcePreflightOrFail(process.cwd(), lang)) return;
+      try {
+        const result = updateRequirementBody(process.cwd(), req_, {
+          section: options.section,
+          ...(options.text !== undefined ? { text: options.text } : {}),
+          ...(options.file !== undefined ? { file: options.file } : {}),
+          append: options.append === true,
+          replace: options.replace === true,
+          createSectionIfMissing: true,
+          by: resolveActorName(process.cwd(), undefined),
+        });
+        // v1.6.0 / REQ-059 T8：正文写入成功即自动同步开发账本（--json 的告警走 stderr，不污染 stdout）
+        syncDevAfterWrite(process.cwd(), lang);
+        if (asJson) {
+          emitJson(withSchemaVersion({
+            id: req_.id,
+            section: result.section,
+            path: result.path,
+            lines: result.lines,
+            created: result.created,
+          }));
+          return;
+        }
+        const actionKey = result.created
+          ? 'req.body.actionCreated'
+          : (options.append === true ? 'req.body.actionAppended' : 'req.body.actionReplaced');
+        console.log(t('req.body.doneTmpl', lang, {
+          id: req_.id,
+          section: result.section,
+          lines: String(result.lines),
+          path: result.path,
+          action: t(actionKey, lang),
+        }));
+      } catch (err) {
+        if (err instanceof RequirementBodyUpdateError) {
+          if (asJson) {
+            failJson({ error: err.code, id, section: options.section });
+            return;
+          }
+          const key = err.code === 'protected_section'
+            ? 'req.body.protectedTmpl'
+            : (err.code === 'empty_text' ? 'req.body.emptyTmpl' : 'req.body.invalidFieldTmpl');
+          console.error(t(key, lang, { id, section: options.section }));
+          process.exitCode = 1;
+          return;
+        }
+        failGeneric(lang, err);
       }
     });
 }

@@ -1,11 +1,12 @@
-# OpenFeel CLI JSON 输出契约（v1.5.10）
+# OpenFeel CLI JSON 输出契约（v1.6.0）
 
-- **权威范围**：`--json` 成功输出（43 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
+- **权威范围**：`--json` 成功输出（46 个成功出口）与 `--json` 失败输出（错误 envelope / legacy 双形态）。
 - **实现锚点**：`src/commands/shared/json-output.ts`（契约助手）、`src/commands/shared/errors.ts` 与 `src/cli/index.ts`（错误层，stage-95 op-002）。
 - **维护纪律**：本文件为单一权威；源码实测变更须同批更新本文件与可执行冻结测试 `test/cli/json-contract.test.ts`。§6 登记的是有意增量清单，未登记即视为破坏。
+- **v1.6.0 / stage-132 追加**：新增出口 **#45 `req body`**（需求正文唯一业务小节写入口）与 **#46 `lint fill`**（空壳清单，advisory）；补登既有出口 **#44 `dev clean`**（v1.5.23 / REQ-041 实现但此前漏登记）。计数升为 **46 成功出口 / 47 注册 `--json` 选项**；`lint req`（#41）末位追加 `fill` 键（恒 8 键）；错误码表扩到 **15 行**（新增 `STAGE_PLAN_GATE` / `DEV_SYNC_STALE`）。
 - **v1.5.10 / stage-125 追加**：新增出口 **#43 `dashboard`**（单文件自包含 HTML 看板；`--json` 输出同一份聚合数据的单文档，`schemaVersion` 首键）；计数升为 **43 成功出口 / 44 注册 `--json` 选项**。出口语义：**快照命令**（非门禁）——`health.ok=false` 仍 exit 0；`health.items[].message` 与 HTML 文案是**唯一语言相关面**；`--json` 与 `--out` / `--open` **互斥**（`INVALID_ARGUMENT` / exit 1，零写盘）。
 - **v1.5.8 / REQ-030 追加**：新增出口 **#42 `req release-check`**（只读发布软门）；计数升为 **42 成功出口 / 43 注册 `--json` 选项**；`flow archive` 成功/预演追加末键 `requirements`（既有 9 键键序零改动）；归档文件 schema 增可选 `requirements[]` 段与可选 `counts.requirements`（老文件缺省视同 0）。
-- **v1.5.6-stage-115 收口**：新增出口 **#41 `lint req`**（需求正文命令名校验）；计数升为 **41 成功出口 / 42 注册 `--json` 选项**；`target:'req'` 比其他 lint 出口多 `suspects` / `unknownCount` / `suspectCount` 三个键（A/B 分级），详见 §16。
+- **v1.5.6-stage-115 收口**：新增出口 **#41 `lint req`**（需求正文命令名校验）；计数升为 **41 成功出口 / 42 注册 `--json` 选项**；`target:'req'` 比其他 lint 出口多 `suspects` / `unknownCount` / `suspectCount` 三个键（A/B 分级；v1.6.0 又追加 `fill`，见 §5 #41），详见 §16。
 - **v1.2.4-stage-100 收口**：DSH ACTION-GUIDE A1~A5 交付——A1 `archive <stage>` 覆盖保护（`ARCHIVE_EXISTS`）+ A2~A4 新增 7 个成功出口（#34~#40）+ A5 `config get --all` 扩展。计数升级为 **40 成功出口 / 41 注册 `--json` 选项**；§15 为本版细则。
 - **v1.2.3-stage-99 收口**：并发冲突 JSON 退出机制已与 `failCli` 统一（§14.2）；§14.1 补锁超时 E2E 证据；当时 33 成功出口 / 34 注册选项与退出码语义零改动。
 - **v1.2.2-stage-98 定稿**：文档多载体（README×3 / GETTING_STARTED / commands / manual / cli-usage）已同批同步；本文件为 v1.2.2 发布口径（33 成功出口 / 34 注册选项）。
@@ -50,9 +51,13 @@
 | `INTERNAL_ERROR` | internal | 3 |
 | `ARCHIVE_FAILED` | refusal | 1（stage-97 实现：`archive <stage> --json` 失败（refusal/1）） |
 | `ARCHIVE_EXISTS` | refusal | 1（v1.2.4 A1：目标归档文件已存在且未显式 `--force`；零写盘） |
+| `STAGE_PLAN_GATE` | refusal | 1（v1.6.0 / REQ-056：进入 `exec_running` 前阶段计划/在办需求计划缺失或未写实；零写盘，`--force` 留痕放行） |
+| `DEV_SYNC_STALE` | refusal | 1（v1.6.0 / REQ-059：`archiving → done` 前开发账本同步失败；零写盘，`--force` 留痕放行） |
 
 - `code` 为语言无关常量（zh/en 一致）；`message` 可本地化。
 - 映射表与 `src/core/errors.ts` 同源；可执行断言由 `test/cli/error-envelope.test.ts`（op-002）承担。
+- **行数口径**：本表 **15 行**，与 `CLI_ERROR_TABLE.length` 逐一对应（`src/core/errors.ts:52-68`）。
+- **未进入本表的门禁码（实施口径）**：`REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` 目前只以 **i18n 文案 + exit 1** 呈现（`req claim/advance/complete` 无 `--json`），未进 `errors.ts`；待这些命令补 `--json` 时再按 `code → kind → exitCode` 接入本表（登记见 `plan.md` §11）。
 
 ## §4 错误形态（envelope 与 legacy 双形态）
 
@@ -99,9 +104,9 @@ typeof doc.error === 'string'  → legacy
 
 - 禁止以退出码、命令名或字段存在性做第二套判别。
 
-## §5 43 出口冻结表
+## §5 46 出口冻结表
 
-> 计数口径：**43 个成功 JSON 出口**（#1~#43）。`flow advance --json` 为错误封装开关，不计入（见 §7）。v1.5.10 / stage-125 新增 #43 `dashboard`（v1.5.8 / REQ-030 新增 #42 `req release-check`）。
+> 计数口径：**46 个成功 JSON 出口**（#1~#46）。`flow advance --json` 为错误封装开关，不计入（见 §7）。v1.6.0 / stage-132 新增 #46 `lint fill`、#45 `req body`，并补登既有 #44 `dev clean`（v1.5.23 / REQ-041 实现但此前漏登记）；v1.5.10 / stage-125 新增 #43 `dashboard`（v1.5.8 / REQ-030 新增 #42 `req release-check`）。
 
 | # | 出口 | 顶层键序 | 元素/嵌套键（实测） | 条件键/形态 |
 |:-:|------|----------|--------------------|------------|
@@ -145,9 +150,12 @@ typeof doc.error === 'string'  → legacy
 | 38 | `lint i18n` | `schemaVersion,target,ok,issues` | `target:"i18n"`；`issues[]{path,message}`；`path ∈ {src/core/i18n-data/zh-CN.ts, src/core/i18n-data/en.ts}` | `ok = issues.length === 0`；`ok:false` 仍为成功文档 + exit 1；人类输出逐字不变 |
 | 39 | `lint kb` | `schemaVersion,target,ok,issues` | `target:"kb"`；`issues[]{path,message}`；`path = .openfeel/kb/<file>`（项目根相对） | 无 kb 目录 → `ok:true,issues:[]` + exit 0；过期引用 → `ok:false` + exit 1 |
 | 40 | `roadmap show` | `schemaVersion,version,milestones` | `milestones[]{title,theme,stage,deliverable}`（表头驱动；兼容 3/4 列，缺列 `null`） | 不传版本 → `version:null,milestones:[]` + exit 0；版本不存在 → `INVALID_ARGUMENT`/refusal/1；人类输出逐字不变 |
-| 41 | `lint req` | `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount` | `target:"req"`；`issues[]{path,message}`（A 类 unknown-command）；`suspects[]{path,message}`（B 类 suspect-command-group）；两个计数为 number；`path = .openfeel/requirements/<file>` | `ok = (issues.length === 0)`（与 #38/#39 一致）；`suspects` 不参与 `ok` / 退出码；无需求目录 → `ok:true,issues:[],suspects:[]` + exit 0；A 类 → `ok:false` + exit 1；抑制行数 / 未闭合警告**不进 JSON**（见 §16） |
+| 41 | `lint req` | `schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount,fill` | `target:"req"`；`issues[]{path,message}`（A 类 unknown-command）；`suspects[]{path,message}`（B 类 suspect-command-group）；两个计数为 number；`fill{emptyBody[],emptyPlan[]}` 为 v1.6.0 新增 advisory 清单（元素 `{id}` / `{id,emptySections}`）；`path = .openfeel/requirements/<file>` | `ok = (issues.length === 0)`（与 #38/#39 一致）；`suspects` / `fill` 均不参与 `ok` / 退出码；无需求目录 → `ok:true,issues:[],suspects:[]` + exit 0；A 类 → `ok:false` + exit 1；抑制行数 / 未闭合警告**不进 JSON**（见 §16） |
 | 42 | `req release-check` | `schemaVersion,version,done,unfinished,counts` | `done:string[]` / `unfinished:string[]`（需求 ID）；`counts{done,unfinished,other,total}`（number） | **只读软门**：恒 exit 0（未完成需求只报告，不阻断）；版本比较去单前导 `v`（`v1.5.8` ≡ `1.5.8`）；「其它」= cancelled/rejected 只进 `counts.other` |
 | 43 | `dashboard` | `schemaVersion,generatedAt,generator,project,requirements,stages,releases,blockingReviews,health,metrics` | `schemaVersion` 恒首键；`generatedAt` 为唯一非确定时间字段（**测试不得断言其值**）；`generator` = `openfeel/<version>`；`project{root,name,version}`；`requirements{groups{7 状态},counts{7 状态},total}`（`groups`/`counts` 键序恒 = `REQ_STATUSES`；元素 = `RequirementData` + `linkedStages,progress`，逐字沿用 #12）；`stages{pipeline{phase,current{stage,op}},items[]{id,phase,status,opsTotal,opsDone,workflowMode,requirementId},counts{total,done,active}}`；`releases{gates[]{version,counts{done,unfinished,other,total},unfinished[]},archived[]{version,counts{stages,reviews,log,requirements?}\|null}}`（`counts` 逐字透传归档文件 `ArchiveCounts`：v1.5.8 起含可选 `requirements`；归档文件缺失 / 损坏 / 不可读 → `counts:null`）；`blockingReviews[]{stage,op,id,title,priority}`；`health{ok,items[]{section,status,message}}`；`metrics{agents}` | **快照命令**：`health.ok=false` 仍 exit 0（非门禁，与 #11 `flow health` 的 exit 1 语义无关）；`releases.gates` **只含未归档版本**（已归档版本只出现在 `archived[]`）；`health.items` = `flow health --json` 同源合并项、仅键名不同（`section/message` ↔ `name/detail`）；`metrics` 不含 `processHealth`；空数据合法（7 空组 / `items:[]` / `gates:[]` / `archived:[]` / `blockingReviews:[]`）；`--json` 与 `--out` / `--open` 互斥（`INVALID_ARGUMENT`/refusal/1，零写盘）；未初始化 `NO_INIT`/refusal/1；写盘失败仅 HTML 路径 `INTERNAL_ERROR`/internal/3 |
+| 44 | `dev clean` | `schemaVersion,gitRepository,gitignore,removed,dryRun,legacy` | `gitRepository` boolean；`gitignore{file,added[]}`；`removed: string[]`；`dryRun` boolean；`legacy` 为 `null` 或 `{removed:string[]}` | 恒在（v1.5.23 / REQ-041 补登；`--legacy` 未经 `--yes` 确认时拒绝、不输出 JSON 成功文档）；无 `--json` 的写盘分支不变 |
+| 45 | `req body` | `schemaVersion,id,section,path,lines,created` | `id` = REQ-NNN；`section` 为写入的小节名；`path` 恒 POSIX 相对路径（`.openfeel/requirements/REQ-NNN.md`）；`lines` 为写入正文行数；`created` 表示是否新建小节 | 恒在（v1.6.0 / stage-132 新增；6 键固定序）。元信息小节 → legacy `protected_section`；空正文 → `empty_text`；小节名非法 → `invalid_field`；需求不存在 → `not_found`；均 exit 1 且零写盘 |
+| 46 | `lint fill` | `schemaVersion,target,ok,checked,empty,missingPlan,stageDocs` | `target:"fill"`；`checked` = 扫描的需求正文文件数；`empty[]{id,emptySections}`；`missingPlan[]{id}`；`stageDocs{overviewEmpty[]{stageId},planEmpty[]{stageId}}` | 恒在（v1.6.0 / stage-132 新增；7 键固定序）。**advisory：退出码恒 0**（存量空壳不得让 lint 恒红），`ok:false` 仅在 JSON 内供 CI 消费 |
 
 **登记类别**：恒在键 / 条件出现键 / 文档形态变体三类，测试断言须与类别一致。
 
@@ -172,20 +180,23 @@ typeof doc.error === 'string'  → legacy
 17. **v1.5.6-stage-115：新增出口 #41 `lint req`**——`target:'req'` 比其他 lint 出口多出 `suspects` 与两个计数键（共 3 个新键：`suspects` / `unknownCount` / `suspectCount`），理由：A 类阻塞 / B 类 advisory 必须可分，塞进单一 `issues` 会破坏 `ok` 不变量。`ok = issues.length === 0` 与 #38/#39 完全一致；既有 40 个出口字段键集/键序/类型零改动；详见 §16。
 18. **v1.5.8 / REQ-030：新增出口 #42 `req release-check` + 归档追加需求段**——`req release-check --json` 只读软门（恒 exit 0）；`flow archive` 成功/预演**末位追加** `requirements`（既有 9 键键序零改动）；`flow archive list` 的 `counts` 在 `log` 后追加可选 `requirements`；`flow archive show` 在 `log` 后追加可选 `requirements`；归档文件 schema 增可选 `requirements[]`（老文件无此键可读，不注入）；`req list --include-archived` 的归档需求元素**末位追加**可选 `archived:true`；`req show` 回退路径末位追加 `archived:true`；`flow archive` 新增 legacy 拒绝形态 `unfinished-requirements`（见 §4.2）。
 19. **v1.5.10-stage-125：新增出口 #43 `dashboard`**——`dashboard --json` 为**快照**出口（非门禁），10 键固定序 `schemaVersion,generatedAt,generator,project,requirements,stages,releases,blockingReviews,health,metrics`；`generatedAt` 是成功出口中首个**非确定字段**（测试不断言值）；`health.items[]` 复用 `HealthCheckItem` 原生 `{section,status,message}`（与 `flow health --json` 的 `{name,status,detail}` **仅键名不同**，该别名映射不可导出）；`releases.gates` 只含未归档版本；`releases.archived[].counts` 逐字透传 `ArchiveCounts`（`stages,reviews,log` + v1.5.8 起可选 `requirements`），归档文件缺失 / 损坏 / 不可读时**降级为 `null`**（不注入零值、不报错）；既有 42 个出口字段键集/键序/类型**零改动**；详见 §5 #43。
+20. **v1.6.0-stage-132：补登 #44 `dev clean` + 新增出口 #45 `req body` / #46 `lint fill`**——#44 为既有出口（v1.5.23 / REQ-041 已实现、`test/commands/dev.test.ts` 已覆盖，本版仅补文档登记，键序零改动）；#45 `req body` 为**唯一正文业务小节写入口**（元信息小节受保护、每次写入追加 `## 变更记录`），6 键固定序 `schemaVersion,id,section,path,lines,created`，失败走 legacy 形态（`not_found` / `protected_section` / `empty_text` / `invalid_field`）；#46 `lint fill` 为**advisory 空壳清单**（4 组：空壳正文 / 缺需求级计划 / 空 overview / 空 plan），7 键固定序，**恒 exit 0**；`lint req`（#41）末位追加 `fill` 键（`{emptyBody,emptyPlan}`，与 `lint fill` 同源，advisory 不改 `ok` / 退出码）；既有 44 个出口字段键集/键序/类型**零改动**（#41 只做了末位追加）；详见 §5 #44/#45/#46 与 §17。
 
 ## §7 计数口径
 
-- **成功 JSON 出口 = 43 个**（flow 16 + req 6 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 2 + project 1 + archive 1 + model 2 + lint 3 + roadmap 1 + dashboard 1）。
+- **成功 JSON 出口 = 46 个**（flow 16 + req 7 + instructions 1 + setup 1 + stage 1 + knowledge 4 + config 2 + view 1 + plan 2 + project 1 + archive 1 + model 2 + lint 4 + roadmap 1 + dashboard 1 + dev 1）。
   - flow 16 = `status,overview,current,metrics,phases,mode,ops list,archive,archive list,archive show,health,next,recover,checkpoint list,log,retry`。
-  - req 6 = `list,show,split,board,next,release-check`。
+  - req 7 = `list,show,split,board,next,release-check,body`。
+  - lint 4 = `i18n,kb,req,fill`。
   - v1.2.4 新增 7 个：#34 `plan stage list`、#35 `model list`、#36 `model get`、#37 `flow retry`、#38 `lint i18n`、#39 `lint kb`、#40 `roadmap show`；`config get --all`（#27 扩展）与 `archive --force`（#33 选项扩展）不计新增出口。
   - v1.5.6 新增 1 个：#41 `lint req`（lint 分项 2 → 3）。
   - v1.5.8 / REQ-030 新增 1 个：#42 `req release-check`（req 分项 5 → 6）。
   - v1.5.10 新增 1 个：#43 `dashboard`（dashboard 分项 0 → 1）。
+  - v1.6.0 / stage-132 补登 1 个：#44 `dev clean`（v1.5.23 / REQ-041 已实现；dev 分项 0 → 1）；新增 2 个：#45 `req body`（req 分项 6 → 7）、#46 `lint fill`（lint 分项 3 → 4）。
 - `flow advance --json` 为**错误封装开关**：成功输出保持人类文本，不计入成功出口。
-- 注册的 `--json` 选项数为 **44**（43 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。`lint i18n` / `lint kb` / `lint req` 为三个独立 Commander 子命令，各计 1。
-- 三处对齐：源码 `option('--json'` 去重计数 44 / 本文件 43+44 / `test/cli/json-contract.test.ts` 用例 #1~#41（**#42 在 `req.test.ts`、#43 在 `dashboard.test.ts`**）；`test/commands/knowledge.test.ts` 计数用例 = 44/43。
-- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 43 个成功出口、也不计入 44 个注册选项（非 Commander 选项）；验收单列。**
+- 注册的 `--json` 选项数为 **47**（46 成功出口 + 1 错误模式开关 `flow advance --json`）；「注册选项数」与「成功出口数」不得混用。`lint i18n` / `lint kb` / `lint req` / `lint fill` 为四个独立 Commander 子命令，各计 1。
+- 三处对齐：源码 `option('--json'` 去重计数 47 / 本文件 46+47 / `test/cli/json-contract.test.ts` 用例 #1~#41、#45 与 #46（**#42 在 `req.test.ts`、#43 在 `dashboard.test.ts`、#44 在 `dev.test.ts`**）；`test/commands/knowledge.test.ts` 计数用例 = 47/46。
+- **--version --json（§6.6）为顶层成功 JSON 形态（三键），不计入 46 个成功出口、也不计入 47 个注册选项（非 Commander 选项）；验收单列。**
 
 ## §8 迁移边界
 
@@ -395,10 +406,11 @@ typeof doc.error === 'string'  → legacy
 
 **首段（契约差异声明）**：`target:'req'` 比其他 lint 出口**多出 `suspects` 与两个计数键（共 3 个新键：`suspects` / `unknownCount` / `suspectCount`）**，理由：**A/B 分级**——A 类阻塞驱动 `ok` 与退出码，B 类 advisory 仅提示；两级语义无法塞进单一 `issues` 数组而不破坏 `ok` 不变量。本出口无历史消费者，新增键不受「只增不改」约束，但必须在此显式登记。
 
-### §16.1 顶层键序（恒 7 键）
+### §16.1 顶层键序（v1.5.6 恒 7 键；v1.6.0 起恒 8 键）
 
-`schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount`（`schemaVersion` 恒首；`target` 恒 `"req"`）。
+`schemaVersion,target,ok,issues,suspects,unknownCount,suspectCount,fill`（`schemaVersion` 恒首；`target` 恒 `"req"`）。
 `issues[]` / `suspects[]` 元素键序恒 `path,message`（复用 `LintIssue` 形状）；空集恒 `[]`（非 `null`）；两个计数恒 number。
+`fill{emptyBody[{id,emptySections}],emptyPlan[{id}]}` 为 v1.6.0 新增**末位追加键**（与出口 #46 `lint fill` 同源；advisory，不影响 `ok` / 退出码）。
 
 ### §16.2 A / B 判定与 `ok`
 
@@ -433,7 +445,7 @@ typeof doc.error === 'string'  → legacy
 
 - **抑制行数**（`suppressedLines`）只进**人类输出**首行（`抑制 {n} 行`），让抑制量可见。
   **口径**（REV-020）：计入「抑制标记行（起 / 止 / 行内）+ 区间内内容行」；**孤 `ignore-end` 行不计**（它什么也没抑制，按普通行扫描）。
-- **未闭合区间**（`unclosedRegions`）每处一行 **stderr** 警告（`lint.req.unclosedRegionWarn`），**不改退出码**、**不进 JSON**。⇒ JSON 键集**恒 7 键**。
+- **未闭合区间**（`unclosedRegions`）每处一行 **stderr** 警告（`lint.req.unclosedRegionWarn`），**不改退出码**、**不进 JSON**。⇒ JSON 键集**恒 8 键**（v1.6.0 起；v1.5.6 为 7 键）。
 - `--json` 模式 stdout **恰好一个** JSON 文档；未闭合区间的 stderr 行不是错误信封、不影响退出码。
 
 ### §16.6 排序 / 退出码 / `path` / 文案
@@ -443,3 +455,25 @@ typeof doc.error === 'string'  → legacy
 - **`path`**：项目根相对路径 `.openfeel/requirements/<file>`（恒正斜杠），与 `lint kb` 的 `.openfeel/kb/<file>` 同风格。
 - **文案**：`message` 与人类输出**同一份字符串**（人类行 = `'  ' + path + ' ' + message`），不含绝对路径 / 反斜杠 / **不含任何近似纠错建议**（A 类只报「无法解析为命令路径 + 断点位置」）。
 - **无需求目录 / 无 `*.md`** → `files:0,candidates:0,issues:[],suspects:[]` → `ok:true` + exit 0（镜像 `lint kb` 的「无目录即通过」）。
+
+## §17 v1.6.0-stage-132 细则（`req body` / `lint fill` / 门禁码）
+
+### §17.1 #45 `req body`
+
+- **命令面**：`req body <id> --section <name> (--text <md> | --file <path>) [--append | --replace] [--json]`；`--section` 必填，`--text` / `--file` 恰一，`--append` / `--replace` 互斥（缺省替换整节）。
+- **顶层键序（恒 6 键）**：`schemaVersion,id,section,path,lines,created`；`path` 恒 POSIX 项目根相对路径（`.openfeel/requirements/REQ-NNN.md`），`lines` = 写入正文行数（number），`created` = 是否新建小节（boolean）。
+- **写语义**：只改目标业务小节；**元信息小节受保护**（`状态` / `变更记录` 等 → legacy `protected_section`）；每次成功写入追加一条 `## 变更记录`。成功出口同时触发开发账本自动同步（REQ-059）。
+- **失败形态（legacy）**：`{schemaVersion, error, errorKind}`，`error ∈ {not_found, protected_section, empty_text, invalid_field}`，`errorKind:'refusal'`，exit 1，**零写盘**；`--json` 模式 stdout 仍恰好一个 JSON 文档。
+
+### §17.2 #46 `lint fill`
+
+- **命令面**：`lint fill [--json]`（`src/commands/lint.ts:178-205`）。
+- **顶层键序（恒 7 键）**：`schemaVersion,target,ok,checked,empty,missingPlan,stageDocs`；`target` 恒 `"fill"`；`checked` = 扫描的需求正文文件数；`empty[]{id,emptySections[]}`；`missingPlan[]{id}`；`stageDocs{overviewEmpty[]{stageId},planEmpty[]{stageId}}`。
+- **`ok`**：四组清单均为空（`empty` / `missingPlan` / `stageDocs.overviewEmpty` / `stageDocs.planEmpty`）。
+- **退出码（与 i18n/kb/req 三个目标刻意不同）**：**恒 exit 0**——fill 是 advisory 清单，存量空壳不得让 `lint` 恒红；`ok:false` 只在 JSON 里供 CI 消费。人类输出全绿一行 `fill: OK`，否则按四组列出（每组最多 20 条 + 其余计数）。
+
+### §17.3 门禁码与 `--force`（本版契约边界）
+
+- `STAGE_PLAN_GATE` / `DEV_SYNC_STALE` 已入 §3（共 15 行）；`flow advance --json` 失败时输出对应 envelope，`detail` 携带门禁快照（`gate_overrides` / `gate_missing` 落 `flow.json.log`，不进 JSON 出口）。
+- `REQ_BODY_GATE` / `REQ_PLAN_GATE` / `REQ_PLAN_DEVIATION` **尚未进入 §3**：`req claim` / `req advance` / `req complete` 当前无 `--json`，三类拒绝以 **i18n 文案 + exit 1** 呈现（零写盘），`--force` 写 waiver / `plan.deviations+1` 并留 `flow.json.log` 审计。这是**已知契约缺口**，登记在 `plan.md` §11，待命令补 `--json` 时按 §3 接入。
+- **`--force` 不改变门禁判据**：只把 `allowGateOverride` / waiver 传给核心层做留痕放行；`done` 门（review + verify）、blocking REV 门、阶段验证门与版本归档判据**一律不可 force 绕过**。

@@ -1241,3 +1241,17 @@ split(data, parentId, children):
 | `req next --limit 2` with 0 candidates | `（无可接取需求）`; `--json` → `requirement: null, candidates: []` |
 | `req next --limit 0` | exit 1, `非法 --limit 值（应为 ≥1 的整数）` |
 | `req claim REQ-001 --json` | commander unknown-option error (write commands have no `--json`) |
+
+---
+
+## v1.6.0 增量（现行契约；以上 v1.2.1 正文保持冻结）
+
+> 本节只登记 v1.2.1 之后**新增或改变**的语义；与上文冲突时以本节为准。实现锚点：`src/core/req/requirement-ops.ts`、`src/core/plan/filled.ts`、`src/commands/req.ts`。
+
+1. **`req body <id>` —— 正文唯一业务小节写入口（REQ-055）**。`--section <name>` 必填；`--text` / `--file` 恰一；`--append` / `--replace` 互斥（缺省替换整节）。只改目标小节，元信息小节（`状态` / `变更记录` 等）返回 legacy `protected_section`；每次成功写入追加一条 `## 变更记录`。`--json` 出口 #45：`{schemaVersion,id,section,path,lines,created}`；失败 legacy `{schemaVersion,error,errorKind}`，`error ∈ {not_found,protected_section,empty_text,invalid_field}`，exit 1、零写盘。
+2. **写实判据单点**：`src/core/plan/filled.ts` 的 `isRequirementBodyFilled`。`## 摘要` / `## 目标与验收` 各需 ≥40 个非空白字符（`MIN_FILLED_CHARS`），`## 目标与验收` 至少一行判据（`-` / `*` / `A1` / `验收` 开头）；占位行（`- [ ] 待补充` / `（待补充）` / `TODO` 等）整行剔除。禁止子串判定（`includes('待补充')` 会误伤正文引用）。
+3. **正文门（REQ-055 / REV-013）**：`applyStatusChange` 在 `targetStatus ∈ {scheduled,in_progress,done}` 且无 `body_waiver` 时判（判据 `requirementBodyBlocker`）。**`claimRequirement` 不校验正文**——认领 ≠ 开工，`req add --claim` 必须原子成功；`req claim --force` 仅为旧脚本兼容保留，**当前无实际作用**。空壳 ⇒ exit 1 专用文案（提示 `req body` 补写），零写盘；`req advance|complete --force` 写 `body_waiver={at,by,reason}` + 审计 `requirement_body_forced`（`gate: advance|complete`），再次流转放行。`draft` / `blocked` / `cancelled` / `rejected` 不受此门；`general` 与零关联阶段需求**同样生效**；**不进入** done 门（归档判据不受影响）。
+4. **需求级计划门（REQ-056 / REQ-058）**：计划文件全局固定 `.openfeel/plan/reqs/REQ-NNN.plan.md`（不随版本漂移，`rollover` 后仍在）。适用面三种组合：① `workflow_mode === 'general'`（有/无阶段）；② `fast` / `full` 且关联阶段数 **0**；③ 有阶段的 `fast`/`full` **不走本门**（由阶段 exec 门覆盖）。`→in_progress` 前计划缺失或未写实 ⇒ `plan_missing`（`REQ_PLAN_GATE`）；`req claim` **不**挂计划门（claim ≠ 开工）。
+5. **偏差门（REQ-056）**：`→done` 前比对 `requirements[*].plan.sha256`（执行前盖章的前 12 位）与当前计划文件；不一致且 `## 偏差与回写` 未写实 ⇒ `plan_deviation`（`REQ_PLAN_DEVIATION`）；`plan.recorded_at` 缺失的历史需求放行 + `console.warn` + 独立审计 `requirement_plan_unstamped`（不阻塞）。顺序：正文门 → 计划门 → done 门（review + verify）→ 偏差门；缺 review/verify 仍先得 `invalid_status`。
+6. **错误码通道**：`RequirementErrorCode` 由 7 值扩到 10 值（+`body_empty` / `plan_missing` / `plan_deviation`）。`req claim/advance/complete` **均无 `--json`**；三码只由 `advance` / `complete` 触发，目前以 i18n 文案 + exit 1 呈现（`REQ_*` envelope 码尚未进入 `src/core/errors.ts`）。
+7. **既有行为零改动**：`requirementDoneBlocker`（done 门的 review + verify 两条判据）、`req claim --json` 的 unknown-option 行为、7 状态值域与 `general` 阶段级拒绝均不变。

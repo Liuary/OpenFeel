@@ -8,7 +8,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   getRequirements, getRequirement, listRequirements, nextRequirementId,
@@ -16,7 +17,9 @@ import {
   advanceRequirement, linkRequirement, splitRequirement,
   isTerminalRequirementStatus, allLinkedStagesDone, canCompleteRequirement,
   getAllowedNextStatuses, recordRequirementReview, recordRequirementVerification,
-  requirementDoneBlocker,
+  requirementDoneBlocker, requirementPlanDeviationBlocker, forceRequirementPlanDeviation,
+  requirementBodyBlocker, requirementBodyEmptySections, requirementPlanBlocker,
+  forceRequirementPlanWaiver,
   allocateRequirementId, requirementSeqFloor, releaseCheckRequirements, rolloverRequirements,
 } from '../../src/core/req/requirement-ops.js';
 import {
@@ -1098,11 +1101,19 @@ describe('需求聚合回写入口 — 7×2 直调矩阵（stage-83 op-001）', 
         expect(req.status).toBe('done');
         expect(req.updated_at).not.toBe('2026-01-01T00:00:00.000Z');   // updated_at 刷新
         expect(affected).toEqual(['REQ-001']);
-        expect(data.log.length).toBe(logLenBefore + 1);                // 恰一条审计
+        // v1.6.0 / REV-019：正向收口恰两条审计——requirement_auto_done（行为记录）
+        // + requirement_auto_complete（旁路留痕，reason=aggregate）
+        expect(data.log.length).toBe(logLenBefore + 2);
+        const doneEntry = data.log[data.log.length - 2];
+        expect(doneEntry.action).toBe('requirement_auto_done');
+        expect(doneEntry.agent).toBe('cli');
+        expect(doneEntry.detail).toEqual({ requirementId: 'REQ-001', from: status, to: 'done', triggerStage: 'stage-01' });
         const entry = lastLog(data);
-        expect(entry.action).toBe('requirement_auto_done');
+        expect(entry.action).toBe('requirement_auto_complete');
         expect(entry.agent).toBe('cli');
-        expect(entry.detail).toEqual({ requirementId: 'REQ-001', from: status, to: 'done', triggerStage: 'stage-01' });
+        expect(entry.detail).toEqual({
+          requirementId: 'REQ-001', reason: 'aggregate', from: status, to: 'done', triggerStage: 'stage-01',
+        });
       } else {
         expect(req.status).toBe(status);                               // 状态逐字不变
         expect(affected).toEqual([]);
@@ -1494,7 +1505,9 @@ describe('版本解绑 — stage-87 op-003', () => {
     data.stages['stage-01'].phase = 'done';
     expect(syncRequirementStatus(data, 'stage-01')).toEqual(['REQ-001']);         // 聚合收口（无版本条件）
     expect(getRequirement(data, 'REQ-001')!.status).toBe('done');
-    expect(lastLog(data).action).toBe('requirement_auto_done');
+    // v1.6.0 / REV-019：收口旁路留痕（auto_done 之后追加 auto_complete）
+    expect(lastLog(data).action).toBe('requirement_auto_complete');
+    expect(lastLog(data).detail).toMatchObject({ requirementId: 'REQ-001', reason: 'aggregate', to: 'done' });
     expect('target_version' in getRequirement(data, 'REQ-001')!).toBe(false);     // 全程零版本键写入
   });
 
@@ -2012,3 +2025,356 @@ describe('REQ-030 顺延 rolloverRequirements', () => {
     expect(data.log.length).toBe(logLength);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.6.0 / REQ-056 T6：计划偏差回写（可机器校验证据，挂需求 `→ done` 前置）
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('REQ-056 T6 计划偏差门（需求层）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-req-plan-dev-'));
+  });
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const PLAN_REL = '.openfeel/plan/reqs/REQ-001.plan.md';
+  const BASE_PLAN = [
+    '## 目标',
+    '让需求级计划在执行前具备机器可校验的指纹，执行后被改动必须留下可复读的偏差记录。',
+    '## 任务拆解',
+    '- 阶段计划门放行时盖章；done 前比对 sha256 并判 `## 偏差与回写` 是否写实。',
+    '## 验收判据',
+    '- A5：计划改动未回写时 exit 1 `plan_deviation`，补写后 exit 0。',
+  ].join('\n');
+  const DEVIATION_SECTION = [
+    '## 偏差与回写',
+    '- 2026-11-24 执行中把「指纹比对」从命令层下沉到需求原语：新增 `requirementPlanDeviationBlocker` 单点并补测；无其它偏离计划之处。',
+  ].join('\n');
+
+  /** 计划文件绝对路径（全局固定 `.openfeel/plan/reqs/REQ-NNN.plan.md`） */
+  function planPath(): string {
+    return join(tmpDir, ...PLAN_REL.split('/'));
+  }
+  function writePlan(content: string): void {
+    mkdirSync(dirname(planPath()), { recursive: true });
+    writeFileSync(planPath(), content, 'utf-8');
+  }
+  function sha12(content: string): string {
+    return createHash('sha256').update(content, 'utf-8').digest('hex').slice(0, 12);
+  }
+  /** 已盖章（sha = 给定内容）+ done 门齐全的在办需求 */
+  function stampedData(planContent: string): FlowData {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress', {
+      plan: { path: PLAN_REL, sha256: sha12(planContent), recorded_at: '2026-11-24T00:00:00.000Z' },
+    })];
+    return data;
+  }
+
+  it('T6.1 计划改后未回写 → plan_deviation，零变更零审计（status / 日志不变）', () => {
+    writePlan(BASE_PLAN);
+    const data = stampedData(BASE_PLAN);
+    // 执行后计划被改动（内容不同 → 指纹不同），且未补 `## 偏差与回写`
+    writePlan(BASE_PLAN + '\n\n## 执行补充\n- 执行中多改了一行。');
+    expect(requirementPlanDeviationBlocker(data.requirements![0], tmpDir)).toBe('plan_deviation');
+    expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'plan_deviation' });
+    expect(data.requirements![0].status).toBe('in_progress');   // 零变更
+    expect(data.log).toHaveLength(0);                            // 零审计
+  });
+
+  it('T6.2 补 `## 偏差与回写` 写实（≥40 字 + YYYY-MM-DD 记录）→ 放行', () => {
+    writePlan(BASE_PLAN);
+    const data = stampedData(BASE_PLAN);
+    writePlan(BASE_PLAN + '\n\n' + DEVIATION_SECTION);
+    expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].status).toBe('done');
+    expect(lastLog(data).action).toBe('requirement_status');
+    expect(lastLog(data).detail).toMatchObject({ id: 'REQ-001', to: 'done' });
+    expect(lastLog(data).detail.plan_unstamped).toBeUndefined();  // 已盖章需求不标未盖章
+  });
+
+  it('T6.2b 偏差小节写实但缺 YYYY-MM-DD 记录 → 拒绝；只有占位 → 拒绝', () => {
+    // ① 字数足够但无日期记录（证明日期是独立判据）
+    const noDate = stampedData(BASE_PLAN);
+    writePlan(BASE_PLAN + '\n\n## 偏差与回写\n'
+      + '这一节写了很长一段说明，但故意没有给出任何日期记录，用来证明日期记录是独立于字数判据的硬要求。');
+    expect(advanceRequirement(noDate, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'plan_deviation' });
+
+    // ② 只有占位行（写实判据不通过）
+    const placeholder = stampedData(BASE_PLAN);
+    writePlan(BASE_PLAN + '\n\n## 偏差与回写\n\n- [ ] 待补充\n');
+    expect(advanceRequirement(placeholder, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'plan_deviation' });
+  });
+
+  it('T6.3 计划未改 → 放行（不要求 `## 偏差与回写`）', () => {
+    writePlan(BASE_PLAN);
+    const data = stampedData(BASE_PLAN);
+    expect(requirementPlanDeviationBlocker(data.requirements![0], tmpDir)).toBeNull();
+    expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+    expect(data.log.some((e) => e.action === 'requirement_status' && e.detail?.plan_unstamped === true)).toBe(false);
+  });
+
+  it('T6.4 未盖章历史需求 → 放行 + 标记记录 plan_unstamped:true（兼容存量，不阻塞）', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress')];      // 无 `plan` 字段
+    expect(requirementPlanDeviationBlocker(data.requirements![0], tmpDir)).toBeNull();
+    expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].status).toBe('done');
+    // 标记记录（done 时的独立审计条目；requirement_status 条目形状逐字不变）
+    const marker = data.log.find((e) => e.action === 'requirement_plan_unstamped');
+    expect(marker).toBeDefined();
+    expect(marker!.detail).toMatchObject({ id: 'REQ-001', from: 'in_progress', to: 'done', plan_unstamped: true });
+    // 既有 done 审计条目形状不变（lastLog 仍为 requirement_status）
+    expect(lastLog(data).action).toBe('requirement_status');
+    expect(lastLog(data).detail).toEqual({ id: 'REQ-001', from: 'in_progress', to: 'done' });
+  });
+
+  it('T6.5 done 门先于偏差门（REV-001）：缺 review → invalid_status，不是 plan_deviation', () => {
+    writePlan(BASE_PLAN);
+    const data = stampedData(BASE_PLAN);
+    delete data.requirements![0].review;
+    writePlan(BASE_PLAN + '\n\n## 执行补充\n- 执行中改了计划。');   // 偏差同时存在
+    expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'invalid_status' });
+    expect(data.requirements![0].status).toBe('in_progress');
+    expect(data.log).toHaveLength(0);
+  });
+
+  it('T6.6 --force 留痕：deviations += 1 + 审计，放行后状态推进（指纹不被洗白）', () => {
+    writePlan(BASE_PLAN);
+    const data = stampedData(BASE_PLAN);
+    writePlan(BASE_PLAN + '\n\n## 执行补充\n- 执行中改了计划。');   // 偏差未回写
+    expect(forceRequirementPlanDeviation(data, 'REQ-001', { by: 'tester' }))
+      .toEqual({ ok: true, changed: true });
+    expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir, allowPlanDeviation: true }))
+      .toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].status).toBe('done');
+    expect(data.requirements![0].plan!.deviations).toBe(1);
+    expect(data.requirements![0].plan!.sha256).toBe(sha12(BASE_PLAN));   // 指纹保持原值（不洗白证据）
+    expect(data.log.some((e) => e.action === 'requirement_plan_deviation_forced'
+      && e.detail?.deviations === 1 && e.detail?.by === 'tester')).toBe(true);
+  });
+
+  it('T6.6b 未盖章需求 force → invalid_status（force 只对已盖章偏差有效，不伪造指纹）', () => {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'in_progress')];
+    expect(forceRequirementPlanDeviation(data, 'REQ-001')).toEqual({ ok: false, code: 'invalid_status' });
+    expect(data.log).toHaveLength(0);
+  });
+
+  it('T6.7 计划文件被删除（盖章后失去可比对证据）→ plan_deviation', () => {
+    const data = stampedData(BASE_PLAN);
+    // 不落盘计划文件 → findRequirementPlanPath 为 null
+    expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'plan_deviation' });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.6.0-stage-132 / T4 正文门 + T7 需求级计划门（需求层）
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('v1.6.0-stage-132 T4 正文门 / T7 需求级计划门（需求层）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-req-gates-'));
+  });
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const BODY_REL = '.openfeel/requirements/REQ-001.md';
+  const PLAN_REL = '.openfeel/plan/reqs/REQ-001.plan.md';
+  /** 写实正文（两节各 ≥40 非空白字符；`目标与验收` 含判据行） */
+  const FILLED_BODY = [
+    '## 摘要',
+    '本需求要解决的问题与现状证据、交付物边界，以及本次改动的判定口径，供后续审查与验收逐条复述。',
+    '## 目标与验收',
+    '- A2：空壳正文不得流转（exit 1 body_empty）；补写正文后 exit 0，`--force` 留痕放行。',
+  ].join('\n');
+  /** 空壳正文（两节都只有占位行） */
+  const EMPTY_BODY = [
+    '## 摘要',
+    '',
+    '- [ ] 待补充',
+    '',
+    '## 目标与验收',
+    '',
+    '- [ ] 待补充',
+  ].join('\n');
+  /** 写实需求级计划 */
+  const FILLED_PLAN = [
+    '## 目标',
+    '让需求级计划在开工前具备可机器校验的写实判据，避免在没有计划的情况下直接进入执行相位，并为后续偏差回写留出可比对的指纹。',
+    '## 任务拆解',
+    '- 在 in_progress 前校验 `.openfeel/plan/reqs/REQ-NNN.plan.md` 存在且前三节写实。',
+    '## 验收判据',
+    '- A8：缺计划 exit 1 `plan_missing`；补写写实计划后 exit 0。',
+  ].join('\n');
+  /** 占位计划（存在但不写实） */
+  const EMPTY_PLAN = ['## 目标', '- [ ] 待补充', '## 任务拆解', '- [ ] 待补充', '## 验收判据', '- [ ] 待补充'].join('\n');
+
+  function writeUnder(rel: string, md: string): void {
+    const abs = join(tmpDir, ...rel.split('/'));
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, md, 'utf-8');
+  }
+  function writeBody(md: string = FILLED_BODY): void { writeUnder(BODY_REL, md); }
+  function writePlan(md: string = FILLED_PLAN): void { writeUnder(PLAN_REL, md); }
+  /** 单需求数据（缺省**不登记** body_path：正文门不介入；正文门用例显式传 `body_path: BODY_REL`） */
+  function dataWith(overrides: Partial<RequirementData> = {}): FlowData {
+    const data = makeFlowData();
+    data.requirements = [makeReq('REQ-001', 'scheduled', { ...overrides })];
+    return data;
+  }
+
+  it('T4.1 正文门触发集合：scheduled / in_progress / done 拒绝；draft 之外的退让方向不判', () => {
+    writeBody(EMPTY_BODY);
+    // ① scheduled → in_progress 被拦
+    const a = dataWith({ body_path: BODY_REL });
+    expect(requirementBodyBlocker(tmpDir, a.requirements![0], 'in_progress')).toBe('body_empty');
+    // ② draft → scheduled 被拦（认领 / 启动 / 推进同集合）
+    expect(requirementBodyBlocker(tmpDir, a.requirements![0], 'scheduled')).toBe('body_empty');
+    // ③ in_progress → done 被拦
+    expect(requirementBodyBlocker(tmpDir, a.requirements![0], 'done')).toBe('body_empty');
+    // ④ 退让 / 终止方向不判：blocked / cancelled / rejected
+    for (const target of ['blocked', 'cancelled', 'rejected'] as const) {
+      expect(requirementBodyBlocker(tmpDir, a.requirements![0], target)).toBeNull();
+    }
+    // ⑤ 判据单源：未写实小节清单与 isRequirementBodyFilled 同源
+    expect(requirementBodyEmptySections(tmpDir, a.requirements![0])).toEqual(['摘要', '目标与验收']);
+  });
+
+  it('T4.2 空壳正文 → body_empty 且零变更零审计；写实后放行（A2b）', () => {
+    writeBody(EMPTY_BODY);
+    const data = dataWith({ body_path: BODY_REL });
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'body_empty' });
+    expect(data.requirements![0].status).toBe('scheduled');   // 零变更
+    expect(data.log).toHaveLength(0);                          // 零审计
+
+    writeBody(FILLED_BODY);
+    writePlan();                                               // 零关联阶段 → 计划门也是前置
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].status).toBe('in_progress');
+  });
+
+  it('T4.3 claim 不校验正文（认领 ≠ 开工）：空壳可认领；随后流转被正文门拦；补正文 → 放行（REV-013）', () => {
+    writeBody(EMPTY_BODY);
+    const data = dataWith({ status: 'draft', body_path: BODY_REL });
+
+    // ① `add --claim` 语境的原子成功：空壳认领放行（REV-013 起正文门不挂 claim）
+    expect(claimRequirement(data, 'REQ-001', 'Alice', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].owner).toBe('Alice');
+    expect(typeof data.requirements![0].claimed_at).toBe('string');
+
+    // ② `add --start` 语境：认领后立即 draft → scheduled 即被正文门拒绝（零变更零审计）
+    const logsBefore = data.log.length;
+    expect(advanceRequirement(data, 'REQ-001', 'scheduled', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'body_empty' });
+    expect(data.requirements![0].status).toBe('draft');
+    expect(data.log).toHaveLength(logsBefore);
+
+    // ③ 补正文（+ 零关联阶段需要的需求级计划）后，同一条流转链放行
+    writeBody(FILLED_BODY);
+    writePlan();
+    expect(advanceRequirement(data, 'REQ-001', 'scheduled', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].status).toBe('in_progress');
+  });
+
+  it('T4.4 核心 API：未传项目根 → 无正文可判（放行）；命令层恒显式传根（见 CLI REV-013 用例）', () => {
+    writeBody(EMPTY_BODY);
+    const noBodyPath = dataWith();                            // 未登记 body_path：无正文可判
+    // 未传 projectPath（需求层零 cwd 依赖）→ 放行（计划门同样无根可判）
+    // 注：这是**核心 API** 的语义边界，命令层 `req add/claim/advance` 恒显式传根（REV-013）。
+    expect(advanceRequirement(noBodyPath, 'REQ-001', 'in_progress')).toEqual({ ok: true, changed: true });
+
+    // 登记了 body_path 但文件不存在 → body_empty（无证据）
+    const missing = dataWith({ body_path: BODY_REL });
+    rmSync(join(tmpDir, BODY_REL), { force: true });
+    expect(advanceRequirement(missing, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'body_empty' });
+  });
+
+  it('T4.5 正文门不进 done 门：缺审仍返回 invalid_status（T027.1 语境逐字不变）', () => {
+    writeBody(FILLED_BODY);
+    const data = dataWith({
+      status: 'in_progress',
+      body_path: BODY_REL,
+      review: undefined,
+      verification: undefined,
+    });
+    // 正文已写实 → 正文门放行；done 门（review）仍按既有口径拒绝
+    expect(requirementDoneBlocker(data, data.requirements![0])).toBe('review');
+    expect(advanceRequirement(data, 'REQ-001', 'done', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'invalid_status' });
+  });
+
+  it('T7.1 general 需求：无计划 / 占位计划 → plan_missing；写实计划 → 放行（A8）', () => {
+    const data = dataWith({ workflow_mode: 'general' });
+    expect(requirementPlanBlocker(data, tmpDir, data.requirements![0], 'in_progress')).toBe('plan_missing');
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'plan_missing' });
+    expect(data.log).toHaveLength(0);
+
+    writePlan(EMPTY_PLAN);                                   // 存在但不写实（A4b 同族）
+    expect(requirementPlanBlocker(data, tmpDir, data.requirements![0], 'in_progress')).toBe('plan_missing');
+
+    writePlan();
+    expect(requirementPlanBlocker(data, tmpDir, data.requirements![0], 'in_progress')).toBeNull();
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+  });
+
+  it('T7.2 零关联阶段 fast 需求同样拒绝（不因无阶段跳过）；plan_waiver 后放行 + 审计', () => {
+    const data = dataWith();                                 // 无 workflow_mode = 缺省 fast/full，零关联阶段
+    expect(requirementPlanBlocker(data, tmpDir, data.requirements![0], 'in_progress')).toBe('plan_missing');
+
+    expect(forceRequirementPlanWaiver(data, 'REQ-001', { by: 'tester', reason: 'advance-force', gate: 'advance' }))
+      .toEqual({ ok: true, changed: true });
+    expect(data.requirements![0].plan_waiver).toMatchObject({ by: 'tester', reason: 'advance-force' });
+    expect(lastLog(data).action).toBe('requirement_plan_forced');
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+  });
+
+  it('T7.3 有关联阶段的 full / fast 需求 → 本门返回 null（交给 T5 阶段 exec 门）', () => {
+    const data = makeFlowData({ 'stage-01': makeStage({ requirement_id: 'REQ-001' }) });
+    data.requirements = [makeReq('REQ-001', 'scheduled', { body_path: BODY_REL })];
+    writeBody(FILLED_BODY);
+    // 无计划文件也不在此门被拦
+    expect(requirementPlanBlocker(data, tmpDir, data.requirements![0], 'in_progress')).toBeNull();
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: true, changed: true });
+  });
+
+  it('T7.4 只拦 in_progress（done 由 T6 偏差门负责）→ done 目标本门恒 null', () => {
+    const data = dataWith({ status: 'in_progress' });
+    expect(requirementPlanBlocker(data, tmpDir, data.requirements![0], 'done')).toBeNull();
+    expect(requirementPlanBlocker(data, tmpDir, data.requirements![0], 'scheduled')).toBeNull();
+  });
+
+  it('T7.5 顺序：正文门先于计划门（正文空壳 + 无计划 → body_empty，不是 plan_missing）', () => {
+    writeBody(EMPTY_BODY);
+    const data = dataWith({ workflow_mode: 'general', body_path: BODY_REL });
+    expect(advanceRequirement(data, 'REQ-001', 'in_progress', { projectPath: tmpDir }))
+      .toEqual({ ok: false, code: 'body_empty' });
+    expect(data.log).toHaveLength(0);
+  });
+});
+

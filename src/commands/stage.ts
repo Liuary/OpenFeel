@@ -26,6 +26,7 @@ import { getConfigFieldLegalValues, type WorkflowMode } from '../core/config.js'
 import { stageRequirementIds } from '../core/req/aggregate.js';
 import { findPhaseEnteredAtMs } from '../core/phase-entered.js';
 import { getSessionId, resolveActorName } from '../core/session.js';
+import { maybeSyncDevStatus } from '../core/dev-status.js';
 
 /** 状态字段键值对 */
 interface StatusFields {
@@ -433,6 +434,17 @@ function escapeRegex(str: string): string {
 }
 
 /**
+ * v1.6.0 / REQ-059 T8：**写成功出口**自动同步开发账本（`.openfeel/dev/**` + `dev_last.md`）。
+ * 写操作已成功，因此同步失败**不改变退出码**，只输出一行 stderr（不再静默吞掉）。
+ */
+function syncDevAfterWrite(projectPath: string, lang: string): void {
+  const sync = maybeSyncDevStatus(projectPath);
+  if (sync.error !== undefined) {
+    console.warn(t('flow.dev.syncFailedTmpl', lang, { err: sync.error }));
+  }
+}
+
+/**
  * 注册 stage 命令组到 Commander 程序
  */
 export function registerStageCommand(program: Command): void {
@@ -648,6 +660,8 @@ export function registerStageCommand(program: Command): void {
           syncWorkflowModeRedundancy(flowMgr, stageId, job.value);
         }
       }
+      // v1.6.0 / REQ-059 T8：写成功后自动同步开发账本（读命令不调；状态未变仍由 blockChanged 去重）
+      syncDevAfterWrite(projectPath, lang);
     });
 
   // ═══ stage task <stageId> [taskNo] [--done|--undone] | --add <desc> ═══
@@ -681,6 +695,8 @@ export function registerStageCommand(program: Command): void {
         try {
           const no = appendStatusTask(projectPath, stageId, options.add);
           console.log(t('stage.task.addOkTmpl', lang, { no: String(no), desc: options.add.trim() }));
+          // v1.6.0 / REQ-059 T8：追加成功即同步（--add 分支的独立写盘点）
+          syncDevAfterWrite(projectPath, lang);
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           if (msg === 'TASK_SECTION_MISSING') {
@@ -727,6 +743,8 @@ export function registerStageCommand(program: Command): void {
 
       const actionLabel = toDone ? t('stage.task.done', lang) : t('stage.task.undone', lang);
       console.log(t('stage.task.actionLabelTmpl', lang, { label: actionLabel, stageId, taskNo: String(taskNo) }));
+      // v1.6.0 / REQ-059 T8：勾选成功即同步
+      syncDevAfterWrite(projectPath, lang);
     });
 
   // ═══ stage verify <stageId> --result --kind --by --note [--evidence] ═══
@@ -806,6 +824,8 @@ export function registerStageCommand(program: Command): void {
       console.log(t('stage.verify.doneTmpl', lang, {
         stage: stageId, kind: options.kind, result: options.result, by,
       }));
+      // v1.6.0 / REQ-059 T8：验证证据写入成功即同步（done 门取证前后账本保持新鲜）
+      syncDevAfterWrite(projectPath, lang);
     });
 
   // ═══ stage create <stageId> ═══

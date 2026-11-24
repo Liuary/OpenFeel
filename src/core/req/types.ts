@@ -110,6 +110,46 @@ export interface RequirementTrivialRecord {
   at: string;
 }
 
+/**
+ * 需求门「留痕放行」记录（v1.6.0 / stage-132 T4 正文门 + T7 计划门）。
+ *
+ * 语义：门判据不通过时**不是**静默绕过，而是 `--force` 写一条可追溯的放弃记录
+ * （谁、何时、为什么），随后同一判据重新求值即放行。与 T6 的 `plan.deviations`
+ * 同一哲学：force 是「本次放行 + 留痕」，不是「洗白证据」——正文/计划文件仍应补写。
+ */
+export interface RequirementGateWaiverRecord {
+  /** 记录时间 ISO 8601 */
+  at: string;
+  /** 决策人（命令层缺省 = 项目用户） */
+  by: string;
+  /** 放行原因（命令层写入渠道，如 `claim-force` / `advance-force`） */
+  reason: string;
+}
+
+/**
+ * 需求级计划「执行前指纹」盖章（v1.6.0 / REQ-056 T6）。
+ *
+ * 盖章时机：阶段计划门（`advanceStagePhase` → `exec_running`）**放行时**写入，
+ *   含 `allowGateOverride`（`--force`）留痕放行；拒绝路径零写盘。
+ * 校验时机：需求 `→ done` 前比对当前 `.openfeel/plan/reqs/REQ-NNN.plan.md` 的 sha256；
+ *   计划被执行改动且 `## 偏差与回写` 未写实 → `plan_deviation`（可机器校验证据）。
+ * 可选（读侧宽容）：本字段引入前已启动的历史需求无此字段 —— done 门**放行**、
+ *   审计记 `plan_unstamped:true`（兼容存量，不阻塞）。
+ */
+export interface RequirementPlanRecord {
+  /** 计划文件相对路径（POSIX 分隔符；恒 `.openfeel/plan/reqs/REQ-NNN.plan.md`，全局固定不随版本漂移） */
+  path: string;
+  /**
+   * 计划内容 sha256 的**前 12 位**十六进制（与 `sha256sum` 输出前缀同口径）。
+   * 12 位 = 48 bit，对「计划文件是否被改动」足够；不存全量摘要以控制 flow.json 体积。
+   */
+  sha256: string;
+  /** 盖章时间 ISO 8601 */
+  recorded_at: string;
+  /** 偏差留痕放行次数（`req advance --force` 递增；缺省为 0 时不写键） */
+  deviations?: number;
+}
+
 /** 需求条目数据（需求层显式字段；聚合方向归 stage-83） */
 export interface RequirementData {
   /** 需求 ID（REQ-NNN，max+1 不回收；格式见 REQ_ID_PATTERN） */
@@ -149,4 +189,21 @@ export interface RequirementData {
   waiver?: RequirementWaiverRecord;
   /** trivial 标记（v1.5.23 / REQ-043）：存在即视为无需审验（跳过 review / verification 两项） */
   trivial?: RequirementTrivialRecord;
+  /**
+   * 执行前计划指纹（v1.6.0 / REQ-056 T6）：阶段计划门放行时盖章，
+   * `→ done` 前比对当前计划文件；改动未回写 → `plan_deviation`。可选——历史需求缺省放行。
+   */
+  plan?: RequirementPlanRecord;
+  /**
+   * 正文门留痕放行（v1.6.0 / stage-132 T4）：存在即跳过正文写实判据。
+   * 只由 `req claim/advance/complete --force` 写入（同时审计 `requirement_body_forced`）；
+   * 可选——读侧宽容，缺省表示未放行（判据生效）。
+   */
+  body_waiver?: RequirementGateWaiverRecord;
+  /**
+   * 需求级计划门留痕放行（v1.6.0 / stage-132 T7）：存在即跳过计划写实判据。
+   * 只由 `req advance/complete --force` 写入（同时审计 `requirement_plan_forced`）；
+   * 可选——读侧宽容，缺省表示未放行（判据生效）。
+   */
+  plan_waiver?: RequirementGateWaiverRecord;
 }

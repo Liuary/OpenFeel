@@ -117,9 +117,9 @@ describe('错误层（stage-95 op-002）', () => {
     return JSON.parse(logMock.mock.calls[logMock.mock.calls.length - 1][0] as string) as Record<string, unknown>;
   }
 
-  // ── 1：13 行映射表逐行断言 ──
+  // ── 1：15 行映射表逐行断言 ──
 
-  it('① 映射表：13 行、code 唯一、逐行 code/kind/exitCode 与契约 §3 一致', () => {
+  it('① 映射表：15 行、code 唯一、逐行 code/kind/exitCode 与契约 §3 一致', () => {
     const expected: Array<[string, string, number]> = [
       ['NO_INIT', 'refusal', 1],
       ['INVALID_ARGUMENT', 'refusal', 1],
@@ -134,9 +134,13 @@ describe('错误层（stage-95 op-002）', () => {
       ['INTERNAL_ERROR', 'internal', 3],
       ['ARCHIVE_FAILED', 'refusal', 1],
       ['ARCHIVE_EXISTS', 'refusal', 1],
+      // v1.6.0 / REQ-056 T5：进入 exec_running 前阶段/需求计划缺失或未写实
+      ['STAGE_PLAN_GATE', 'refusal', 1],
+      // v1.6.0 / REQ-059 T8：archiving → done 前开发账本仍陈旧（同步失败）
+      ['DEV_SYNC_STALE', 'refusal', 1],
     ];
-    expect(CLI_ERROR_TABLE).toHaveLength(13);
-    expect(new Set(CLI_ERROR_TABLE.map((r) => r.code)).size).toBe(13);
+    expect(CLI_ERROR_TABLE).toHaveLength(15);
+    expect(new Set(CLI_ERROR_TABLE.map((r) => r.code)).size).toBe(15);
     expect(CLI_ERROR_TABLE.map((r) => [r.code, r.kind, r.exitCode])).toEqual(expected);
     // 码表键与 code 字段一致（防字符串漂移）
     for (const [key, spec] of Object.entries(CLI_ERROR_CODES)) {
@@ -146,6 +150,7 @@ describe('错误层（stage-95 op-002）', () => {
     expect(isInternalCode('INTERNAL_ERROR')).toBe(true);
     expect(isInternalCode('ARCHIVE_WRITE_FAILED')).toBe(true);
     expect(isInternalCode('INVALID_ARGUMENT')).toBe(false);
+    expect(isInternalCode('DEV_SYNC_STALE')).toBe(false);
   });
 
   // ── 2：envelope 形态 ──

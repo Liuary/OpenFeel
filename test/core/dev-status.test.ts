@@ -8,12 +8,16 @@ import {
   devLastPath,
   getDevStatus,
   isSyncNodePhase,
+  maybeSyncDevStatus,
   readSyncMeta,
   syncDevStatus,
 } from '../../src/core/dev-status.js';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { Command } from 'commander';
+import { registerReqCommand } from '../../src/commands/req.js';
+import { registerStageCommand } from '../../src/commands/stage.js';
 
 function seedProject(dir: string): void {
   mkdirSync(join(dir, '.openfeel', 'dev'), { recursive: true });
@@ -204,5 +208,135 @@ describe('dev-status（v1.5.0）', () => {
     writeFileSync(join(dir, '.openfeel', 'dev', '.sync.json'), '{ bad json', 'utf-8');
     expect(getDevStatus(dir).due).toBe(true);
     expect(readSyncMeta(dir)).toBeNull();
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // v1.6.0 / REQ-059 T8：maybeSyncDevStatus 三态（写成功出口与 done 门前共用）
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  it('T059.2a due=true → 真的同步：synced=true、due=false、.sync.json 落盘', () => {
+    expect(getDevStatus(dir).due).toBe(true);
+    const syncMeta = join(dir, '.openfeel', 'dev', '.sync.json');
+    expect(existsSync(syncMeta)).toBe(false);
+
+    const attempt = maybeSyncDevStatus(dir);
+
+    expect(attempt).toEqual({ synced: true, due: false });
+    expect(existsSync(syncMeta)).toBe(true);
+    expect(readSyncMeta(dir)).not.toBeNull();
+    expect(getDevStatus(dir).due).toBe(false);
+    expect(existsSync(devLastPath(dir))).toBe(true);
+  });
+
+  it('T059.2b due=false 且非节点相位 → 不动（synced=false，文件逐字不变）', async () => {
+    // 活跃阶段置非节点相位（plan_pending）：due=false 时不应触发同步
+    const flowPath = join(dir, '.openfeel', 'flow.json');
+    const flow = JSON.parse(readFileSync(flowPath, 'utf-8')) as { stages: Record<string, { phase: string }> };
+    flow.stages['v0.0.1-stage-01'].phase = 'plan_pending';
+    writeFileSync(flowPath, JSON.stringify(flow, null, 2) + '\n', 'utf-8');
+
+    // 先同步一次（due=true 触发），得到新鲜账本
+    expect(maybeSyncDevStatus(dir)).toEqual({ synced: true, due: false });
+    const syncMeta = join(dir, '.openfeel', 'dev', '.sync.json');
+    const beforeMeta = readFileSync(syncMeta, 'utf-8');
+    const devLast = devLastPath(dir);
+    const beforeDevLast = readFileSync(devLast, 'utf-8');
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const attempt = maybeSyncDevStatus(dir);
+
+    expect(attempt).toEqual({ synced: false, due: false });
+    expect(readFileSync(syncMeta, 'utf-8')).toBe(beforeMeta);       // .sync.json 未重写
+    expect(readFileSync(devLast, 'utf-8')).toBe(beforeDevLast);      // AUTO 块未重写
+  });
+
+  it('T059.2c 同步失败 → synced=false、due=true、error 非空（不再静默吞掉）', () => {
+    // 构造法：把 .sync.json 变成**目录** → writeFileSync 必失败（跨平台确定性失败）
+    mkdirSync(join(dir, '.openfeel', 'dev', '.sync.json'), { recursive: true });
+    expect(getDevStatus(dir).due).toBe(true);
+
+    const attempt = maybeSyncDevStatus(dir);
+
+    expect(attempt.synced).toBe(false);
+    expect(attempt.due).toBe(true);
+    expect(typeof attempt.error).toBe('string');
+    expect((attempt.error ?? '').length).toBeGreaterThan(0);
+  });
+
+  it('T059.2d 写成功出口接线：req advance 成功后自动同步（.sync.json 前进且 due=false）', async () => {
+    // 夹具：draft 需求（正文空壳 → 用 --force 留痕放行，验证的是「成功出口自动同步」）
+    const flowPath = join(dir, '.openfeel', 'flow.json');
+    const flow = JSON.parse(readFileSync(flowPath, 'utf-8')) as Record<string, unknown>;
+    flow.requirements = [{ id: 'REQ-001', title: 'T8', status: 'draft', created_at: '', updated_at: '' }];
+    writeFileSync(flowPath, JSON.stringify(flow, null, 2) + '\n', 'utf-8');
+    const syncMeta = join(dir, '.openfeel', 'dev', '.sync.json');
+    expect(existsSync(syncMeta)).toBe(false);
+
+    const program = new Command();
+    program.exitOverride();
+    registerReqCommand(program);
+    const cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+    const logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      await program.parseAsync(['req', 'advance', 'REQ-001', '--to', 'scheduled', '--force'], { from: 'user' });
+    } finally {
+      cwdMock.mockRestore();
+      logMock.mockRestore();
+      errorMock.mockRestore();
+    }
+
+    // 写出口真的同步了：元数据落盘、due=false、最近操作反映本次流转
+    expect(existsSync(syncMeta)).toBe(true);
+    expect(getDevStatus(dir).due).toBe(false);
+    const onDisk = JSON.parse(readFileSync(flowPath, 'utf-8')) as { requirements: Array<{ id: string; status: string }> };
+    expect(onDisk.requirements[0].status).toBe('scheduled');
+  });
+
+  it('T059.2e 写成功出口接线：stage set 成功后自动同步（.sync.json 落盘且 due=false）', async () => {
+    // 夹具：最小 status.md（与 test/commands/stage.test.ts 同形）
+    const stageDir = join(dir, '.openfeel', 'plan', 'v1', 'stage-91');
+    mkdirSync(stageDir, { recursive: true });
+    writeFileSync(join(stageDir, 'status.md'), [
+      '# v1.0.0-stage-91 状态',
+      '',
+      '- **执行模式**：manual',
+      '- **自动推进**：disabled',
+      '- **状态**：planned',
+      '- **当前责任 Agent**：user',
+      '- **上一责任 Agent**：none',
+      '',
+      '## 当前任务',
+      '',
+      '> 待补充',
+      '',
+      '## 阻塞 / 暂停原因',
+      '',
+      '无',
+      '',
+    ].join('\n'), 'utf-8');
+    const syncMeta = join(dir, '.openfeel', 'dev', '.sync.json');
+    expect(existsSync(syncMeta)).toBe(false);
+
+    const program = new Command();
+    program.exitOverride();
+    registerStageCommand(program);
+    const cwdMock = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+    const logMock = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const errorMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const exitMock = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+    try {
+      await program.parseAsync(['stage', 'set', 'stage-91', '--status', 'testing'], { from: 'user' });
+    } finally {
+      cwdMock.mockRestore();
+      logMock.mockRestore();
+      errorMock.mockRestore();
+      exitMock.mockRestore();
+    }
+
+    expect(existsSync(syncMeta)).toBe(true);
+    expect(getDevStatus(dir).due).toBe(false);
+    // 写操作本身也生效（出口同步是附加动作，不替代写入）
+    expect(readFileSync(join(stageDir, 'status.md'), 'utf-8')).toContain('- **状态**：testing');
   });
 });

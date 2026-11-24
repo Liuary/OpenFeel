@@ -3,15 +3,17 @@
  * 测试流水线状态管理的所有核心功能：读写、查询、推进、重试、审查、日志、校验
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, isTemplateEmpty, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase, type ReviewItem } from '../../src/core/flow-manager.js';
+import { FlowManager, mapPhaseToStageStatus, normalizeAgentName, FlowConcurrentModificationError, isFlowConcurrentError, findOrphanOps, isTemplateEmpty, detectFillState, MODE_DERIVED_TIER, listStageBlockingOpenReviews, DevSyncStaleError, type FlowData, type StageData, type OpState, type PipelinePhase, type MetaPhase, type ReviewItem } from '../../src/core/flow-manager.js';
 import { PIPELINE_PHASES, REVIEW_TIERS, TIER_PRUNED_PHASES } from '../../src/core/pipeline-schema.js';
 import { t } from '../../src/core/i18n.js';
 import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync, mkdirSync } from 'node:fs';
-import { join, sep } from 'node:path';
+import { createHash } from 'node:crypto';
+import { join, sep, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { AUTO_DONE_PRECONDITION, syncRequirementStatus } from '../../src/core/req/aggregate.js';
 import { REQ_STATUSES, type RequirementData, type RequirementStatus } from '../../src/core/req/types.js';
 import { resetSessionCache } from '../../src/core/session.js';
+import { parseStageId } from '../../src/core/plan/path.js';
 
 // mock homedir：隔离全局画像读写（stage-42 op-001/op-002），避免污染真实用户主目录
 // 沿用 test/core/config.test.ts 的既有惯例（vi.hoisted + importOriginal 保留其余 os 导出）
@@ -78,6 +80,29 @@ function makeTestFlowData(overrides?: Partial<FlowData>): FlowData {
 function writeFullModeConfig(dir: string): void {
   mkdirSync(join(dir, '.openfeel'), { recursive: true });
   writeFileSync(join(dir, '.openfeel', 'config.yaml'), 'defaults:\n  workflow_mode: full\n', 'utf-8');
+}
+
+/**
+ * v1.6.0 / REQ-056 T5：写入**写实**的阶段计划文件。
+ *
+ * 新增「执行前有计划」硬门后，既有「跨越进入 exec_running」的用例必须先满足门的前置；
+ * 这里只补前置文件，不改任何既有断言。短名 → `plan/{series}/{stageDir}/plan.md`；
+ * 无法解析的 id（如 `A`/`B`）→ 历史兜底 `stages/{stageId}/plan.md`。
+ */
+function writeStagePlanFixture(projectPath: string, stageId: string): void {
+  const parsed = parseStageId(stageId);
+  const abs = parsed
+    ? join(projectPath, '.openfeel', 'plan', parsed.series, parsed.stageDir, 'plan.md')
+    : join(projectPath, '.openfeel', 'stages', stageId, 'plan.md');
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, [
+    '# 阶段计划',
+    '',
+    '## 一、目标',
+    '执行前必须有可被机器校验的计划文件；拒绝路径零写盘零审计，放行路径留痕 gate_overrides 与缺项快照。',
+    '## 二、任务拆解',
+    '先新增路径求解函数与门谓词，再在核心层插入门，最后镜像命令层并补齐测试与中英 i18n（同批追加）。',
+  ].join('\n'), 'utf-8');
 }
 
 describe('FlowManager', () => {
@@ -680,6 +705,8 @@ describe('FlowManager', () => {
     it('应将 failed 阶段的 checkpoints 标记为 failed', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      // REV-014：plan_pending → test_failed 跨越 exec_running ⇒ 计划门触发（补前置文件，断言不变）
+      writeStagePlanFixture(tmpDir, 'stage-01');
       mgr.advancePhase('stage-01.op-001', 'test_failed');
       const cp = mgr.getOpCheckpoints('stage-01.op-001');
       expect(cp!.test).toBe('failed');
@@ -688,6 +715,7 @@ describe('FlowManager', () => {
     it('exec_running 应设置 exec.self 为 running', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      writeStagePlanFixture(tmpDir, 'stage-01');
       mgr.advancePhase('stage-01.op-001', 'exec_running');
       const cp = mgr.getOpCheckpoints('stage-01.op-001');
       expect(cp!.exec.self).toBe('running');
@@ -754,6 +782,7 @@ describe('FlowManager', () => {
     it('应更新 stage.phase', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      writeStagePlanFixture(tmpDir, 'stage-01');
       mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase);
       expect(mgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
     });
@@ -761,6 +790,7 @@ describe('FlowManager', () => {
     it('应设置 pipeline.phase 为 active', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      writeStagePlanFixture(tmpDir, 'stage-01');
       mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase);
       expect(mgr.getPhase()).toBe('active');
     });
@@ -774,6 +804,7 @@ describe('FlowManager', () => {
     it('非法 phase 值应触发模糊修正或抛出错误', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      writeStagePlanFixture(tmpDir, 'stage-01');
       // 可模糊修正的值应正常推进（如 'running' → 'exec_running'）
       mgr.advanceStagePhase('stage-01', 'running' as PipelinePhase);
       expect(mgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
@@ -797,6 +828,8 @@ describe('FlowManager', () => {
     it('应同步更新 stage.status（mapPhaseToStageStatus）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      // REV-014：plan_pending → done / review_failed 均跨越 exec_running ⇒ 计划门触发（补前置文件）
+      writeStagePlanFixture(tmpDir, 'stage-01');
       // v1.5.24 / REQ-048：plan_review 投影为 'planned'（不再是粘滞的当前值）
       mgr.advanceStagePhase('stage-01', 'plan_review' as PipelinePhase);
       expect(mgr.getData()!.stages['stage-01'].status).toBe('planned');
@@ -814,6 +847,7 @@ describe('FlowManager', () => {
     it('应追加日志条目（advance_stage_phase）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      writeStagePlanFixture(tmpDir, 'stage-01');
       const data = mgr.getData()!;
       const before = data.log.length;
       mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase);
@@ -833,6 +867,8 @@ describe('FlowManager', () => {
     it('推进到 done（之前非 done）应返回 true（归档标记，REV: autoCommitOnDone 时序）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      // REV-014：plan_pending → done 跨越 exec_running ⇒ 计划门触发（补前置文件）
+      writeStagePlanFixture(tmpDir, 'stage-01');
       const result = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
       expect(result).toBe(true);
       expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
@@ -878,6 +914,7 @@ describe('FlowManager', () => {
     it('推进到非 done phase 应返回 false', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      writeStagePlanFixture(tmpDir, 'stage-01');
       const result = mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase);
       expect(result).toBe(false);
     });
@@ -932,6 +969,7 @@ describe('FlowManager', () => {
         pipeline: { phase: 'active' as MetaPhase, current: { stage: 'A', op: '' }, retry: 0 },
       });
 
+      writeStagePlanFixture(tmpDir, 'B');
       mgr.advanceStagePhase('B', 'exec_running' as PipelinePhase);
 
       expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'B', op: 'op-001' });
@@ -940,6 +978,8 @@ describe('FlowManager', () => {
     it('已是 done 再次推进到 done 应返回 false（不重复触发归档）', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      // REV-014：首次 plan_pending → done 跨越 exec_running ⇒ 计划门触发（补前置文件；第二次 from=done 不触发）
+      writeStagePlanFixture(tmpDir, 'stage-01');
       mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
       const result = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase);
       expect(result).toBe(false);
@@ -1575,6 +1615,7 @@ describe('FlowManager', () => {
     it('调用旧 advancePhase 应输出 warn 并委托到 advanceStagePhase', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      writeStagePlanFixture(tmpDir, 'stage-01');
       // 捕获 console.warn
       const warnings: string[] = [];
       const origWarn = console.warn;
@@ -1645,6 +1686,7 @@ describe('FlowManager', () => {
     it('op-007/L5：deprecated warn 走 i18n（zh 含 DEPRECATED）；en 模板无 CJK', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      writeStagePlanFixture(tmpDir, 'stage-01');
 
       const warnings: string[] = [];
       const origWarn = console.warn;
@@ -2441,6 +2483,7 @@ describe('FlowManager', () => {
             },
           },
         });
+        writeStagePlanFixture(tmpDir, 'stage-01');
         mgr.addAutoFixReview(
           { id: 'REV-001', title: '修复配置', op: 'stage-01.op-001', status: 'open', priority: 'medium', blocking: false },
           'stage-01.op-001',
@@ -3140,6 +3183,8 @@ describe('FlowManager', () => {
     it('advance review_passed 后 status≠done，且 test_pending 可达', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      // REV-014：plan_pending → review_passed 跨越 exec_running ⇒ 计划门触发（补前置文件）
+      writeStagePlanFixture(tmpDir, 'stage-01');
       mgr.advanceStagePhase('stage-01', 'review_passed' as PipelinePhase);
       expect(mgr.getData()!.stages['stage-01'].status).toBe('review_passed');
       expect(mgr.getData()!.stages['stage-01'].status).not.toBe('done');
@@ -3192,6 +3237,7 @@ describe('FlowManager', () => {
 
     it('T6.4 前进允许：不受正向转移表限制（plan_pending → exec_running）', () => {
       const mgr = makeResetMgr('plan_pending', 'planned');
+      writeStagePlanFixture(tmpDir, 'v1.0.0-stage-01');
       const r = mgr.resetStagePhase('v1.0.0-stage-01', 'exec_running');
       expect(r.changed).toBe(true);
       expect(mgr.getData()!.stages['v1.0.0-stage-01'].phase).toBe('exec_running');
@@ -3813,6 +3859,7 @@ describe('配置级联（stage-42 op-001）', () => {
         pipeline: { phase: 'active' as MetaPhase, current: { stage: 'prev', op: 'op-999' }, retry: 0 },
         stages,
       });
+      writeStagePlanFixture(tmpDir, 'A');
       mgr.advanceStagePhase('A', 'exec_running' as PipelinePhase);
       // 未命中 → 置空，绝不保留上一阶段旧 op
       expect(mgr.getData()!.pipeline.current).toEqual({ stage: 'A', op: '' });
@@ -3890,6 +3937,8 @@ describe('配置级联（stage-42 op-001）', () => {
     it('T12：checkpoint_mapping 含 archiving 主用键与 archive 历史键，且 archiving 更新 checkpoint', () => {
       const mgr = new FlowManager(tmpDir);
       mgr.setData(makeTestFlowData());
+      // REV-014：plan_pending → archiving 跨越 exec_running ⇒ 计划门触发（补前置文件）
+      writeStagePlanFixture(tmpDir, 'stage-01');
       const anyMgr = mgr as unknown as {
         getDefaultPipelineConfig(): { checkpoint_mapping: Record<string, string> };
       };
@@ -4407,6 +4456,7 @@ describe('REV-009 stage 解析归一化（stage-52 op-014）', () => {
           ops: { 'op-001': mkOp('op-001') },
         }),
       });
+      writeStagePlanFixture(tmpDir, 'v1.0.0-stage-01');
       mgr.addAutoFixReview(
         { id: 'REV-001', title: 't', op: 'stage-01.op-001', status: 'open', priority: 'medium', blocking: false },
         'stage-01.op-001',
@@ -4436,6 +4486,7 @@ describe('REV-009 stage 解析归一化（stage-52 op-014）', () => {
         }),
       });
       const shortBefore = JSON.stringify(mgr.getData()!.stages['stage-01']);
+      writeStagePlanFixture(tmpDir, 'v1.0.0-stage-01');
       mgr.addAutoFixReview(
         { id: 'REV-001', title: 't', op: 'stage-01.op-001', status: 'open', priority: 'medium', blocking: false },
         'stage-01.op-001',
@@ -5526,6 +5577,7 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
     }, [reqObj('REQ-001', 'done')]);
     data.pipeline.current = { stage: 'stage-02', op: '' };       // current 指向 stage-02（非复位目标）
     const mgr = mgrWith(data);
+    writeStagePlanFixture(tmpDir, 'stage-01');
     const res = mgr.resetStagePhase('stage-01', 'exec_running');
     expect(res.changed).toBe(true);
     // 复位的是非 current 阶段，但聚合回写仍应生效（需求回退）
@@ -5544,6 +5596,8 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
   it('T4.2-⑤ 空集守卫：零关联阶段不作 done 判定（零审计零注入，返回值不变）', () => {
     const data = unlinkedFixture();
     const mgr = mgrWith(data);
+    // REV-014：plan_pending → done 跨越 exec_running ⇒ 计划门触发（补前置文件，断言不变）
+    writeStagePlanFixture(tmpDir, 'stage-01');
     const ret = mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
     expect(ret).toBe(true);
     expect('requirements' in mgr.getData()!).toBe(false);        // 零注入
@@ -5579,6 +5633,8 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
 
   it('T4.3-① 逐字节 golden（无 requirement_id）+ 零注入 + 零审计 + 正控', () => {
     const mgr = mgrWith(unlinkedFixture());
+    // REV-014：plan_pending → done 跨越 exec_running ⇒ 计划门触发（补前置文件；normal-pass 不新增审计键）
+    writeStagePlanFixture(tmpDir, 'stage-01');
     mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
     mgr.save();
     const parsed = readDisk();
@@ -5600,6 +5656,8 @@ describe('需求聚合对称回写接入（stage-83 op-002）', () => {
 
   it('T4.3-③ deprecated advancePhase 路径同 golden + 零注入 + 零审计', () => {
     const mgr = mgrWith(unlinkedFixture());
+    // REV-014：plan_pending → done 跨越 exec_running ⇒ 计划门触发（补前置文件）
+    writeStagePlanFixture(tmpDir, 'stage-01');
     mgr.advancePhase('stage-01.op-001', 'done');
     mgr.save();
     const parsed = readDisk();
@@ -5815,6 +5873,7 @@ describe('stage-86 op-003 T3/T4（op 级时间字段 + 跨会话恢复标注）'
     data.stages['stage-01'].phase = 'exec_running' as PipelinePhase;
     const mgr = new FlowManager(tmpDir);
     mgr.setData(data);
+    writeStagePlanFixture(tmpDir, 'stage-01');
     mgr.advanceStagePhase('stage-01', 'review_pending' as PipelinePhase, 'cli');
 
     vi.stubEnv('CLAUDE_CODE_SESSION_ID', 'S2');
@@ -6675,5 +6734,394 @@ describe('REQ-027 完成必审验（阶段层）', () => {
     const en = mgr.formatStageDoneGate('stage-01', gate, 'en');
     expect(en).toHaveLength(2);
     expect(/[\u4e00-\u9fff]/.test(en.join(''))).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.6.0 / REQ-056 T5「执行前有计划」硬门（exec_running 前进 + 复位同口径）
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('T5 阶段计划门（REQ-056）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-plan-gate-'));
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', GOLDEN_SESSION_ID);
+    resetSessionCache();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetSessionCache();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 跨越进入 exec_running 的起始相位 */
+  function stageFixture(overrides: Partial<StageData> = {}): StageData {
+    return {
+      name: '阶段', phase: 'scheme_passed' as PipelinePhase, status: 'planned', deps: [], ops: {},
+      ...overrides,
+    };
+  }
+
+  function reqFixture(
+    id: string,
+    status: RequirementStatus,
+    extra: Partial<RequirementData> = {},
+  ): RequirementData {
+    return { id, title: id, status, created_at: '', updated_at: '', ...extra };
+  }
+
+  /** 内存 manager（隔离 tmpDir；计划文件按需落盘） */
+  function mgrWith(stages: Record<string, StageData>, requirements?: RequirementData[]): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData({
+      stages,
+      ...(requirements === undefined ? {} : { requirements }),
+    }));
+    return mgr;
+  }
+
+  /** 写文件（相对 `.openfeel` 下的 POSIX 路径；目录按需创建） */
+  function writeUnder(rel: string, content: string): string {
+    const abs = join(tmpDir, '.openfeel', ...rel.split('/'));
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, content, 'utf-8');
+    return abs;
+  }
+
+  /** 写实的阶段计划（非标题非空白字符 > 2×40，plan §4.2） */
+  const FILLED_STAGE_PLAN = [
+    '# 阶段计划',
+    '',
+    '## 一、目标',
+    '把执行前计划门落在唯一相位写入口，拒绝路径零写盘零审计，放行路径留痕 gate_overrides 与缺项快照。',
+    '## 二、任务拆解',
+    '先补路径求解函数，再在核心层插入门，最后镜像命令层并补齐测试与中英 i18n；复位路径复用同一谓词。',
+  ].join('\n');
+
+  /** 写实的需求级计划（目标 / 任务拆解 / 验收判据 三节均 ≥40 非空白字符） */
+  const FILLED_REQ_PLAN = [
+    '## 目标',
+    '让进入执行阶段前的需求计划具备机器可校验的存在性与写实性判据，避免只有标题或占位行的空壳计划通过门禁。',
+    '## 任务拆解',
+    '- 新增全局固定的计划路径求解函数，并在核心层插入进入 exec_running 的门禁与留痕审计，禁止第二份占位规则。',
+    '- 命令层镜像同谓词输出稳定错误码 STAGE_PLAN_GATE，复位路径复用同一谓词闭合后门。',
+    '## 验收判据',
+    '- A4：阶段或需求计划缺失时 exit 1 且 flow.json revision 不变。',
+    '- A4b：计划存在但只含占位行时仍被拒绝。',
+  ].join('\n');
+
+  it('T056.1 阶段 plan.md 缺失 → 拒绝（零写盘 / 零审计，stagePlanMissing=true）', () => {
+    const mgr = mgrWith({ 'stage-01': stageFixture() });
+    expect(mgr.describeStagePlanGate('stage-01')).toEqual({
+      stagePlanMissing: true,
+      stagePlanUnfilled: false,
+      requirementsMissingPlan: [],
+      requirementsUnfilledPlan: [],
+    });
+    expect(() => mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli'))
+      .toThrow(/阶段计划/);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('scheme_passed');
+    expect(mgr.getData()!.log).toHaveLength(0);
+  });
+
+  it('T056.5（A4b）阶段 plan.md 为占位空壳 → stagePlanUnfilled=true 且拒绝（存在 ≠ 写实）', () => {
+    writeUnder('plan/v1/stage-01/plan.md', '# 计划\n\n- [ ] 待补充\n\n（待补充）\n');
+    const mgr = mgrWith({ 'stage-01': stageFixture() });
+    const gate = mgr.describeStagePlanGate('stage-01');
+    expect(gate.stagePlanMissing).toBe(false);
+    expect(gate.stagePlanUnfilled).toBe(true);
+    expect(() => mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli'))
+      .toThrow(/未写实/);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('scheme_passed');
+    expect(mgr.getData()!.log).toHaveLength(0);
+  });
+
+  it('T056.2 在办需求缺计划 / 计划占位 → 拒绝并逐条列出 REQ 号（全局口径；终态与 waived 豁免）', () => {
+    writeUnder('plan/v1/stage-01/plan.md', FILLED_STAGE_PLAN);
+    writeUnder('plan/reqs/REQ-002.plan.md', '## 目标\n\n待补充\n');
+    const mgr = mgrWith({
+      // 只关联 REQ-002，用于证明「关联与未关联的在办需求都在扫描范围内」
+      'stage-01': stageFixture({ requirements: [{ id: 'REQ-002' }] }),
+    }, [
+      reqFixture('REQ-001', 'in_progress'),   // 在办 + 未关联 + 无计划 → missing（全局口径）
+      reqFixture('REQ-002', 'scheduled'),     // 在办 + 已关联 + 占位计划 → unfilled
+      reqFixture('REQ-003', 'done'),          // 终态 → 豁免
+      reqFixture('REQ-004', 'in_progress', { waiver: { reason: '作废', by: 'alice', at: '2026-01-01T00:00:00Z' } }),
+      reqFixture('REQ-005', 'draft'),         // 未进入执行范围 → 豁免
+    ]);
+    const gate = mgr.describeStagePlanGate('stage-01');
+    expect(gate.stagePlanMissing).toBe(false);
+    expect(gate.stagePlanUnfilled).toBe(false);
+    expect(gate.requirementsMissingPlan).toEqual(['REQ-001']);
+    expect(gate.requirementsUnfilledPlan).toEqual(['REQ-002']);
+    expect(() => mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli'))
+      .toThrow(/REQ-001/);
+    expect(mgr.getData()!.log).toHaveLength(0);
+  });
+
+  it('T056.6 阶段与在办需求计划齐全 → 放行，审计无 gate_overrides', () => {
+    writeUnder('plan/v1/stage-01/plan.md', FILLED_STAGE_PLAN);
+    writeUnder('plan/reqs/REQ-001.plan.md', FILLED_REQ_PLAN);
+    const mgr = mgrWith({
+      'stage-01': stageFixture({ requirements: [{ id: 'REQ-001' }] }),
+    }, [reqFixture('REQ-001', 'in_progress')]);
+    expect(mgr.describeStagePlanGate('stage-01')).toEqual({
+      stagePlanMissing: false,
+      stagePlanUnfilled: false,
+      requirementsMissingPlan: [],
+      requirementsUnfilledPlan: [],
+    });
+    expect(mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli')).toBe(false);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
+    const entry = mgr.getData()!.log[mgr.getData()!.log.length - 1];
+    expect(entry.action).toBe('advance_stage_phase');
+    expect(entry.detail).not.toHaveProperty('gate_overrides');
+    expect(entry.detail).not.toHaveProperty('gate_missing');
+  });
+
+  it('T056.3（A6）allowGateOverride 留痕放行：detail.gate_overrides + gate_missing 快照', () => {
+    writeUnder('plan/reqs/REQ-001.plan.md', FILLED_REQ_PLAN);
+    const mgr = mgrWith({
+      'stage-01': stageFixture({ requirements: [{ id: 'REQ-001' }] }),
+    }, [reqFixture('REQ-001', 'in_progress')]);
+    // 阶段计划缺失（需求计划齐全）→ 放行后快照只标阶段侧缺项
+    expect(mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli', { allowGateOverride: true })).toBe(false);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
+    const entry = mgr.getData()!.log[mgr.getData()!.log.length - 1];
+    expect(entry.detail.gate_overrides).toEqual(['plan']);
+    expect(entry.detail.gate_missing).toEqual({
+      stagePlanMissing: true,
+      stagePlanUnfilled: false,
+      requirementsMissingPlan: [],
+      requirementsUnfilledPlan: [],
+    });
+  });
+
+  it('T056.4 复位同口径两态：无 override 拒绝且零审计 / override 放行并留痕', () => {
+    // ① 拒绝：零变更、零审计（reset_stage_phase 不入 log）
+    const refuseMgr = mgrWith({ 'stage-01': stageFixture() });
+    expect(() => refuseMgr.resetStagePhase('stage-01', 'exec_running')).toThrow(/阶段计划/);
+    expect(refuseMgr.getData()!.stages['stage-01'].phase).toBe('scheme_passed');
+    expect(refuseMgr.getData()!.log).toHaveLength(0);
+
+    // ② 放行：reset_stage_phase 条目带同一 gate_overrides / gate_missing
+    const forceMgr = mgrWith({ 'stage-01': stageFixture() });
+    const result = forceMgr.resetStagePhase('stage-01', 'exec_running', { allowGateOverride: true });
+    expect(result.changed).toBe(true);
+    expect(forceMgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
+    const entry = forceMgr.getData()!.log[forceMgr.getData()!.log.length - 1];
+    expect(entry.action).toBe('reset_stage_phase');
+    expect(entry.detail.gate_overrides).toEqual(['plan']);
+    expect(entry.detail.gate_missing.stagePlanMissing).toBe(true);
+  });
+
+  it('复位到 exec_running 但计划齐全 → 不需要 override 即放行，审计无 gate_overrides', () => {
+    writeUnder('plan/v1/stage-01/plan.md', FILLED_STAGE_PLAN);
+    const mgr = mgrWith({ 'stage-01': stageFixture() });
+    const result = mgr.resetStagePhase('stage-01', 'exec_running');
+    expect(result.changed).toBe(true);
+    const entry = mgr.getData()!.log[mgr.getData()!.log.length - 1];
+    expect(entry.action).toBe('reset_stage_phase');
+    expect(entry.detail).not.toHaveProperty('gate_overrides');
+  });
+
+  it('已在 exec_running 的阶段不触发门（from === to 幂等；旧阶段零拦截）', () => {
+    const mgr = mgrWith({ 'stage-01': stageFixture({ phase: 'exec_running' as PipelinePhase }) });
+    expect(() => mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli')).not.toThrow();
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
+    // 复位到 exec_running 亦为 no-op（不因缺计划而拒绝）
+    expect(mgr.resetStagePhase('stage-01', 'exec_running').changed).toBe(false);
+  });
+
+  it('非 exec_running 目标不受计划门影响（既有相位推进零回归）', () => {
+    const mgr = mgrWith({ 'stage-01': stageFixture({ phase: 'plan_pending' as PipelinePhase }) });
+    expect(() => mgr.advanceStagePhase('stage-01', 'plan_passed' as PipelinePhase, 'cli')).not.toThrow();
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('plan_passed');
+  });
+
+  it('REV-014 计划门按「相位路径跨越」触发：plan_passed → review_pending 单跳不覆盖即拒绝；override 放行并留痕', () => {
+    // ① 单跳（--force 的 [to] 路径）无 allowGateOverride：计划缺失 → 拒绝且零写盘零审计
+    const refuse = mgrWith({ 'stage-01': stageFixture({ phase: 'plan_passed' as PipelinePhase }) });
+    expect(() => refuse.advanceStagePhase('stage-01', 'review_pending' as PipelinePhase, 'cli'))
+      .toThrow(/阶段计划/);
+    expect(refuse.getData()!.stages['stage-01'].phase).toBe('plan_passed');
+    expect(refuse.getData()!.log).toHaveLength(0);
+
+    // ② 显式 allowGateOverride（flow advance --force 的留痕放行）：放行 + gate_overrides / gate_missing
+    const force = mgrWith({ 'stage-01': stageFixture({ phase: 'plan_passed' as PipelinePhase }) });
+    expect(force.advanceStagePhase('stage-01', 'review_pending' as PipelinePhase, 'cli', { allowGateOverride: true }))
+      .toBe(false);
+    expect(force.getData()!.stages['stage-01'].phase).toBe('review_pending');
+    const forcedEntry = force.getData()!.log[force.getData()!.log.length - 1];
+    expect(forcedEntry.detail.gate_overrides).toEqual(['plan']);
+    expect(forcedEntry.detail.gate_missing).toMatchObject({ stagePlanMissing: true });
+
+    // ③ 计划齐全 → 门正常通过（即使带 override 也不写 gate_overrides）
+    writeUnder('plan/v1/stage-01/plan.md', FILLED_STAGE_PLAN);
+    const clean = mgrWith({ 'stage-01': stageFixture({ phase: 'plan_passed' as PipelinePhase }) });
+    clean.advanceStagePhase('stage-01', 'review_pending' as PipelinePhase, 'cli', { allowGateOverride: true });
+    expect(clean.getData()!.stages['stage-01'].phase).toBe('review_pending');
+    expect(clean.getData()!.log[clean.getData()!.log.length - 1].detail).not.toHaveProperty('gate_overrides');
+
+    // ④ 位于 exec_running 之后（review_pending → review_passed）不重复触发
+    const later = mgrWith({ 'stage-01': stageFixture({ phase: 'review_pending' as PipelinePhase }) });
+    expect(() => later.advanceStagePhase('stage-01', 'review_passed' as PipelinePhase, 'cli')).not.toThrow();
+  });
+
+  it('REV-017 放行 exec_running 后盖章：req.plan = {path, sha256 前 12 位, recorded_at}；拒绝路径零盖章', () => {
+    const planAbs = writeUnder('plan/reqs/REQ-001.plan.md', FILLED_REQ_PLAN);
+    writeUnder('plan/v1/stage-01/plan.md', FILLED_STAGE_PLAN);
+    const planMd = readFileSync(planAbs, 'utf-8');
+    const mgr = mgrWith({
+      'stage-01': stageFixture({ requirements: [{ id: 'REQ-001' }] }),
+    }, [reqFixture('REQ-001', 'in_progress')]);
+    expect(mgr.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli')).toBe(false);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('exec_running');
+    expect(mgr.getData()!.requirements![0].plan).toMatchObject({
+      path: '.openfeel/plan/reqs/REQ-001.plan.md',
+      sha256: createHash('sha256').update(planMd, 'utf-8').digest('hex').slice(0, 12),
+    });
+    expect(typeof mgr.getData()!.requirements![0].plan!.recorded_at).toBe('string');
+
+    // 拒绝路径（缺阶段计划）→ 零盖章（未走到放行分支）
+    const refused = mgrWith({
+      'stage-01': stageFixture({ requirements: [{ id: 'REQ-002' }] }),
+    }, [reqFixture('REQ-002', 'in_progress')]);
+    expect(() => refused.advanceStagePhase('stage-01', 'exec_running' as PipelinePhase, 'cli'))
+      .toThrow(/无法进入执行阶段/);
+    expect(refused.getData()!.requirements![0].plan).toBeUndefined();
+  });
+
+  it('formatStagePlanGate 文案成对：zh / en 均含阶段与出路提示', () => {
+    const mgr = mgrWith({ 'stage-01': stageFixture() });
+    const gate = mgr.describeStagePlanGate('stage-01');
+    const zh = mgr.formatStagePlanGate('stage-01', gate, 'zh-CN');
+    expect(zh.length).toBe(2);
+    expect(zh[0]).toContain('stage-01');
+    expect(zh[1]).toContain('--force');
+    const en = mgr.formatStagePlanGate('stage-01', gate, 'en');
+    expect(en.length).toBe(2);
+    expect(/[\u4e00-\u9fff]/.test(en.join(''))).toBe(false);
+    expect(en.join('')).toContain('--force');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.6.0 / REQ-059 T8「账本陈旧」硬门（archiving → done 前；门之前必先同步）
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('T8 开发账本陈旧门（REQ-059）', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-dev-gate-'));
+    vi.stubEnv('CLAUDE_CODE_SESSION_ID', GOLDEN_SESSION_ID);
+    resetSessionCache();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetSessionCache();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 通过 done 门的最小阶段（archiving + 验证 pass；零关联需求 → 需求集守卫放行） */
+  function readyStage(): StageData {
+    return {
+      name: '阶段',
+      phase: 'archiving' as PipelinePhase,
+      status: 'archiving',
+      deps: [],
+      ops: {},
+      verification: { ...PASS_VERIFICATION },
+    };
+  }
+
+  function mgrWith(stage: StageData): FlowManager {
+    const mgr = new FlowManager(tmpDir);
+    mgr.setData(makeTestFlowData({ stages: { 'stage-01': stage } }));
+    return mgr;
+  }
+
+  /**
+   * 构造法（A9b 唯一可复现路径）：把 `.openfeel/dev/.sync.json` 变成**目录**，
+   * `writeFileSync` 必失败 → `maybeSyncDevStatus` 返回 {synced:false, due:true, error} 且不崩；
+   * 这样「同步后仍是 due」的状态在测试里可确定性复现（正常 CLI 序列不可复现）。
+   */
+  function breakDevLedger(): void {
+    mkdirSync(join(tmpDir, '.openfeel', 'dev', '.sync.json'), { recursive: true });
+  }
+
+  it('T059.1 同步失败 → 仍 due=true → 抛 DEV_SYNC_STALE（阶段相位与审计零写入）', () => {
+    breakDevLedger();
+    const mgr = mgrWith(readyStage());
+
+    let caught: unknown;
+    try {
+      mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli');
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(DevSyncStaleError);
+    const err = caught as DevSyncStaleError;
+    expect(err.name).toBe('DevSyncStaleError');
+    expect(err.stage).toBe('stage-01');
+    expect(typeof err.reason).toBe('string');                 // 失败原因不再被吞
+    expect((err.reason ?? '').length).toBeGreaterThan(0);
+    expect(err.message).toContain('开发账本');
+    expect(err.message).toContain('--force');
+    // 拒绝路径：phase 未推进、无 advance_stage_phase 审计
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('archiving');
+    expect(mgr.getData()!.log.filter((l) => l.action === 'advance_stage_phase')).toHaveLength(0);
+    // 顺序保证：门之前真的跑过同步（dev_last 的父目录被创建 = 同步已执行过）
+    expect(existsSync(join(tmpDir, '.openfeel', 'users'))).toBe(true);
+  });
+
+  it('T059.3 正常路径（账本可写）：done 前自动同步 → due=false → 不触发门、无 gate_overrides', () => {
+    const mgr = mgrWith(readyStage());
+
+    expect(mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli')).toBe(true);
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+    // 自动同步已落盘 → 账本不再到期
+    const meta = JSON.parse(readFileSync(join(tmpDir, '.openfeel', 'dev', '.sync.json'), 'utf-8')) as {
+      last_sync: string;
+      interval_minutes: number;
+    };
+    expect(Number.isFinite(Date.parse(meta.last_sync))).toBe(true);
+    const entry = mgr.getData()!.log[mgr.getData()!.log.length - 1];
+    expect(entry.action).toBe('advance_stage_phase');
+    expect(entry.detail).not.toHaveProperty('gate_overrides');
+  });
+
+  it('T059.4（A9b）allowGateOverride 留痕放行：phase=done 且 detail.gate_overrides 含 dev_sync', () => {
+    breakDevLedger();
+    const mgr = mgrWith(readyStage());
+
+    expect(mgr.advanceStagePhase('stage-01', 'done' as PipelinePhase, 'cli', {
+      allowGateOverride: true,
+    })).toBe(true);
+
+    expect(mgr.getData()!.stages['stage-01'].phase).toBe('done');
+    const entry = mgr.getData()!.log[mgr.getData()!.log.length - 1];
+    expect(entry.action).toBe('advance_stage_phase');
+    expect(entry.detail.gate_overrides).toEqual(['dev_sync']);
+    // 账本门没有结构化缺项快照（原因在 error.detail），因此不写 gate_missing
+    expect(entry.detail).not.toHaveProperty('gate_missing');
+  });
+
+  it('T059.5 formatDevSyncStale 文案成对：zh / en 均含阶段与出路提示（含失败原因）', () => {
+    const mgr = mgrWith(readyStage());
+    const zh = mgr.formatDevSyncStale('stage-01', 'EACCES: permission denied', 'zh-CN');
+    expect(zh).toHaveLength(2);
+    expect(zh[0]).toContain('stage-01');
+    expect(zh[0]).toContain('EACCES');
+    expect(zh[1]).toContain('--force');
+    const en = mgr.formatDevSyncStale('stage-01', null, 'en');
+    expect(en).toHaveLength(2);
+    expect(/[\u4e00-\u9fff]/.test(en.join(''))).toBe(false);
+    expect(en.join('')).toContain('--force');
   });
 });

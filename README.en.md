@@ -79,6 +79,13 @@ openfeel flow next                                               # 5. Iterate as
 - **general**: pipeline-free ad-hoc work, requirement-level only;
 - requirements auto-close once every linked stage is done.
 
+### Real requirement bodies and a plan before execution (v1.6.0)
+
+- **Bodies must be real**: after creating a requirement, fill it with `openfeel req body REQ-NNN --section 摘要 --text "…"` (then `--section 目标与验收`); a skeleton requirement is refused on **status transitions** (`→scheduled` / `→in_progress` / `→done`) with `REQ_BODY_GATE` (`--force` records a waiver and an audit entry, but the file still has to be written; claim does not check the body).
+- **A requirement-level plan is required before execution**: `→in_progress` needs a filled `.openfeel/plan/reqs/REQ-NNN.plan.md`; entering `exec_running` also checks the stage `plan.md` and every in-flight requirement plan (`STAGE_PLAN_GATE`), and `flow stage reset --to exec_running` follows the same rule.
+- **Every mode enforces plan → exec → review**: `general` / `fast` / `full` all require "requirement plan → execute → review"; only the stage-level trimming of scheme/test differs, and `general` remains **requirement-level only** (its stage-level transition table stays empty).
+- `--force` is a **recorded override** (waiver + `flow.json.log` audit), never a bypass of the done gate (review + verify), blocking REVs or archive criteria; existing skeletons are listed by `openfeel lint fill`.
+
 ## Claude Code Adapter (since v1.1.6)
 
 > Coexists with the opencode adapter; **disabled by default** (requires explicit `--tools claude`).

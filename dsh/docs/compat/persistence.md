@@ -1011,3 +1011,16 @@ Top-level keys in order: `meta, pipeline, stages, reviews, log` (no `requirement
 20. CLI runtime log line `[ISO][LEVEL][pid] message`, `cli start:` / `cli done exit=… [duration_ms=…] [project=…] [session=…]`, `~/.openfeel/cli/logs/openfeel-YYYY-MM-DD.log`, best-effort, no rotation.
 21. `.info.json` = `{user, lang}`; `user` is never overwritten; `lang` defaults to `zh-CN`.
 22. `openfeel archive <stage>` writes `.openfeel/log/archive-{stage}.md`, appends one `archive_stage` log entry, saves `flow.json`, optionally seeds `kb/patterns.md` — and removes nothing.
+
+---
+
+## v1.6.0 增量（现行契约；以上 v1.2.1 正文保持冻结）
+
+> 实现锚点：`src/core/dev-status.ts`（`maybeSyncDevStatus` / `getDevStatus`）、`src/core/flow-manager.ts`、`dsh/lib/adapters/dispatch-ledger.js`、`dsh/lib/guard.js`。
+
+1. **`dev/` 自动同步（REQ-059）**：`maybeSyncDevStatus(projectPath)` 在 `due === true` 或节点相位（start / turning point / end）时调 `syncDevStatus`，**异常不再吞**（返回 `error`，调用方输出一行 stderr）。挂在**写成功出口**：`flow advance`、`stage set` / `stage task` / `stage verify`、`req advance` / `complete` / `review` / `verify` / `body`；读命令不调。`blockChanged()` 保证状态未变不重写。
+2. **`DEV_SYNC_STALE` 门**：`archiving → done` 前仍 `due === true` ⇒ refusal / exit 1、零写盘；门之前必先跑一次 `maybeSyncDevStatus`，正常路径不会触发（只有同步本身失败 / `.openfeel/dev/` 不可写才拦），`--force` 留痕放行（`gate_overrides` 追加 `'dev_sync'`）。**正常 CLI 序列不可复现**，取证只认构造法单测（注入 `syncDevStatus` 抛错 / 目录只读）。
+3. **`.openfeel/dev/dispatch.jsonl`（REQ-057，派发台账）**：每行一条 UTF-8 / LF JSON，键序 `dispatchId, ts, leadSessionId, origin, stage, phase, targetAgent, role, taskId, goal, files, returnFormat, dispatchDepth`。同 `leadSessionId + taskId + goal` 5 分钟内去重（返回既有 `dispatchId`）；保留 24h / 上限 200 行（读侧跳过畸形行；文件不存在视同空）。由适配器 `feel_dispatch` 原子写（temp + rename），**在 `PROTECTED_OPENFEEL_PATHS` 内**（agent 工具直写 → deny）。`origin` / `dispatchDepth` 按 schema 缺省 `root` / `1`，会话头读取路径**未在真实宿主验证**。
+4. **新增持久面：需求级计划** `.openfeel/plan/reqs/REQ-NNN.plan.md`（全局固定，不随阶段/版本漂移；`mkdir` 幂等）；`requirements[*].plan = {path, sha256(前 12 位), recorded_at, deviations?}` 在阶段计划门通过时盖章。
+5. **新增可选需求字段**：`body_waiver` / `plan_waiver`（`{at, by, reason, gate}`）与 `plan`；旧数据缺省即未 waiver / 未盖章（读侧宽容）。
+6. **既有持久面零改动**：`flow.json` 的 revision / `.bak` / 锁顺序、`sessions.json` / `.preflight.json` / `guard-state.json` / `.sync.json` 的格式与写入时机均不变（`dispatch.jsonl` 是新文件，不参与 `flow.json` 事务）。

@@ -1571,3 +1571,15 @@ Errors surface as `错误：{msg}` (`common.errorTmpl`) → exit 1; `isFlowConcu
 15. **The `done` git commit must happen after `save()`**, driven by the `true` return of
     `advanceStagePhase`.
 16. **`flow phases` shows the unpruned table even when it reports `reviewTier: "lean"`.**
+
+---
+
+## v1.6.0 增量（现行契约；以上 v1.2.1 正文保持冻结）
+
+> 实现锚点：`src/core/flow-manager.ts:resolveTransitionsForMode`、`src/core/req/requirement-ops.ts`、`src/core/pipeline-schema.ts`（本版**零改动**）。
+
+1. **阶段级转移表一字不改**：`resolveTransitionsForMode` 的 `general → {}` **保留**；`flow phases --mode general` 仍为空表（`no-path` + 专用 `generalNoPipeline` 文案）；`pipeline.yaml` 的 `transitions`（full）与 `fast_transitions` 均不变，**不新增 `general_transitions`**。`fast` 表本就含 `plan_review` + `review`，本版只补「进入 exec_running 前必须有写实计划」的门，表不变。
+2. **`general` 的强制链落在需求生命周期（REQ-058）**：`general` 需求（有/无阶段）与零关联阶段的 `fast`/`full` 需求，`→in_progress` 前必须有写实的 `.openfeel/plan/reqs/REQ-NNN.plan.md`（内部码 `plan_missing`，CLI 文案 + exit 1）；`→done` 前计划被改动须写实 `## 偏差与回写`（`plan_deviation`）。有阶段的 `fast`/`full` 需求由阶段 exec 门（`STAGE_PLAN_GATE`）覆盖，本门不重复判。
+3. **为何不给阶段表加 `general_transitions`**：阶段级 `general` 在写入面即被拒（`src/commands/stage.ts` / `src/commands/plan.ts` 的 `general_mode_conflict`），表没有消费者——加了是死代码。`flow advance --force` 对阶段级 general 的既有行为不变（仍可强制移动，属既有边界，非本版新增）。
+4. **门不进 done / 归档判据**：`describeStageDoneGate`、`requirementDoneBlocker`（review + verify）、`flow archive` 判据**一字不改**；正文门与计划门是不参与这三处的独立前置检查（存量债因此可经 `--force` 留痕到达归档）。
+5. **`PipelineConfigSchema.parse` 失败仍是硬错**（`flow-manager.ts:5087-5113` 现状）。

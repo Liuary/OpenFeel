@@ -152,6 +152,11 @@ export function syncRequirementStatus(data: FlowData, stageId: string): string[]
         req.status = 'done';
         req.updated_at = new Date().toISOString();
         appendAggregateLog(data, 'requirement_auto_done', { requirementId: req.id, from, to: 'done', triggerStage: stageId });
+        // v1.6.0 / REV-019：聚合自动收口是**绕过** `req advance/complete` 前置门（含计划偏差门）
+        // 的旁路，单独留一条可检索审计（reason=aggregate）。行为不变——只加留痕，不改判据。
+        appendAggregateLog(data, 'requirement_auto_complete', {
+          requirementId: req.id, reason: 'aggregate', from, to: 'done', triggerStage: stageId,
+        });
         affected.push(req.id);
       }
     } else if (req.status === 'done') {

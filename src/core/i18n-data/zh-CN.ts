@@ -461,6 +461,18 @@ export const flow: I18nDomain = {
   'dev.cleanLegacyConfirmTmpl':     { key: 'flow.dev.cleanLegacyConfirmTmpl',     zh: '将删除以下历史遗留文件（不可恢复，git 历史仍可追溯）：{files}\n确认请加 --yes 重跑；只想看清单用 --dry-run。', en: '' },
   'dev.cleanIncludeRequiresLegacyTmpl': { key: 'flow.dev.cleanIncludeRequiresLegacyTmpl', zh: '`--include-archive` 必须与 `--legacy` 同时使用。', en: '' },
   'preflightRequiredTmpl':          { key: 'flow.preflightRequiredTmpl',          zh: '请先运行 `openfeel flow next`（或 `flow status`）读取状态，再执行写操作（preflight 缺失或已过期）。', en: '' },
+
+  // flow 执行前有计划（v1.6.0 / REQ-056 T5）：进入 exec_running 的阶段计划门
+  'manager.stagePlanMissingTmpl':    { key: 'flow.manager.stagePlanMissingTmpl',    zh: '无法进入执行阶段 {stage}：阶段计划 plan.md 缺失；先补写计划文件，或加 --force（留痕放行）', en: '' },
+  'manager.stagePlanUnfilledTmpl':   { key: 'flow.manager.stagePlanUnfilledTmpl',   zh: '无法进入执行阶段 {stage}：阶段计划 plan.md 未写实（占位行或信息量不足）；补写实质内容，或加 --force（留痕放行）', en: '' },
+  'manager.requirementsMissingPlanTmpl': { key: 'flow.manager.requirementsMissingPlanTmpl', zh: '无法进入执行阶段 {stage}：以下在办需求缺少计划文件（{items}）；逐条补写 .openfeel/plan/reqs/<REQ>.plan.md', en: '' },
+  'manager.requirementsUnfilledPlanTmpl': { key: 'flow.manager.requirementsUnfilledPlanTmpl', zh: '无法进入执行阶段 {stage}：以下在办需求的计划未写实（{items}）；补齐「目标 / 任务拆解 / 验收判据」三节', en: '' },
+  'manager.stagePlanGateHint':       { key: 'flow.manager.stagePlanGateHint',       zh: '出路：① 补写计划文件（推荐）；② 加 --force 留痕放行（flow.json.log 记录 gate_overrides / gate_missing）', en: '' },
+
+  // flow 账本陈旧（v1.6.0 / REQ-059 T8）：done 前开发账本仍处于到期状态（同步失败 / 不可写）
+  'manager.devSyncStaleTmpl':        { key: 'flow.manager.devSyncStaleTmpl',        zh: '无法推进到 done：阶段 {stage} 的开发账本仍未同步（due=true）{reason}；先修复 .openfeel/dev 可写性后重试，或加 --force（留痕放行）', en: '' },
+  'manager.devSyncStaleHint':        { key: 'flow.manager.devSyncStaleHint',        zh: '出路：① 修复 .openfeel/dev 可写后重试（推荐）；② 加 --force 留痕放行（flow.json.log 记录 gate_overrides=[dev_sync]）', en: '' },
+  'dev.syncFailedTmpl':              { key: 'flow.dev.syncFailedTmpl',              zh: '[openfeel] 开发账本同步失败：{err}（本次未阻断写操作；done 前硬门会再检）', en: '' },
 };
 
 /* ==================== init 域：初始化命令 ==================== */
@@ -836,6 +848,7 @@ export const help: I18nDomain = {
   'flow.stage.reset.argstageId': { key: 'help.flow.stage.reset.argstageId', zh: '阶段 ID（如 stage-01 或 v1.0.0-stage-01）', en: '' },
   'flow.stage.reset.to':   { key: 'help.flow.stage.reset.to',   zh: '目标 phase（如 review_pending / test_pending / done）；合法值见 openfeel flow phases', en: '' },
   'flow.stage.reset.dryRun': { key: 'help.flow.stage.reset.dryRun', zh: '仅预览，不写盘', en: '' },
+  'flow.stage.reset.force': { key: 'help.flow.stage.reset.force', zh: '越过进入 exec_running 的计划门（放行并在 flow.json.log 记录 gate_overrides/gate_missing）', en: '' },
   'flow.advance':          { key: 'help.flow.advance',          zh: '推进流水线阶段', en: '' },
   'flow.advance.op':       { key: 'help.flow.advance.op',       zh: '操作 ID（如 stage-01.op-001），仅用于日志/展示', en: '' },
   'flow.advance.to':       { key: 'help.flow.advance.to',       zh: '目标阶段（如 exec_running）。合法 phase 与转移表：openfeel flow phases', en: '' },
@@ -1041,13 +1054,15 @@ export const help: I18nDomain = {
   'instructions.schema':   { key: 'help.instructions.schema',   zh: 'Schema 名称（默认 spec-driven）', en: '' },
 
   // lint
-  'lint':                  { key: 'help.lint',                  zh: '项目健康检查（i18n 键一致性、kb 引用有效性、需求正文命令名）', en: '' },
+  'lint':                  { key: 'help.lint',                  zh: '项目健康检查（i18n 键一致性、kb 引用有效性、需求正文命令名、空壳清单）', en: '' },
   'lint.i18n':             { key: 'help.lint.i18n',             zh: '校验 i18n 键一致性（空值/中英独有键）', en: '' },
   'lint.i18n.json':        { key: 'help.lint.i18n.json',        zh: '以 JSON 输出 { schemaVersion, target, ok, issues: [{ path, message }] }', en: '' },
   'lint.kb':               { key: 'help.lint.kb',               zh: '检测 .openfeel/kb/ 中的过期文件引用', en: '' },
   'lint.kb.json':          { key: 'help.lint.kb.json',          zh: '以 JSON 输出 { schemaVersion, target, ok, issues: [{ path, message }] }', en: '' },
   'lint.req':              { key: 'help.lint.req',              zh: '校验需求正文中的命令名（沿真实命令树解析）', en: '' },
-  'lint.req.json':         { key: 'help.lint.req.json',         zh: '以 JSON 输出 { schemaVersion, target, ok, issues, suspects, unknownCount, suspectCount }', en: '' },
+  'lint.req.json':         { key: 'help.lint.req.json',         zh: '以 JSON 输出 { schemaVersion, target, ok, issues, suspects, unknownCount, suspectCount, fill }', en: '' },
+  'lint.fill':             { key: 'help.lint.fill',             zh: '列出空壳需求正文 / 缺需求级计划 / 空阶段文档（advisory，不改退出码）', en: '' },
+  'lint.fill.json':        { key: 'help.lint.fill.json',        zh: '以 JSON 输出 { schemaVersion, target, ok, checked, empty, missingPlan, stageDocs }', en: '' },
 
   // migrate（legacy 布局迁移）
   'migrate':               { key: 'help.migrate',               zh: 'Legacy 布局迁移（检测/备份/迁移/回滚存量项目旧布局）', en: '' },
@@ -1113,6 +1128,7 @@ export const help: I18nDomain = {
   'req.complete.evidence': { key: 'help.req.complete.evidence', zh: '证据（测试命令 / 报告路径 / 摘要）', en: '' },
   'req.complete.independent': { key: 'help.req.complete.independent', zh: '独立审查（推荐）', en: '' },
   'req.complete.self':   { key: 'help.req.complete.self',   zh: '自我审查（非独立；归档摘要标注 self-review）', en: '' },
+  'req.complete.force':  { key: 'help.req.complete.force',  zh: '门留痕放行（正文/计划门写 waiver + 审计；文件仍须补写）', en: '' },
   'req.list':            { key: 'help.req.list',            zh: '列出需求（可按状态/版本/认领人过滤；--include-archived 合并已归档需求）', en: '' },
   'req.list.status':     { key: 'help.req.list.status',     zh: '按状态过滤（draft/scheduled/in_progress/done/blocked/cancelled/rejected）', en: '' },
   'req.list.targetVersion': { key: 'help.req.list.targetVersion', zh: '按预估版本过滤', en: '' },
@@ -1126,6 +1142,7 @@ export const help: I18nDomain = {
   'req.claim':           { key: 'help.req.claim',           zh: '认领需求（占用校验；已被他人认领则拒绝）', en: '' },
   'req.claim.argid':     { key: 'help.req.claim.argid',     zh: '需求 ID（如 REQ-001）', en: '' },
   'req.claim.owner':     { key: 'help.req.claim.owner',     zh: '认领人（缺省：.openfeel/.info.json user → git config user.name）', en: '' },
+  'req.claim.force':     { key: 'help.req.claim.force',     zh: '兼容保留：认领不校验正文（正文门只在 →scheduled / →in_progress / →done 流转时触发），本选项当前无实际作用', en: '' },
   'req.release':         { key: 'help.req.release',         zh: '释放认领（未认领为 no-op 成功）', en: '' },
   'req.release.argid':   { key: 'help.req.release.argid',   zh: '需求 ID（如 REQ-001）', en: '' },
   'req.set':             { key: 'help.req.set',             zh: '更新需求字段（白名单；状态流转合法性由引擎判定）', en: '' },
@@ -1142,6 +1159,7 @@ export const help: I18nDomain = {
   'req.advance':         { key: 'help.req.advance',         zh: '显式推进需求状态（合法目标由引擎流转表判定；done：零关联可直接完成，关联阶段进入 exec_running 及之后相位即可完成）', en: '' },
   'req.advance.argid':   { key: 'help.req.advance.argid',   zh: '需求 ID（如 REQ-001）', en: '' },
   'req.advance.to':      { key: 'help.req.advance.to',      zh: '目标状态（合法目标由引擎判定）', en: '' },
+  'req.advance.force':   { key: 'help.req.advance.force',   zh: '门留痕放行（正文/计划门写 waiver、计划偏差 +1；均留审计，文件仍须补写）', en: '' },
   'req.board':           { key: 'help.req.board',           zh: '需求看板（按状态分组；7 组固定顺序）', en: '' },
   'req.board.targetVersion': { key: 'help.req.board.targetVersion', zh: '按预估版本过滤', en: '' },
   'req.board.json':      { key: 'help.req.board.json',      zh: '以 JSON 输出 { schemaVersion, groups }', en: '' },
@@ -1177,6 +1195,20 @@ export const help: I18nDomain = {
   'req.rollover.to':     { key: 'help.req.rollover.to',     zh: '目标版本（如 v1.6.0）', en: '' },
   'req.rollover.id':     { key: 'help.req.rollover.id',     zh: '只顺延该需求（与 --all 互斥）', en: '' },
   'req.rollover.all':    { key: 'help.req.rollover.all',    zh: '顺延该版本全部未完成需求（与 --id 互斥）', en: '' },
+  // v1.6.0-stage-132 / T2：需求正文写实（req body）与 req add 正文小节
+  'req.body':            { key: 'help.req.body',            zh: '写入需求正文的业务小节（元信息小节受保护；每次写入追加变更记录）', en: '' },
+  'req.body.argid':      { key: 'help.req.body.argid',      zh: '需求 ID（如 REQ-001）', en: '' },
+  'req.body.section':    { key: 'help.req.body.section',    zh: '小节名（如 摘要 / 目标与验收 / 问题 / 初步规划；元信息小节不可写）', en: '' },
+  'req.body.text':       { key: 'help.req.body.text',       zh: '小节正文（Markdown；与 --file 二选一）', en: '' },
+  'req.body.file':       { key: 'help.req.body.file',       zh: '从文件读取小节正文（与 --text 二选一；相对路径按项目根解析）', en: '' },
+  'req.body.append':     { key: 'help.req.body.append',     zh: '追加到该小节末尾（缺省替换整节）', en: '' },
+  'req.body.replace':    { key: 'help.req.body.replace',    zh: '替换整节（缺省；与 --append 互斥）', en: '' },
+  'req.body.json':       { key: 'help.req.body.json',       zh: '以 JSON 输出 { schemaVersion, id, section, path, lines, created }', en: '' },
+  'req.add.problem':     { key: 'help.req.add.problem',     zh: '正文 ## 问题 小节（v1.6.0：正文写实）', en: '' },
+  'req.add.goal':        { key: 'help.req.add.goal',        zh: '正文 ## 目标与验收 → 目标 子节（v1.6.0：正文写实）', en: '' },
+  'req.add.acceptance':  { key: 'help.req.add.acceptance',  zh: '正文 ## 目标与验收 → 验收 子节（v1.6.0：正文写实）', en: '' },
+  'req.add.plan':        { key: 'help.req.add.plan',        zh: '正文 ## 初步规划 小节（v1.6.0：正文写实）', en: '' },
+  'req.add.summary':     { key: 'help.req.add.summary',     zh: '正文 ## 摘要 小节（v1.6.0：正文写实；与 --goal/--acceptance 配合即可一步写实）', en: '' },
 };
 
 /* ==================== config 域：配置管理命令 ==================== */
@@ -1455,6 +1487,28 @@ export const req: I18nDomain = {
   'rollover.invalidVersionTmpl': { key: 'req.rollover.invalidVersionTmpl', zh: '--from {from} 与 --to {to} 必须非空且不同', en: '' },
   'rollover.notInVersionTmpl': { key: 'req.rollover.notInVersionTmpl', zh: '{id} 的预估版本不是 {from}（当前 {current}），无法顺延', en: '' },
   'rollover.terminalTmpl': { key: 'req.rollover.terminalTmpl', zh: '{id} 已是终态（{status}），不可顺延', en: '' },
+  // v1.6.0-stage-132 / T2：需求正文写实（req body）
+  'body.doneTmpl':       { key: 'req.body.doneTmpl',          zh: '已更新 {id} 正文：## {section}（{lines} 行，{action}）→ {path}', en: '' },
+  'body.actionCreated':  { key: 'req.body.actionCreated',     zh: '新建小节', en: '' },
+  'body.actionReplaced': { key: 'req.body.actionReplaced',    zh: '替换', en: '' },
+  'body.actionAppended': { key: 'req.body.actionAppended',    zh: '追加', en: '' },
+  'body.noTextTmpl':     { key: 'req.body.noTextTmpl',        zh: '需要 --text <md> 或 --file <path> 之一（正文不能为空）', en: '' },
+  'body.exclusiveTmpl':  { key: 'req.body.exclusiveTmpl',     zh: '--text 与 --file 必须且只能提供一个', en: '' },
+  'body.flagExclusiveTmpl': { key: 'req.body.flagExclusiveTmpl', zh: '--append 与 --replace 不能同时使用', en: '' },
+  'body.protectedTmpl':  { key: 'req.body.protectedTmpl',     zh: '{section} 是需求正文的元信息小节，不可通过 req body 修改（可写：摘要 / 目标与验收 / 问题 / 初步规划 及自定义业务小节）', en: '' },
+  'body.emptyTmpl':      { key: 'req.body.emptyTmpl',         zh: '小节正文为空（--text / --file 内容不能为空白）', en: '' },
+  'body.invalidFieldTmpl': { key: 'req.body.invalidFieldTmpl', zh: '{section} → 非法小节名或 --file 不可读（小节名不能为空、不能含换行或 #）', en: '' },
+  // v1.6.0-stage-132 / T6：计划偏差回写（可校验证据）
+  'err.planDeviationTmpl': { key: 'req.err.planDeviationTmpl', zh: '需求 {id} 未完成：执行后计划文件已被改动，但 `## 偏差与回写` 未写实（需 ≥40 非空白字符且至少一条 YYYY-MM-DD 记录）；补写后重试，或 `openfeel req advance {id} --to done --force` 留痕放行（plan.deviations += 1）', en: '' },
+  'warn.planUnstampedTmpl': { key: 'req.warn.planUnstampedTmpl', zh: '提示：需求 {id} 没有执行前计划指纹（plan 缺省，历史需求）——本次放行，审计记 plan_unstamped:true；后续经阶段计划门放行时会自动盖章', en: '' },
+  'advance.forceRequiresStampTmpl': { key: 'req.advance.forceRequiresStampTmpl', zh: '需求 {id} 没有计划指纹（plan 缺省）：--force 只用于计划偏差留痕放行；本次流转未写入', en: '' },
+  'advance.planDeviationForcedSuffix': { key: 'req.advance.planDeviationForcedSuffix', zh: '［计划偏差已 force 留痕放行：plan.deviations += 1］', en: '' },
+  // v1.6.0-stage-132 / T4 正文门 + T7 需求级计划门（硬门 + --force 留痕放行）
+  'err.bodyEmptyTmpl':   { key: 'req.err.bodyEmptyTmpl',     zh: '需求 {id} 正文未写实，不能进入 scheduled / in_progress / done（未写实小节：{sections}）。先补写正文再重试：`openfeel req body {id} --section 摘要 --text "<问题现状与结论，≥40 字>"` 与 `openfeel req body {id} --section 目标与验收 --text "- A1 …（≥1 条带命令的判据）"`；确需放行用 `--force`（req advance / req complete 支持，写 body_waiver + 审计 requirement_body_forced）；认领（claim）不校验正文，`--force` 对 claim 无实际作用', en: '' },
+  'err.planMissingTmpl': { key: 'req.err.planMissingTmpl',   zh: '需求 {id} 进入 in_progress 前必须有写实的需求级计划（general 或零关联阶段需求没有阶段 exec 门兜底）。按模板创建 `.openfeel/plan/reqs/{id}.plan.md`，必备小节 `## 目标` / `## 任务拆解` / `## 验收判据`（各 ≥40 非空白字符，末节至少一条判据行）；补写后重试，或 `openfeel req advance {id} --to in_progress --force` 留痕放行（写 plan_waiver + 审计 requirement_plan_forced）', en: '' },
+  'claim.bodyForcedSuffix': { key: 'req.claim.bodyForcedSuffix', zh: '［正文门已 force 留痕放行：body_waiver + 审计 requirement_body_forced］', en: '' },
+  'advance.gateForcedSuffix': { key: 'req.advance.gateForcedSuffix', zh: '［门已 force 留痕放行：body_waiver / plan_waiver + 审计］', en: '' },
+  'complete.gateForcedSuffix': { key: 'req.complete.gateForcedSuffix', zh: '［门已 force 留痕放行：body_waiver / plan_waiver + 审计］', en: '' },
 };
 
 /* ==================== dashboard 域：看板 HTML 渲染文案（v1.5.10 / stage-125 op-002） ==================== */

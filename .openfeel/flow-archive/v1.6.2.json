@@ -1,0 +1,172 @@
+{
+  "version": "v1.6.2",
+  "stages": {
+    "v1.6.2-stage-135": {
+      "name": "v1.6.2-stage-135",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-069",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-25T01:41:11.560Z",
+        "end_time": "2026-11-25T01:58:42.038Z",
+        "duration_ms": 1050478
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v162",
+        "at": "2026-11-25T01:58:26.526Z",
+        "note": "REQ-069 完成：默认配置不预设模型（注释 + 规则 + 模板 + 文档），版本 1.6.2；push 后由 CI 自动发布。",
+        "evidence": "npm test 107 文件/2693 passed；tsc 0；build ×2 幂等；dsh 四测全绿；lint i18n 1339；release --dry-run exit 0；--version 1.6.2；默认模板模型痕迹 0 行；init 产物无 models",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-11-25T01:26:44.141Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-25T01:41:11.553Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-25T01:44:35.335Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:44:53.062Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:00.063Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:10.989Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:18.059Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:42.033Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-069",
+      "title": "默认配置不预设模型：删除模板 models 段，改为平台/会话选择",
+      "status": "done",
+      "created_at": "2026-11-25T01:26:51.195Z",
+      "updated_at": "2026-11-25T01:58:15.590Z",
+      "target_version": "v1.6.2",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-069.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-25T01:44:39.189Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-069.plan.md",
+        "sha256": "6b11aaa828e0",
+        "recorded_at": "2026-11-25T01:44:53.051Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "review-v162",
+        "at": "2026-11-25T01:58:06.779Z",
+        "note": "独立审查 APPROVE_WITH_FIXES（0 blocking）：默认模板两处 models 段已删、兼容保持、init 无模型痕迹、规则登记、版本 lockstep 1.6.2；VERSIONS.md 已补 v1.6.2 节。opencode 模板 frontmatter 仍硬编码模型，作为后续 REQ 跟进。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v162",
+        "at": "2026-11-25T01:58:08.911Z",
+        "note": "默认不再预设模型，规则与文档同步，版本 1.6.2 待 push 由 CI 发布。",
+        "evidence": "npm test 107 文件/2693 passed；tsc 0；build ×2 幂等；dsh contract 54/verify 136/guard 193/integration 0；lint i18n 1339；release --dry-run exit 0；--version 1.6.2；config/init 定向 69/69",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 0,
+    "log": 8,
+    "requirements": 1
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-25T18:14:38.061Z"
+}

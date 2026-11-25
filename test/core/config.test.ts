@@ -768,6 +768,45 @@ describe('writeDefaultConfig 模板（stage-74 op-001 T7.6）', () => {
     expect(content).toContain('workflow_mode: fast');
     expect(content).toContain('auto_advance: enabled');
   });
+
+  it('REQ-069：ZH 模板不预设模型（无 models 段 / provider / model_name / 具体模型名）', () => {
+    writeDefaultConfig(tmpDir);
+    const content = readFileSync(join(tmpDir, '.openfeel', 'config.yaml'), 'utf-8');
+    expect(content).not.toContain('models:');
+    expect(content).not.toContain('model_name:');
+    expect(content).not.toContain('provider:');
+    expect(content).not.toContain('deepseek-v4-pro');
+    expect(content).not.toContain('deepseek-flash');
+    expect(content).not.toContain('glm-5.1');
+    expect(content).toContain('不预设模型');
+    // 生成配置无 models 段 → 解析后 models 为 undefined（可选、无默认值）
+    expect(readConfig(tmpDir).models).toBeUndefined();
+  });
+
+  it('REQ-069：EN 模板不预设模型（无 models 段 / provider / model_name / 具体模型名）', () => {
+    writeDefaultConfig(tmpDir2, 'en');
+    const content = readFileSync(join(tmpDir2, '.openfeel', 'config.yaml'), 'utf-8');
+    expect(content).not.toContain('models:');
+    expect(content).not.toContain('model_name:');
+    expect(content).not.toContain('provider:');
+    expect(content).not.toContain('deepseek-v4-pro');
+    expect(content).not.toContain('deepseek-flash');
+    expect(content).not.toContain('glm-5.1');
+    expect(content).toContain('presets no model');
+    expect(readConfig(tmpDir2).models).toBeUndefined();
+  });
+
+  it('REQ-069：存量 config 含 models 仍可解析（只读兼容，不报错）', () => {
+    writeFileSync(
+      join(tmpDir, '.openfeel', 'config.yaml'),
+      'models:\n  default:\n    provider: deepseek\n    model_name: deepseek-v4-pro\n',
+      'utf-8',
+    );
+    const config = readConfig(tmpDir);
+    expect(config.models).toBeDefined();
+    expect(config.models!.default.provider).toBe('deepseek');
+    expect(config.models!.default.model_name).toBe('deepseek-v4-pro');
+  });
 });
 
 // ═══════════════════════════════════════

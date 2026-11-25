@@ -13,6 +13,7 @@ vi.mock('node:os', async (importOriginal) => {
 
 import { Command, CommanderError } from 'commander';
 import { registerInitCommand } from '../../src/commands/init.js';
+import { readConfig } from '../../src/core/config.js';
 import { existsSync, mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -70,6 +71,15 @@ describe('init 命令', () => {
 
     // 项目精简：非交互模式不写项目 .opencode/
     expect(existsSync(join(tmpDir, '.opencode'))).toBe(false);
+
+    // REQ-069：默认配置不预设模型（无 model_name / provider / 具体模型名）
+    const configContent = readFileSync(join(openfeelDir, 'config.yaml'), 'utf-8');
+    expect(configContent).not.toContain('model_name:');
+    expect(configContent).not.toContain('provider:');
+    expect(configContent).not.toContain('deepseek-v4-pro');
+    expect(configContent).not.toContain('glm-5.1');
+    // models 段可选、无默认值 → init 产物解析后 models 为 undefined
+    expect(readConfig(tmpDir).models).toBeUndefined();
   });
 
   it('不存在的路径应报错退出', async () => {

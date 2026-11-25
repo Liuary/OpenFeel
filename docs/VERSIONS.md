@@ -17,6 +17,8 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.6.2** — No preset models: the default config template no longer hardcodes any `models` block (previously `deepseek-v4-pro` / `deepseek-flash` / `glm-5.1`); agents use whatever model you select in your platform (DSH, Claude, etc.). The `models` section stays optional and read-compatible for awareness only, and `openfeel init` generates a model-free config.
+
 - **v1.6.1** — Release chain, write whitelist and measurable adherence: `npm run release` runs the whole six-step chain (version → build → publish → market → archive-commit → tag) with **zero real publish by default** (the only real-publish switch is `--publish`, guarded by `npm whoami`; `--dry-run`, `--skip-build`, `--with-market`, `--notes-only`, `--commit-archive`, `--tag`); `review_passed` / `test_passed` now allow doc/fixture writes (`docs/**`, root `*.md`, `test/fixtures/**`, `dsh/test/fixtures/**`) while source stays denied; requirements gain a `review_pending` state (`in_progress → review_pending → done`, old direct transition removed, `--force` recorded) with `req claim/advance/complete --json`; `req plan` generates the requirement-level plan in one command, `req body --from` imports many sections, `lint fill --fix-plan` fills only missing plans, and multi-line `--text` round-trips byte-for-byte; the dashboard adds four flow-debt buckets; the DSH adapter closes the dispatch loop (`feel_dispatch action=finish`, `open[]`/`closedRatio`) and exposes adherence metrics via `feel_verify action=adherence`; the write guard statically classifies wrapper scripts (`pwsh -File`, `cmd /c`, `bash <script>`) with undecidable/encoding-audited fallbacks. JSON contract moves to 51 success exits / 52 registered `--json` options, error-code table to 20 rows.
 - **v1.6.0** — Trustworthy process: requirement bodies now have a single write entry point (`req body`, JSON exit #45) and a real-content gate (`REQ_BODY_GATE`) on `scheduled` / `in_progress` / `done` transitions (not on claim; `req claim --force` is a compatibility no-op); entering `exec_running` requires a filled stage plan **and** a filled `.openfeel/plan/reqs/REQ-NNN.plan.md` for every in-flight requirement (`STAGE_PLAN_GATE`, same rule for `flow stage reset`), with a `REQ_PLAN_DEVIATION` check before `done`. `general` requirements (and zero-stage `fast`/`full` ones) follow the same plan gate at the requirement level while the stage-level `general` table stays empty. The DSH adapter grows to 15 tools (`feel_dispatch` ledger, `feel_dev`), the prompt is rewritten to ≤1200 chars / ≤25 lines with a per-turn reminder (downgrade path documented), and JSON counts move to 46 success exits / 47 registered `--json` options.
 - **v1.5.22** — Documentation: the `openfeel-dsh` npm page now leads with OpenFeel itself (what it is, the two problems, stages/requirements, the two modes, where records live) and then states that this package is OpenFeel's adapter for DeepSeek Harness; adapter internals moved under an "Adapter details" section. Behavior is unchanged.
@@ -54,6 +56,12 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.6.2 — 默认不预设模型（平台/会话选什么就用什么）
+
+- 默认配置模板不再写死 `models`（此前 `deepseek-v4-pro` / `deepseek-flash` / `glm-5.1`）；打开 DSH 选 deepseek-flash、打开 Claude 选 sonnet，就用所选模型。
+- `models` 段保留为可选 Awareness（读兼容，仍不生效）；`openfeel init` 生成无模型配置。
+- 规则登记到 `dev_core`、`DEV_CORE` 模板与 README/命令文档；版本 1.6.2（`requiresCli >=1.6.2`）。
 
 ## v1.6.1 — 发布链路一条命令 + 可信增量（审查相位 / 需求计划 / 遵守率）
 

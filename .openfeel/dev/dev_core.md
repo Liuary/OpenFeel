@@ -248,3 +248,13 @@ Feel 在会话中应**减少推送频率**。遵守以下规则：
 - 升 minor 要有**用户可见的新能力或契约变化**；升 major 要有**破坏性变更**。
 - 版本号单点 = `package.json.version`；`dsh/package.json` 与之 lockstep，`requiresCli` 由它派生（`test/core/release-metadata.test.ts` 已锁）。
 - 升版必须同批更新 `CHANGELOG.md` 顶部 `## [<版本>]` 段（`npm run release` 的版本校验会比对三处）。
+
+---
+
+## [+] 不预设模型 (2026-11-25)
+
+OpenFeel **不指定 Agent 模型**：默认配置模板不写死 `provider` / `model_name`。用户在哪家平台（DSH / Claude 等）选了什么模型，就用什么——DSH 里选的 `deepseek-flash`、Claude 的 sonnet 等，OpenFeel 不特化、不覆盖。
+
+- **不要往默认模板写死 provider/model_name**：默认配置模板保持「不预设模型」注释，`openfeel init` 生成的新配置不含模型默认值。
+- `config.yaml` 的 `models` 段**可选**、仅 Awareness 记录、**不生效**；用户如需记录可自行添加，读兼容保留（不删 `ModelsSchema`、不改 `readConfig`）。
+- 不要把「某平台/某厂商模型」当成框架约定写进文档、模板或规则。

@@ -571,28 +571,8 @@ defaults:
   # feel_mode: enabled
 
 # ---- 模型配置 ----
-# 配置 Agent 使用的模型后端。支持 Agent/角色 级精细化覆盖。
-# 注：实际模型由平台层分配，此处为 Awareness 目的。
-models:
-  # 默认模型（兜底配置，所有未显式配置的 Agent 使用此模型）
-  default:
-    provider: deepseek
-    model_name: deepseek-v4-pro
-  # Agent 级覆盖（可选）：为特定 Agent ID 分配不同模型
-  # agents:
-  #   feel:
-  #     provider: deepseek
-  #     model_name: deepseek-v4-pro
-  # 角色级覆盖（可选）：按 Agent frontmatter model 字段匹配
-  roles:
-    # 快速模型：openfeel-executor、事务官 等执行类 Agent
-    fast:
-      provider: deepseek
-      model_name: deepseek-flash
-    # 异种模型：openfeel-reviewer 交叉审查用的可选增强（框架默认不硬编码异族；GLM 系列，与 DeepSeek 不同架构）
-    cross_model:
-      provider: zhipu
-      model_name: glm-5.1
+# 本模板不预设模型：Agent 使用平台/会话所选模型（DSH / Claude 等）。
+# 如需 Awareness 记录可自行添加 models 段（仅记录、不生效）。
 `;
 
 /** 英文版 config.yaml 模板 */
@@ -638,28 +618,8 @@ defaults:
   # feel_mode: enabled
 
 # ---- Model Configuration ----
-# Configure the model backend used by Agents. Supports Agent/role level fine-grained overrides.
-# Note: Actual models are allocated by the platform layer; this is for Awareness purposes.
-models:
-  # Default model (fallback configuration, all Agents without explicit config use this model)
-  default:
-    provider: deepseek
-    model_name: deepseek-v4-pro
-  # Agent-level override (optional): assign a different model for a specific Agent ID
-  # agents:
-  #   feel:
-  #     provider: deepseek
-  #     model_name: deepseek-v4-pro
-  # Role-level override (optional): matches by Agent frontmatter model field
-  roles:
-    # Fast model: openfeel-executor, openfeel-utility Agent and other execution-type Agents
-    fast:
-      provider: deepseek
-      model_name: deepseek-flash
-    # Cross-review model: an optional enhancement for openfeel-reviewer (the framework default does not hardcode a heterogeneous model; GLM series, different architecture from DeepSeek)
-    cross_model:
-      provider: zhipu
-      model_name: glm-5.1
+# This template presets no model: Agents use the model chosen by the platform/session (DSH / Claude, etc.).
+# Add a models section yourself if you want an Awareness record (documentation only, not applied).
 `;
 
 /**

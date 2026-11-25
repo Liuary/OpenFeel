@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-25T01:26:23.276Z",
-    "revision": 2633,
+    "updated": "2026-11-25T01:58:26.526Z",
+    "revision": 2651,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -53,107 +53,51 @@
       "v1.5.24",
       "v1.5.25",
       "v1.6.0",
-      "v1.6.1"
+      "v1.6.1",
+      "v1.7.0"
     ],
-    "last_req_seq": 68
+    "last_req_seq": 69
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "",
+      "stage": "v1.6.2-stage-135",
       "op": ""
     },
     "retry": 0
   },
   "stages": {
-    "v1.7.0-stage-133": {
-      "name": "v1.7.0-stage-133",
-      "phase": "done",
-      "status": "done",
+    "v1.6.2-stage-135": {
+      "name": "v1.6.2-stage-135",
+      "phase": "archiving",
+      "status": "archiving",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
       "requirements": [
         {
-          "id": "REQ-061",
+          "id": "REQ-069",
           "order": 0
-        },
-        {
-          "id": "REQ-062",
-          "order": 1
-        },
-        {
-          "id": "REQ-063",
-          "order": 2
-        },
-        {
-          "id": "REQ-064",
-          "order": 3
-        },
-        {
-          "id": "REQ-065",
-          "order": 4
-        },
-        {
-          "id": "REQ-066",
-          "order": 5
-        },
-        {
-          "id": "REQ-067",
-          "order": 6
         }
       ],
       "stats": {
-        "start_time": "2026-11-24T14:56:42.944Z",
-        "end_time": "2026-11-24T18:11:50.913Z",
-        "duration_ms": 11707969
+        "start_time": "2026-11-25T01:41:11.560Z",
+        "end_time": "",
+        "duration_ms": 0
       },
       "verification": {
         "result": "pass",
         "kind": "test",
-        "by": "code-reviewer-v17",
-        "at": "2026-11-24T18:11:46.682Z",
-        "note": "v1.7.0 十三项优化全部落地：发布链路、文档白名单与 GateOverride、需求审查相位与 JSON 码、req plan/body --from、夹具工厂与 dashboard 流程债、派发闭环与遵守率、guard wrapper 加固；偏差已回写 plan §八。",
-        "evidence": "npm test 106 文件/2677 passed；npx tsc --noEmit 0；npm run build 0（模板一致性 3/3）；dsh contract 54·verify 136·guard 193·preflight 10 全 exit 0；lint i18n 1339 键；node scripts/release.mjs --dry-run --skip-build exit 0；openfeel --version 1.7.0；独立复审 APPROVE（0 未闭环 blocking）",
+        "by": "review-v162",
+        "at": "2026-11-25T01:58:26.526Z",
+        "note": "REQ-069 完成：默认配置不预设模型（注释 + 规则 + 模板 + 文档），版本 1.6.2；push 后由 CI 自动发布。",
+        "evidence": "npm test 107 文件/2693 passed；tsc 0；build ×2 幂等；dsh 四测全绿；lint i18n 1339；release --dry-run exit 0；--version 1.6.2；默认模板模型痕迹 0 行；init 产物无 models",
         "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
     }
   },
-  "reviews": [
-    {
-      "id": "REV-001",
-      "op": "v1.7.0-stage-133",
-      "stage": "v1.7.0-stage-133",
-      "status": "resolved",
-      "priority": "medium",
-      "title": "[blocking] 计划审查 REJECT：6 blocking + 4 major（REV-P01..P10 已修订）",
-      "filed_by": "cli",
-      "filed_at": "2026-11-24T15:08:01.885Z",
-      "canAutoFix": false,
-      "blocking": true
-    }
-  ],
+  "reviews": [],
   "log": [
-    {
-      "time": "2026-11-18T18:11:27.394Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-048",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:30.579Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-049",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
     {
       "time": "2026-11-18T18:11:33.122Z",
       "agent": "cli",
@@ -1170,15 +1114,6 @@
       }
     },
     {
-      "time": "2026-11-24T14:44:34.205Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-11-24T14:47:08.540Z",
       "agent": "cli",
       "action": "requirement_add",
@@ -1312,17 +1247,6 @@
       }
     },
     {
-      "time": "2026-11-24T14:56:42.937Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
       "time": "2026-11-24T15:08:04.664Z",
       "agent": "cli",
       "action": "requirement_claim",
@@ -1383,18 +1307,6 @@
       "detail": {
         "id": "REQ-067",
         "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-24T15:08:29.857Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -1535,18 +1447,6 @@
         "id": "REQ-067",
         "from": "scheduled",
         "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-24T15:09:56.070Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -1844,42 +1744,6 @@
       }
     },
     {
-      "time": "2026-11-24T18:11:31.800Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-24T18:11:36.407Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-24T18:11:41.320Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-24T18:11:46.682Z",
       "agent": "cli",
       "action": "stage_verification",
@@ -1888,33 +1752,6 @@
         "result": "pass",
         "kind": "test",
         "by": "code-reviewer-v17"
-      }
-    },
-    {
-      "time": "2026-11-24T18:11:50.906Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-24T18:12:00.070Z",
-      "agent": "openfeel-archiver",
-      "action": "archive_stage",
-      "detail": {
-        "stageName": "v1.7.0-stage-133",
-        "opsCount": 0,
-        "reviewsCount": 1,
-        "knowledgeCount": 1,
-        "archivePath": "C:\\Users\\Liuary\\Dev\\Mine\\AI\\OpenFeel\\.openfeel\\log\\archive-v1.7.0-stage-133.md",
-        "requirementsCount": 7,
-        "releaseNotes": "docs\\releases\\v1.7.0.md",
-        "skillsCount": 0
       }
     },
     {
@@ -2105,6 +1942,199 @@
         "reviews": 0,
         "log": 8,
         "requirements": 8
+      }
+    },
+    {
+      "time": "2026-11-25T01:26:40.023Z",
+      "agent": "cli",
+      "action": "archive_flow_version",
+      "detail": {
+        "version": "v1.7.0",
+        "stages": 1,
+        "reviews": 1,
+        "log": 9,
+        "requirements": 0
+      }
+    },
+    {
+      "time": "2026-11-25T01:26:44.141Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-25T01:26:51.196Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-069",
+        "title": "默认配置不预设模型：删除模板 models 段，改为平台/会话选择"
+      }
+    },
+    {
+      "time": "2026-11-25T01:27:00.220Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.6.2-stage-135",
+        "requirementId": "REQ-069",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-25T01:41:11.553Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-25T01:44:35.335Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:44:39.190Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-069",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-25T01:44:44.659Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-069",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-25T01:44:49.684Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-069",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-25T01:44:53.062Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:57:56.894Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-069",
+        "from": "in_progress",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:00.063Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:06.779Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-069",
+        "result": "pass",
+        "by": "review-v162",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:08.911Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-069",
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v162"
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:10.989Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:15.590Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-069",
+        "from": "review_pending",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:18.059Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T01:58:26.526Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.6.2-stage-135",
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v162"
       }
     }
   ],
@@ -2327,6 +2357,40 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
+    },
+    {
+      "id": "REQ-069",
+      "title": "默认配置不预设模型：删除模板 models 段，改为平台/会话选择",
+      "status": "done",
+      "created_at": "2026-11-25T01:26:51.195Z",
+      "updated_at": "2026-11-25T01:58:15.590Z",
+      "target_version": "v1.6.2",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-069.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-25T01:44:39.189Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-069.plan.md",
+        "sha256": "6b11aaa828e0",
+        "recorded_at": "2026-11-25T01:44:53.051Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "review-v162",
+        "at": "2026-11-25T01:58:06.779Z",
+        "note": "独立审查 APPROVE_WITH_FIXES（0 blocking）：默认模板两处 models 段已删、兼容保持、init 无模型痕迹、规则登记、版本 lockstep 1.6.2；VERSIONS.md 已补 v1.6.2 节。opencode 模板 frontmatter 仍硬编码模型，作为后续 REQ 跟进。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v162",
+        "at": "2026-11-25T01:58:08.911Z",
+        "note": "默认不再预设模型，规则与文档同步，版本 1.6.2 待 push 由 CI 发布。",
+        "evidence": "npm test 107 文件/2693 passed；tsc 0；build ×2 幂等；dsh contract 54/verify 136/guard 193/integration 0；lint i18n 1339；release --dry-run exit 0；--version 1.6.2；config/init 定向 69/69",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     }
   ]
 }

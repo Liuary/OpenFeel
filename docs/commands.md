@@ -1109,6 +1109,8 @@ openfeel stage create <stageId>         # 已弃用（注册层，与 `flow stag
 
 三层级 agent 模型读写（`default` / `global` / `project`），非 TTY 下 `--scope default` 须 `--force`/`--build` 双重确认。
 
+> **OpenFeel 不预设模型**（v1.6.2 / REQ-069）：`openfeel init` 生成的 `config.yaml` 不含 `models` 段，Agent 使用打开平台（DSH / Claude 等）时选择的模型；`config.yaml` 的 `models` 段可选、仅 Awareness 记录、不生效（只读兼容保留）。`openfeel model` 仅用于适配器（如 opencode）的按需配置，不是框架的模型约定。
+
 ```bash
 openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]
 openfeel model get <agent> [--scope ...] [--json]

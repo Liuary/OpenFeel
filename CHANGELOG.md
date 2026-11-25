@@ -1,3 +1,15 @@
+## [1.6.2] - 2026-11-25
+
+> 默认配置不预设模型：默认 config 模板移除硬编码 models 段，Agent 使用平台/会话所选模型。
+> 需求 REQ-069。
+
+### Changed
+- [stage-135] **默认配置不预设模型（REQ-069）**：`writeDefaultConfig` 的 ZH/EN 模板删除 `models:` 段（原 `default`=deepseek-v4-pro、`roles.fast`=deepseek-flash、`roles.cross_model`=glm-5.1），改为「不预设模型」注释；`config.yaml` 的 `models` 段保持**可选**、仅 Awareness、**不生效**（`ModelsSchema` 与 `readConfig` 的 `models: null` 兼容逻辑零改动）。
+
+### Fixed
+- [stage-135] 模板不再写死 deepseek / glm 模型名；`openfeel init` 生成的新配置不含 `model_name:` / `provider:`。
+- [stage-135] `README.zh-CN.md` / `README.en.md` / `docs/commands.md` / `docs/GETTING_STARTED.md` 更正旧「默认模型配置 / init 自动检测模型」误述为「不预设模型（由平台/会话选择）」。
+
 ## [1.6.1] - 2026-11-25
 
 > 发布链路一条命令 + 文档写白名单 + 需求审查相位 + 需求级计划生成 + 流程债看板 + 派发闭环/遵守率 + guard wrapper 静态分类。

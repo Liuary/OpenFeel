@@ -7,8 +7,7 @@
 OpenFeel is a TypeScript CLI tool for end-to-end process governance in AI Agent development. Core philosophy: **"Slim prompts, process in tools"** — agents understand workflows by reading `flow.json` state, not long text documents.
 
 > **Current adapter harness**: **opencode (default)** ｜ **Claude Code** (`--tools claude`, since v1.1.6) ｜ **DSH** (`--tools dsh`, since v1.3.0); the framework targets multi-harness support (other adapters reserved).  
-> **Default Model Config**: DeepSeek V4 (primary reasoning) + GLM-5.3-flash (cross-review) + DeepSeek-flash (multimodal vision).  
-> `openfeel init` auto-detects registered models and guides configuration.
+> **Model selection**: `openfeel init` presets no model - agents use the model chosen by the platform/session (DSH / Claude, etc.); the optional `models` section in `config.yaml` is Awareness only and not applied.
 >
 > ⚠️ The `openfeel <cmd>` examples below are the **installed-package usage**; when developing/running **inside this source repository**, use `node bin/openfeel.js <cmd>` instead (the global `openfeel` may lag behind this repository — it is not synced with the source here).
 

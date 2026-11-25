@@ -151,6 +151,8 @@ openfeel init ./my-agent-project
 
 初始化会创建 `.openfeel/` **核心目录**（`plan/` / `kb/` / `dev/` / `log/`，含 `dev/note` 与 `dev/current_archive`）、流水线状态文件（`flow.json`）、配置（`config.yaml`）与开发/知识库模板。**v1.3.3 起目录惰性化**：`code_review/` / `bugs/` / `users/` / `tmp/` / `manual/` / `update_conflicts/` 在首次使用时按需创建，不再产生冷启动前置开销。
 
+> **不预设模型**（v1.6.2 / REQ-069）：生成的 `config.yaml` 不含 `models` 段——Agent 使用平台/会话所选模型（DSH / Claude 等）；如需 Awareness 记录可自行添加 `models` 段（不生效）。
+
 ## 5. 基本工作流
 
 ### 5.1 查看流水线状态

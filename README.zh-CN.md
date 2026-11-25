@@ -9,8 +9,7 @@
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。
 
 > **当前适配 harness**：**opencode（默认）** ｜ **Claude Code**（`--tools claude`，v1.1.6 起） ｜ **DSH**（`--tools dsh`，v1.3.0 起）；框架面向多 harness 适配（其余适配器预留）。  
-> **默认模型配置**：DeepSeek V4（主力推理） + GLM-5.3-flash（交叉审查） + DeepSeek-flash（多模态视觉）。  
-> 首次 `openfeel init` 时会自动检测用户已注册的模型并引导配置。
+> **模型选择**：`openfeel init` 不预设模型——Agent 使用平台/会话所选模型（DSH / Claude 等）；`config.yaml` 的 `models` 段可选、仅 Awareness 记录、不生效。
 
 ## 解决什么问题
 

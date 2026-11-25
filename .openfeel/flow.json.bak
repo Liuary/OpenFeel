@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-25T15:43:04.215Z",
-    "revision": 2669,
+    "updated": "2026-11-25T18:11:25.320Z",
+    "revision": 2671,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -56,10 +56,10 @@
       "v1.6.1",
       "v1.7.0"
     ],
-    "last_req_seq": 70
+    "last_req_seq": 71
   },
   "pipeline": {
-    "phase": "active",
+    "phase": "done",
     "current": {
       "stage": "v1.6.3-stage-136",
       "op": ""
@@ -97,8 +97,8 @@
     },
     "v1.6.3-stage-136": {
       "name": "v1.6.3-stage-136",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -110,8 +110,8 @@
       ],
       "stats": {
         "start_time": "2026-11-25T15:03:08.265Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-25T15:43:11.826Z",
+        "duration_ms": 2403561
       },
       "verification": {
         "result": "pass",
@@ -126,16 +126,6 @@
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-11-19T17:47:58.415Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-051",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
     {
       "time": "2026-11-19T17:47:58.415Z",
       "agent": "cli",
@@ -2173,6 +2163,27 @@
         "kind": "test",
         "by": "review-v163"
       }
+    },
+    {
+      "time": "2026-11-25T15:43:11.818Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T18:11:25.302Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-071",
+        "title": "1.6.4 清理债：model 死文案/死分支 + ADAPTER 验证计数 + config models 迁移提示"
+      }
     }
   ],
   "requirements": [
@@ -2462,6 +2473,16 @@
         "evidence": "npm test 107 文件/2695 passed；tsc 0；build ×2 幂等；dsh contract 54/verify 136/guard 193/integration 0；lint i18n 1340；release --dry-run exit 0；--version 1.6.3；模板与注入副本厂商串 0 命中、opencode 模板 model 行 0",
         "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
+    },
+    {
+      "id": "REQ-071",
+      "title": "1.6.4 清理债：model 死文案/死分支 + ADAPTER 验证计数 + config models 迁移提示",
+      "status": "draft",
+      "created_at": "2026-11-25T18:11:25.302Z",
+      "updated_at": "2026-11-25T18:11:25.302Z",
+      "target_version": "v1.6.4",
+      "priority": "P2",
+      "body_path": ".openfeel/requirements/REQ-071.md"
     }
   ]
 }

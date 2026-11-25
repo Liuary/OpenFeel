@@ -1,0 +1,172 @@
+{
+  "version": "v1.6.3",
+  "stages": {
+    "v1.6.3-stage-136": {
+      "name": "v1.6.3-stage-136",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-070",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-25T15:03:08.265Z",
+        "end_time": "2026-11-25T15:43:11.826Z",
+        "duration_ms": 2403561
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v163",
+        "at": "2026-11-25T15:43:04.215Z",
+        "note": "REQ-070 完成：框架级默认模型彻底移除；model 只留 global/project；版本 1.6.3，push 后由 CI 发布。",
+        "evidence": "npm test 107 文件/2695 passed；tsc 0；build ×2 幂等；dsh 四测全绿；lint i18n 1340；release --dry-run exit 0；--version 1.6.3；厂商串与 opencode model 行均 0 命中",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-11-25T14:52:48.680Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-25T15:03:08.259Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-25T15:08:39.850Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:09:00.043Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:32.457Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:46.195Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:53.671Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:43:11.818Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-070",
+      "title": "彻底不预设模型：移除 opencode agent 默认 model 与框架注入",
+      "status": "done",
+      "created_at": "2026-11-25T14:53:00.879Z",
+      "updated_at": "2026-11-25T15:42:51.159Z",
+      "target_version": "v1.6.3",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-070.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-25T15:08:44.380Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-070.plan.md",
+        "sha256": "831668c4ff17",
+        "recorded_at": "2026-11-25T15:09:00.033Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "review-v163",
+        "at": "2026-11-25T15:42:38.946Z",
+        "note": "独立审查 REJECT→修复后复核：厂商名残留清零（templates-data 与注入副本 0 命中）、10 份模板无 model、model 两层语义与测试 102/102 通过；0 未闭环 blocking。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v163",
+        "at": "2026-11-25T15:42:41.595Z",
+        "note": "框架级默认模型彻底移除；model 配置只保留 global/project 两层。",
+        "evidence": "npm test 107 文件/2695 passed；tsc 0；build ×2 幂等；dsh contract 54/verify 136/guard 193/integration 0；lint i18n 1340；release --dry-run exit 0；--version 1.6.3；模板与注入副本厂商串 0 命中、opencode 模板 model 行 0",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 0,
+    "log": 8,
+    "requirements": 1
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-25T18:14:06.539Z"
+}

@@ -1,0 +1,410 @@
+{
+  "version": "v1.6.1",
+  "stages": {
+    "v1.6.1-stage-134": {
+      "name": "v1.6.1-stage-134",
+      "phase": "done",
+      "status": "done",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-068",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-24T19:48:17.631Z",
+        "end_time": "2026-11-24T20:07:21.599Z",
+        "duration_ms": 1143968
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v161",
+        "at": "2026-11-24T20:07:15.358Z",
+        "note": "REQ-068 完成：版本纠正到 1.6.1、CI 发布规则登记（dev_core + 模板 + 文档）、提示词版本分级（EN 1194/1200）；未 push，CI 发布待用户确认后推送触发。",
+        "evidence": "npm test 107 文件/2690 passed；tsc 0；build ×2 幂等；dsh 四测全绿（54/136/193/integration）；lint i18n 1339；parity 5/5；budget 6/6；release --dry-run exit 0；--version 1.6.1；1.7.0（排除 stage id）零命中；独立审查 0 blocking",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  },
+  "reviews": [],
+  "log": [
+    {
+      "time": "2026-11-24T19:29:00.649Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.6.1-stage-134",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-24T19:48:17.624Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.1-stage-134",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-24T19:48:24.911Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.1-stage-134",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T19:48:32.879Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.1-stage-134",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T20:06:48.765Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.1-stage-134",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T20:07:01.096Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.1-stage-134",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T20:07:09.463Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.1-stage-134",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-24T20:07:21.593Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.1-stage-134",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-061",
+      "title": "发布链路一条命令：release 脚本 + 归档产物提交 + CHANGELOG 生成",
+      "status": "done",
+      "created_at": "2026-11-24T14:47:08.540Z",
+      "updated_at": "2026-11-24T19:29:31.859Z",
+      "target_version": "v1.6.1",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-061.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-24T15:08:04.663Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-061.plan.md",
+        "sha256": "67022c2a89b2",
+        "recorded_at": "2026-11-24T15:09:56.058Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:08.179Z",
+        "note": "独立审查 REJECT→修复→复审 APPROVE：release dry-run planned+paths、whoami 早停、notes 零写盘/--write-notes、归档白名单 7 项；0 未闭环 blocking。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:37.982Z",
+        "note": "发布链路一条命令可用，默认预演零副作用，认证缺失早停；归档白名单含 7 项。",
+        "evidence": "test/scripts/release.test.ts 10 passed；node scripts/release.mjs --dry-run --skip-build exit 0（market/archive-commit/tag planned+paths，零 git 动作）；npm test 2677 passed",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-062",
+      "title": "文档类变更写白名单 + 统一 GateOverride 审计",
+      "status": "done",
+      "created_at": "2026-11-24T14:47:24.559Z",
+      "updated_at": "2026-11-24T19:29:33.961Z",
+      "target_version": "v1.6.1",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-062.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-24T15:08:08.312Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-062.plan.md",
+        "sha256": "cbff5e73815c",
+        "recorded_at": "2026-11-24T15:09:56.058Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:10.144Z",
+        "note": "独立审查通过：docs 白名单两态（docs/根 md/fixtures 允许、src 拒）+ GateOverride 三入口统一审计（gate_overrides/by/reason/from/to/at），flow/req 平铺键一致。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:40.963Z",
+        "note": "文档类白名单与统一 GateOverride 审计均有两态/三入口取证。",
+        "evidence": "dsh/test/guard.js 193/193（A62.1 两态 5 条）；test/core/flow-manager.test.ts + test/commands/flow.test.ts 三入口审计用例通过；npm test 2677 passed",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-063",
+      "title": "需求审查相位 + req 命令 JSON 错误码",
+      "status": "done",
+      "created_at": "2026-11-24T14:47:27.864Z",
+      "updated_at": "2026-11-24T19:29:38.103Z",
+      "target_version": "v1.6.1",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-063.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-24T15:08:16.707Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-063.plan.md",
+        "sha256": "ec8884efc4be",
+        "recorded_at": "2026-11-24T15:09:56.058Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:12.818Z",
+        "note": "独立审查通过：review_pending 状态域、in_progress→done 直连移除、缺审验 exit 1 + 两码、三命令 --json、五码入册；done 门三态语义未改。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:44.690Z",
+        "note": "review_pending 与 JSON 错误码落地，done 门语义保持。",
+        "evidence": "test/core/req.test.ts + test/commands/req.test.ts 状态机矩阵/两码/--json 形态通过；test/cli/error-envelope.test.ts 20 行；出口 51/52 三处一致；npm test 2677 passed",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-064",
+      "title": "req plan 生成 + req body --from + lint fill 计划骨架",
+      "status": "done",
+      "created_at": "2026-11-24T14:47:37.121Z",
+      "updated_at": "2026-11-24T19:29:41.317Z",
+      "target_version": "v1.6.1",
+      "priority": "P1",
+      "body_path": ".openfeel/requirements/REQ-064.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-24T15:08:19.339Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-064.plan.md",
+        "sha256": "90c4fb7c7ca0",
+        "recorded_at": "2026-11-24T15:09:56.058Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:16.378Z",
+        "note": "独立审查通过：req plan 四节骨架+拒绝覆盖、body --from 分节导入、lint fill --fix-plan 只补缺失、--text 多行/CRLF/### 修复（adapter 临时文件），出口 #50。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:47.697Z",
+        "note": "req plan / body --from / lint fill --fix-plan / 多行修复均有取证。",
+        "evidence": "test/commands/req-plan.test.ts + test/core/plan/req-plan.test.ts + test/commands/req-body.test.ts 通过；dsh verify 136/136（多行 --text 经 adapter 临时文件）；npm test 2677 passed",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-065",
+      "title": "测试夹具工厂 + dashboard 流程债面板",
+      "status": "done",
+      "created_at": "2026-11-24T14:47:40.242Z",
+      "updated_at": "2026-11-24T19:29:48.552Z",
+      "target_version": "v1.6.1",
+      "priority": "P1",
+      "body_path": ".openfeel/requirements/REQ-065.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-24T15:08:21.358Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-065.plan.md",
+        "sha256": "cb5895b584e5",
+        "recorded_at": "2026-11-24T15:09:56.058Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:24.767Z",
+        "note": "独立审查通过：双栈夹具工厂（5 处消费，含 dsh verify）+ dashboard flowDebt 与 lint fill 同源同值（48/0），human+json 均有。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:54.364Z",
+        "note": "夹具工厂与 dashboard 流程债同源可复现。",
+        "evidence": "test/fixtures/factories.test.ts + test/commands/dashboard.test.ts 30 passed；真实仓 flowDebt.emptyBody=48=lint fill empty、missingPlan=0=0；npm test 2677 passed",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-066",
+      "title": "DSH 派发闭环（finish）+ 遵守率指标",
+      "status": "done",
+      "created_at": "2026-11-24T14:47:48.824Z",
+      "updated_at": "2026-11-24T19:29:53.364Z",
+      "target_version": "v1.6.1",
+      "priority": "P1",
+      "body_path": ".openfeel/requirements/REQ-066.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-24T15:08:25.779Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-066.plan.md",
+        "sha256": "123dda5122a4",
+        "recorded_at": "2026-11-24T15:09:56.058Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:28.768Z",
+        "note": "独立审查通过：dispatch finish 幂等、open/closedRatio/missingRoles、lint adherence 四指标（main_write_ratio 只计写决策、只读为 null），出口 #51。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:58.061Z",
+        "note": "派发闭环已实际使用（d-0002~d-0012 全部 finish），closedRatio 可从 0 到 1。",
+        "evidence": "test/core/adherence.test.ts + test/commands/lint.test.ts 通过；真实仓 lint adherence --json 输出四指标（main_write_ratio 只计写、sync_gap、violation_rate）；dsh verify 136/136",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-067",
+      "title": "guard wrapper 加固：脚本内容静态分类",
+      "status": "done",
+      "created_at": "2026-11-24T14:47:51.181Z",
+      "updated_at": "2026-11-24T19:29:55.251Z",
+      "target_version": "v1.6.1",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-067.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-24T15:08:28.195Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-067.plan.md",
+        "sha256": "cef7f26eec81",
+        "recorded_at": "2026-11-24T15:09:56.058Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:31.496Z",
+        "note": "独立审查通过：wrapper 四形态 + cmd 前置开关 + source/.、node scripts 读内容且不可判定 deny、cmd copy/move 目标语义；guard 193/193。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "code-reviewer-v17",
+        "at": "2026-11-24T18:10:59.649Z",
+        "note": "wrapper 绕过面收敛，仍存绕过面已如实登记。",
+        "evidence": "dsh/test/guard.js 193/193（A67 用例 20 条 + 2 check）；node test/preflight.js 10/10；node test/contract.js 54/54；npm test 2677 passed",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-068",
+      "title": "版本号纠正 1.7.0→1.6.1 + 发布改走 CI 自动发布并登记规则",
+      "status": "done",
+      "created_at": "2026-11-24T19:29:03.124Z",
+      "updated_at": "2026-11-24T20:07:06.684Z",
+      "target_version": "v1.6.1",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-068.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-24T19:48:20.449Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-068.plan.md",
+        "sha256": "a804896d4fff",
+        "recorded_at": "2026-11-24T19:48:32.868Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "review-v161",
+        "at": "2026-11-24T20:06:54.842Z",
+        "note": "独立审查 APPROVE_WITH_FIXES（0 blocking）：版本 1.6.1 全仓一致、stage id 例外 7 行、CI 语义与 ci.yml 一致、提示词 1194/1200、parity 5/5、规则登记齐全；package-lock 根版本已补 1.6.1。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v161",
+        "at": "2026-11-24T20:06:58.684Z",
+        "note": "版本纠正与 CI 发布规则、提示词版本分级全部落地并取证。",
+        "evidence": "npm test 107 文件/2690 passed；tsc 0；build ×2 幂等；dsh contract 54/verify 136/guard 193/integration 0；lint i18n 1339；parity 5/5；budget 6/6；release --dry-run exit 0；--version 1.6.1；grep 1.7.0(?!-stage-133) 零命中",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    }
+  ],
+  "counts": {
+    "stages": 1,
+    "reviews": 0,
+    "log": 8,
+    "requirements": 8
+  },
+  "schemaVersion": 1,
+  "archived_at": "2026-11-25T01:26:23.269Z"
+}

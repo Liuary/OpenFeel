@@ -32,11 +32,10 @@ describe('buildGlobalOpencodeFrameworkObj', () => {
     expect('instructions' in obj).toBe(false);
   });
 
-  it('应包含 vision/reviewer 两个模型默认键', () => {
-    expect(obj.agent).toEqual({
-      'openfeel-vision': { model: 'deepseek/deepseek-flash' },
-      'openfeel-reviewer': { model: 'deepseek/deepseek-flash' },
-    });
+  it('不包含 agent 键（v1.6.3 / REQ-070：框架不再注入任何 agent 默认模型）', () => {
+    expect('agent' in obj).toBe(false);
+    // 框架对象只保留 $schema / default_agent 两个键
+    expect(Object.keys(obj)).toEqual(['$schema', 'default_agent']);
   });
 
   it('不应包含 skills 与 experimental.agent_manager_tool', () => {

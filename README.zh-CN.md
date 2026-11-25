@@ -9,7 +9,7 @@
 OpenFeel 是一个 TypeScript CLI 工具，为 AI Agent 开发提供端到端的流程治理。
 
 > **当前适配 harness**：**opencode（默认）** ｜ **Claude Code**（`--tools claude`，v1.1.6 起） ｜ **DSH**（`--tools dsh`，v1.3.0 起）；框架面向多 harness 适配（其余适配器预留）。  
-> **模型选择**：`openfeel init` 不预设模型——Agent 使用平台/会话所选模型（DSH / Claude 等）；`config.yaml` 的 `models` 段可选、仅 Awareness 记录、不生效。
+> **模型选择**：`openfeel init` 不预设模型——Agent 使用平台/会话所选模型（DSH / Claude 等）；`config.yaml` 的 `models` 段可选、仅 Awareness 记录、不生效。v1.6.3 起 opencode agent 模板不再带 `model`，约束层与 agent 正文不再点名厂商模型，`openfeel model` 只剩 global / project 两层。
 
 ## 解决什么问题
 
@@ -146,7 +146,7 @@ openfeel setup --tools dsh    # 2. 部署到 DSH profile（默认全部；可 --
 | `openfeel req` | 需求流转（add / list / show / claim / release / set / link / advance / board / next） |
 | `openfeel setup` | 纯全局部署（全局 AGENTS.md + agent + skill + 平台适配器配置），不建项目 `.openfeel/`；`--tools <list>` 显式启用 Claude Code 适配器；**`--tools dsh`** 部署到 DSH profile（`--dsh-profile <name>` 窄化） |
 | `openfeel migrate` | 存量旧布局项目迁移（检测 / 备份 / 回滚） |
-| `openfeel model` | 三层级 agent 模型配置（set / get / list，`--scope`） |
+| `openfeel model` | 两层级 agent 模型配置（global / project；set / get / list，`--scope`） |
 | `openfeel stage` | 阶段状态（status / set / task / create［已弃用］） |
 | `openfeel project` | 项目管理（overview） |
 | `openfeel view` | 审查条目管理（list / accept；新增/修改/删除改用 `flow review add|update|remove`） |

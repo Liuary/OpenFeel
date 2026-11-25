@@ -26,7 +26,7 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 {
   "agent": {
     "openfeel-vision": {
-      "model": "deepseek/deepseek-flash"   // 模型名格式：provider/model-id 或 model-id
+      "model": "{provider}/{model-id}"   // 示例占位（非框架默认）；模型名格式：provider/model-id 或 model-id
     }
   }
 }
@@ -34,7 +34,7 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 
 > ⚠️ **配置修改后必须重启 opencode 才能生效**。运行中的会话使用启动时加载的配置。
 
-> 💡 **推荐**：可用 `openfeel model set/get/list --scope default|global|project` 一键读写三层级模型（工具默认 / 全局 / 当前项目），无需手工定位文件。
+> 💡 **推荐**：可用 `openfeel model set/get/list --scope global|project` 一键读写两层级模型（全局 / 当前项目），无需手工定位文件。
 
 ### Claude Code 适配器
 
@@ -53,15 +53,17 @@ Agent 模型配置在 **`opencode.jsonc`**（项目根目录）中：
 
 ### opencode 适配器
 
-`.opencode/agents/<name>.md` 的 frontmatter `model:` 字段**是生效的，且优先于** `opencode.jsonc` 的 `agent.<name>.model`（stage-40 REV-1606 实测）。opencode 模型解析优先级链：
+模型生效链（v1.6.3 / REQ-070）为**两层配置 + 平台默认**：
 
 ```
-项目 agents frontmatter > 全局 agents frontmatter > 项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > opencode 默认
+项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > 平台默认
 ```
 
-因此修改模型时以 frontmatter 为准（只改 jsonc 会被 frontmatter 遮蔽），建议两处同步保持一致：
-1. 修改 `.opencode/agents/<name>.md` 的 frontmatter `model:`（模板源 `src/core/templates-data/opencode/agents/` 同步）
-2. （可选，保持一致）同步修改 `opencode.jsonc` 的 `agent.<name>.model`
+- 框架**不再提供 default 层**，部署的 agent `.md` 也**不带 frontmatter `model` 默认**——frontmatter 不构成来源，无需改模板源。
+- 只有两处显式配置位，取第一个非空值；两层都未设置时走平台默认：
+  1. 项目根 `opencode.jsonc` 的 `agent.<name>.model`（`--scope project`）
+  2. `~/.config/opencode/opencode.jsonc` 的 `agent.<name>.model`（`--scope global`）
+- 推荐 `openfeel model set <agent> <provider>/<model-id> --scope global|project`（避免手工定位与改错层）。
 
 ### Claude Code 适配器
 
@@ -79,9 +81,9 @@ Claude Code 模型解析优先级链：项目 `.claude/agents` > 用户 `~/.clau
 
 ### opencode 适配器
 
-- 主会话（Feel）的主力模型（DeepSeek V4 Pro）不支持图片输入
+- 主会话（Feel）的能力边界取决于平台/会话所选模型，框架不预设
 - 遇到图片输入时主会话会自动委托 openfeel-vision Agent
-- openfeel-vision Agent 需要配置多模态模型（现用 `deepseek-flash`，备选 `qwen3-vl-plus`）
+- openfeel-vision Agent 须选支持图像输入的模型（由平台/会话或 global/project 配置决定；框架不预设）
 - 模型名不要随意添加前缀（如 `alibaba/`），以平台提示的可用名为准
 - **模型引用格式**：`{auth.json中的key}/{模型ID}`，不是 `provider.name` 也不是 `provider.id`
 - 读取 `~/.local/share/opencode/auth.json` 确认实际 provider key（常见：`alibaba-cn`、`deepseek`、`zhipuai`）
@@ -93,14 +95,14 @@ Claude Code 模型解析优先级链：项目 `.claude/agents` > 用户 `~/.clau
 
 ## 项目 Agent 模型概览
 
-| Agent | 模型类型 | 备注 |
+| Agent | 模型类型（能力建议） | 备注 |
 |-------|---------|------|
-| 主会话（Feel） | 推理模型 | DeepSeek V4 Pro — 不支持多模态 |
+| 主会话（Feel） | 推理模型 | —（由平台/会话决定） |
 | openfeel-planner | 推理模型 | — |
 | openfeel-schemer | 推理模型 | — |
-| openfeel-executor | 快速模型 (Flash) | — |
+| openfeel-executor | 快速模型（由平台提供） | — |
 | openfeel-reviewer | 推理模型（异族可选增强） | — |
 | openfeel-feel-tester | 推理模型 | — |
-| 事务官 | 快速模型 (Flash) | — |
-| openfeel-vision | 多模态模型 | 需配 deepseek-flash |
+| 事务官 | 快速模型（由平台提供） | — |
+| openfeel-vision | 多模态模型 | 须选支持图像输入的模型（由平台/会话或 global/project 决定） |
 | openfeel-archiver | 推理模型 | — |

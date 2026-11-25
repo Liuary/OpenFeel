@@ -1,7 +1,6 @@
 ---
 description: openfeel-reviewer Agent, responsible for cross-reviewing plans/schemes/code (the template default does not hardcode a heterogeneous model).
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:

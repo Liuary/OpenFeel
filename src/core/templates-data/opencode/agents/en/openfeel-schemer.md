@@ -87,5 +87,5 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-schemer is driven by a **flagship reasoning model** (such as DeepSeek V4 Pro), as scheme formulation requires fine-grained reasoning capability.
+openfeel-schemer is driven by a **flagship reasoning model** (e.g., the model you choose), as scheme formulation requires fine-grained reasoning capability.
 

@@ -1086,11 +1086,11 @@ export const help: I18nDomain = {
   'migrate.cleanGlobalCoreMd': { key: 'help.migrate.cleanGlobalCoreMd', zh: '删除已废弃的全局 core.md（opencode 适配器：~/.config/opencode/openfeel/core.md）', en: '' },
 
   // model（模型配置）
-  'model':               { key: 'help.model',               zh: '模型配置（三层级 set/get/list）', en: '' },
+  'model':               { key: 'help.model',               zh: '模型配置（两层级 set/get/list：global / project）', en: '' },
   'model.set':           { key: 'help.model.set',           zh: '设置指定 agent 的模型', en: '' },
-  'model.set.scope':     { key: 'help.model.set.scope',     zh: '层级（default|global|project，默认 project）', en: '' },
-  'model.set.build':     { key: 'help.model.set.build',     zh: 'default 层级写入后触发 npm run build 重生成部署产物', en: '' },
-  'model.set.force':     { key: 'help.model.set.force',     zh: '确认修改框架默认（非 TTY 下 --scope default 必须）', en: '' },
+  'model.set.scope':     { key: 'help.model.set.scope',     zh: '层级（global|project，默认 project；default 层已移除）', en: '' },
+  'model.set.build':     { key: 'help.model.set.build',     zh: '写入后触发 npm run build 重生成部署产物（可选）', en: '' },
+  'model.set.force':     { key: 'help.model.set.force',     zh: '保留兼容选项；default 层移除后已不改变行为', en: '' },
   'model.get':           { key: 'help.model.get',           zh: '读取指定 agent 的模型', en: '' },
   'model.get.scope':     { key: 'help.model.get.scope',     zh: '层级（缺省展示生效值）', en: '' },
   'model.get.json':      { key: 'help.model.get.json',      zh: '以 JSON 输出 { schemaVersion, scope, agent, provider, model, source }', en: '' },
@@ -1308,8 +1308,9 @@ export const model: I18nDomain = {
   'set.buildTriggered':{ key: 'model.set.buildTriggered',zh: '正在执行 npm run build ...', en: '' },
   'set.needConfirm':   { key: 'model.set.needConfirm',   zh: '修改框架默认将影响未来所有部署。非 TTY 下必须显式 --force 或 --build 确认，已拒绝执行', en: '' },
   'set.noSourceRepo':  { key: 'model.set.noSourceRepo',  zh: 'default 层级仅在 OpenFeel 源码仓可用（未找到 src/core/templates-data）。请用 --scope global/project', en: '' },
+  'set.defaultRemoved':{ key: 'model.set.defaultRemoved',zh: '✗ default 层已移除（v1.6.3 / REQ-070）：框架不再预设模型，请改用 --scope global（本机全局）或 --scope project（当前项目）', en: '' },
   'set.failed':        { key: 'model.set.failed',        zh: '✗ 写入失败：{message}', en: '' },
-  'set.example':       { key: 'model.set.example',       zh: '示例：openfeel model set openfeel-vision deepseek/deepseek-flash --scope global', en: '' },
+  'set.example':       { key: 'model.set.example',       zh: '示例：openfeel model set openfeel-vision sample-provider/sample-model --scope global', en: '' },
   // get
   'get.effective':     { key: 'model.get.effective',     zh: '生效模型：{value}', en: '' },
   'get.byScope':       { key: 'model.get.byScope',       zh: '  {scope}：{value}', en: '' },

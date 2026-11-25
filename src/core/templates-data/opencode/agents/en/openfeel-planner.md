@@ -65,7 +65,7 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the caller system design, openfeel-planner duties can be concurrently handled by caller, but exist as an independent agent definition to support flexible scheduling strategies.
+openfeel-planner is driven by a **reasoning model** (e.g., the model you choose). In the caller system design, openfeel-planner duties can be concurrently handled by caller, but exist as an independent agent definition to support flexible scheduling strategies.
 
 - **When caller concurrently handles openfeel-planner duties**: Only handle plans under the "small scale" criteria; do not invoke independent openfeel-planner
 - **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (multi-stage or cross-module architecture changes), ensuring reasoning depth and review independence

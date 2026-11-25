@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-25T01:58:26.526Z",
-    "revision": 2651,
+    "updated": "2026-11-25T15:43:04.215Z",
+    "revision": 2669,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -56,12 +56,12 @@
       "v1.6.1",
       "v1.7.0"
     ],
-    "last_req_seq": 69
+    "last_req_seq": 70
   },
   "pipeline": {
     "phase": "active",
     "current": {
-      "stage": "v1.6.2-stage-135",
+      "stage": "v1.6.3-stage-136",
       "op": ""
     },
     "retry": 0
@@ -69,8 +69,8 @@
   "stages": {
     "v1.6.2-stage-135": {
       "name": "v1.6.2-stage-135",
-      "phase": "archiving",
-      "status": "archiving",
+      "phase": "done",
+      "status": "done",
       "deps": [],
       "ops": {},
       "workflow_mode": "fast",
@@ -82,8 +82,8 @@
       ],
       "stats": {
         "start_time": "2026-11-25T01:41:11.560Z",
-        "end_time": "",
-        "duration_ms": 0
+        "end_time": "2026-11-25T01:58:42.038Z",
+        "duration_ms": 1050478
       },
       "verification": {
         "result": "pass",
@@ -94,194 +94,38 @@
         "evidence": "npm test 107 文件/2693 passed；tsc 0；build ×2 幂等；dsh 四测全绿；lint i18n 1339；release --dry-run exit 0；--version 1.6.2；默认模板模型痕迹 0 行；init 产物无 models",
         "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
+    },
+    "v1.6.3-stage-136": {
+      "name": "v1.6.3-stage-136",
+      "phase": "archiving",
+      "status": "archiving",
+      "deps": [],
+      "ops": {},
+      "workflow_mode": "fast",
+      "requirements": [
+        {
+          "id": "REQ-070",
+          "order": 0
+        }
+      ],
+      "stats": {
+        "start_time": "2026-11-25T15:03:08.265Z",
+        "end_time": "",
+        "duration_ms": 0
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v163",
+        "at": "2026-11-25T15:43:04.215Z",
+        "note": "REQ-070 完成：框架级默认模型彻底移除；model 只留 global/project；版本 1.6.3，push 后由 CI 发布。",
+        "evidence": "npm test 107 文件/2695 passed；tsc 0；build ×2 幂等；dsh 四测全绿；lint i18n 1340；release --dry-run exit 0；--version 1.6.3；厂商串与 opencode model 行均 0 命中",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
     }
   },
   "reviews": [],
   "log": [
-    {
-      "time": "2026-11-18T18:11:33.122Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-050",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:38.738Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-048",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:42.549Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-049",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:45.321Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-050",
-        "from": "scheduled",
-        "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:51.152Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-048",
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:51.152Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-048",
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer"
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:51.153Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-048",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:56.785Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-049",
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:56.785Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-049",
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer"
-      }
-    },
-    {
-      "time": "2026-11-18T18:11:56.785Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-049",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-18T18:12:00.895Z",
-      "agent": "cli",
-      "action": "requirement_review",
-      "detail": {
-        "id": "REQ-050",
-        "result": "pass",
-        "by": "openfeel-reviewer",
-        "independent": true
-      }
-    },
-    {
-      "time": "2026-11-18T18:12:00.895Z",
-      "agent": "cli",
-      "action": "requirement_verification",
-      "detail": {
-        "id": "REQ-050",
-        "result": "pass",
-        "kind": "test",
-        "by": "openfeel-reviewer"
-      }
-    },
-    {
-      "time": "2026-11-18T18:12:00.895Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-050",
-        "from": "in_progress",
-        "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-18T18:13:13.777Z",
-      "agent": "openfeel-executor",
-      "action": "status_projection_repair",
-      "detail": {
-        "stage": "v1.5.24-stage-12",
-        "from": "planned",
-        "to": "coding"
-      }
-    },
-    {
-      "time": "2026-11-19T17:46:24.988Z",
-      "agent": "cli",
-      "action": "requirement_add",
-      "detail": {
-        "id": "REQ-051",
-        "title": "收口链路补齐：complete 自动补状态链、AUTO 块写入健壮性、部署集成 flake 修复"
-      }
-    },
-    {
-      "time": "2026-11-19T17:46:29.542Z",
-      "agent": "cli",
-      "action": "requirement_claim",
-      "detail": {
-        "id": "REQ-051",
-        "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-19T17:46:31.576Z",
-      "agent": "cli",
-      "action": "requirement_link",
-      "detail": {
-        "stage": "v1.5.24-stage-12",
-        "requirementId": "REQ-051",
-        "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-19T17:47:58.415Z",
-      "agent": "cli",
-      "action": "requirement_status",
-      "detail": {
-        "id": "REQ-051",
-        "from": "draft",
-        "to": "scheduled"
-      }
-    },
     {
       "time": "2026-11-19T17:47:58.415Z",
       "agent": "cli",
@@ -2136,6 +1980,199 @@
         "kind": "test",
         "by": "review-v162"
       }
+    },
+    {
+      "time": "2026-11-25T01:58:42.033Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.2-stage-135",
+        "from": "archiving",
+        "to": "done",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T14:52:48.680Z",
+      "agent": "cli",
+      "action": "register_stage",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "deps": []
+      }
+    },
+    {
+      "time": "2026-11-25T14:53:00.879Z",
+      "agent": "cli",
+      "action": "requirement_add",
+      "detail": {
+        "id": "REQ-070",
+        "title": "彻底不预设模型：移除 opencode agent 默认 model 与框架注入"
+      }
+    },
+    {
+      "time": "2026-11-25T14:53:05.950Z",
+      "agent": "cli",
+      "action": "requirement_link",
+      "detail": {
+        "stage": "v1.6.3-stage-136",
+        "requirementId": "REQ-070",
+        "action": "link"
+      }
+    },
+    {
+      "time": "2026-11-25T15:03:08.259Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "plan_pending",
+        "to": "plan_review",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "time": "2026-11-25T15:08:39.850Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "plan_review",
+        "to": "plan_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:08:44.380Z",
+      "agent": "cli",
+      "action": "requirement_claim",
+      "detail": {
+        "id": "REQ-070",
+        "owner": "Liuary"
+      }
+    },
+    {
+      "time": "2026-11-25T15:08:50.881Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-070",
+        "from": "draft",
+        "to": "scheduled"
+      }
+    },
+    {
+      "time": "2026-11-25T15:08:57.433Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-070",
+        "from": "scheduled",
+        "to": "in_progress"
+      }
+    },
+    {
+      "time": "2026-11-25T15:09:00.043Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "plan_passed",
+        "to": "exec_running",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:29.776Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-070",
+        "from": "in_progress",
+        "to": "review_pending"
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:32.457Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "exec_running",
+        "to": "review_pending",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:38.946Z",
+      "agent": "cli",
+      "action": "requirement_review",
+      "detail": {
+        "id": "REQ-070",
+        "result": "pass",
+        "by": "review-v163",
+        "independent": true
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:41.595Z",
+      "agent": "cli",
+      "action": "requirement_verification",
+      "detail": {
+        "id": "REQ-070",
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v163"
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:46.195Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "review_pending",
+        "to": "review_passed",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:51.159Z",
+      "agent": "cli",
+      "action": "requirement_status",
+      "detail": {
+        "id": "REQ-070",
+        "from": "review_pending",
+        "to": "done"
+      }
+    },
+    {
+      "time": "2026-11-25T15:42:53.671Z",
+      "agent": "cli",
+      "action": "advance_stage_phase",
+      "detail": {
+        "stageName": "v1.6.3-stage-136",
+        "from": "review_passed",
+        "to": "archiving",
+        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
+        "resumed": false
+      }
+    },
+    {
+      "time": "2026-11-25T15:43:04.215Z",
+      "agent": "cli",
+      "action": "stage_verification",
+      "detail": {
+        "stage": "v1.6.3-stage-136",
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v163"
+      }
     }
   ],
   "requirements": [
@@ -2389,6 +2426,40 @@
         "at": "2026-11-25T01:58:08.911Z",
         "note": "默认不再预设模型，规则与文档同步，版本 1.6.2 待 push 由 CI 发布。",
         "evidence": "npm test 107 文件/2693 passed；tsc 0；build ×2 幂等；dsh contract 54/verify 136/guard 193/integration 0；lint i18n 1339；release --dry-run exit 0；--version 1.6.2；config/init 定向 69/69",
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      }
+    },
+    {
+      "id": "REQ-070",
+      "title": "彻底不预设模型：移除 opencode agent 默认 model 与框架注入",
+      "status": "done",
+      "created_at": "2026-11-25T14:53:00.879Z",
+      "updated_at": "2026-11-25T15:42:51.159Z",
+      "target_version": "v1.6.3",
+      "priority": "P0",
+      "body_path": ".openfeel/requirements/REQ-070.md",
+      "owner": "Liuary",
+      "claimed_at": "2026-11-25T15:08:44.380Z",
+      "plan": {
+        "path": ".openfeel/plan/reqs/REQ-070.plan.md",
+        "sha256": "831668c4ff17",
+        "recorded_at": "2026-11-25T15:09:00.033Z"
+      },
+      "review": {
+        "result": "pass",
+        "by": "review-v163",
+        "at": "2026-11-25T15:42:38.946Z",
+        "note": "独立审查 REJECT→修复后复核：厂商名残留清零（templates-data 与注入副本 0 命中）、10 份模板无 model、model 两层语义与测试 102/102 通过；0 未闭环 blocking。",
+        "independent": true,
+        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
+      },
+      "verification": {
+        "result": "pass",
+        "kind": "test",
+        "by": "review-v163",
+        "at": "2026-11-25T15:42:41.595Z",
+        "note": "框架级默认模型彻底移除；model 配置只保留 global/project 两层。",
+        "evidence": "npm test 107 文件/2695 passed；tsc 0；build ×2 幂等；dsh contract 54/verify 136/guard 193/integration 0；lint i18n 1340；release --dry-run exit 0；--version 1.6.3；模板与注入副本厂商串 0 命中、opencode 模板 model 行 0",
         "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
       }
     }

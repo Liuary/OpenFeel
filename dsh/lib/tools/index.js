@@ -1934,12 +1934,12 @@ export function createTools(context) {
   const feelModel = {
     name: 'feel_model',
     description:
-      'Agent 模型配置（三层级：default / global / project）。action=list 列出所有 agent 的模型；action=get 读取某 agent 的模型；action=set 设置某 agent 的模型。注意：这是 OpenFeel 的**模型意识**配置，不改变 DSH 实际使用的模型；用户主权键 model 在部署时永不被覆盖。',
+      'Agent 模型配置（两层级：global / project；v1.6.3 起 default 层已移除，action=set 传 scope=default 会被 CLI 拒绝）。action=list 列出所有 agent 的模型；action=get 读取某 agent 的模型；action=set 设置某 agent 的模型。注意：这是 OpenFeel 的**模型意识**配置，不改变 DSH 实际使用的模型；用户主权键 model 在部署时永不被覆盖。',
     parameters: {
       action: stringEnum(['list', 'get', 'set'], '操作。', { required: true }),
       agent: string('Agent ID（get/set 必需，如 openfeel-executor）。'),
-      model: string('模型 ID（set 必需，如 deepseek/deepseek-flash）。'),
-      scope: stringEnum(['default', 'global', 'project'], '层级，缺省 project。'),
+      model: string('模型 ID（set 必需，格式 provider/model-id，如 sample-provider/sample-model）。'),
+      scope: stringEnum(['global', 'project'], '层级，缺省 project。'),
       project: string('项目根目录。'),
     },
     output: { schema: envelopeSchema(), render: renderEnvelope },

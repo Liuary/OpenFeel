@@ -759,18 +759,21 @@ describe('updateProject', () => {
 
   // ── stage-94/T2.3：部署非破坏性（用户主权键 `model`）──
 
-  it('stage-94：opencode 侧 agent 已有 model 键 → 再部署保留用户值（框架默认不传播）', () => {
+  it('stage-94/v1.6.3：模板无 model 键 → 部署不写；用户手工插入的 model 行再部署保留', () => {
     updateProject(tmpDir);
     const p = join(globalAgentsDir(), 'openfeel-executor.md');
     const before = readFileSync(p, 'utf-8');
-    const tampered = before.replace(/^model:.*$/m, 'model: user/custom-model');
+    expect(before, '模板无 model → 部署不写').not.toMatch(/^model:/m);
+
+    // 模拟用户主权键：手工插入 model 行（位置与历史模板一致，便于幂等判定）
+    const tampered = before.replace(/^reasoning_effort:/m, 'model: user/custom-model\nreasoning_effort:');
     writeFileSync(p, tampered, 'utf-8');
 
     const result = updateProject(tmpDir);
 
     const after = readFileSync(p, 'utf-8');
     expect(after, '用户设置的 model 必须保留').toContain('model: user/custom-model');
-    expect(after, '框架模板值不得回写').not.toContain('model: deepseek/deepseek-flash');
+    expect(after, '框架不再写入任何 model 默认值').not.toContain('model: deepseek/deepseek-flash');
     // model 未被覆盖 ⇒ 内容无变化 ⇒ skipped（无多余写盘/备份）
     expect(result.skipped).toContain(p);
     expect(result.updated).not.toContain(p);
@@ -799,31 +802,32 @@ describe('updateProject', () => {
     expect(result.updated).toContain(p);
   });
 
-  it('stage-94：agent 删除 model 行 → 再部署补写模板值（键级「无则创建」）', () => {
+  it('stage-94/v1.6.3：模板无 model 键 → 再部署不补写（键级「无则创建」退化为「不创建」）', () => {
     updateProject(tmpDir);
     const p = join(globalAgentsDir(), 'openfeel-utility.md');
     const before = readFileSync(p, 'utf-8');
-    writeFileSync(p, before.replace(/^model:.*\n/m, ''), 'utf-8');
+    expect(before, '部署不带 model').not.toMatch(/^model:/m);
 
     const result = updateProject(tmpDir);
 
     const after = readFileSync(p, 'utf-8');
-    expect(after, '缺键 → 补模板值').toContain('model: deepseek/deepseek-flash');
-    expect(result.updated).toContain(p);
+    expect(after, '框架不补写 model').not.toMatch(/^model:/m);
+    expect(after).toBe(before);
+    expect(result.skipped).toContain(p);
   });
 
-  it('stage-94：agent 未改 model 的既有部署文件 → 保留现值（框架默认值变更不自动传播）', () => {
+  it('stage-94/v1.6.3：opencode agent 既有部署文件不含 model（框架默认值不传播）+ 幂等 skipped', () => {
     updateProject(tmpDir);
     const p = join(globalAgentsDir(), 'openfeel-vision.md');
     const before = readFileSync(p, 'utf-8');
+    expect(before, '部署不带 model').not.toMatch(/^model:/m);
+    expect(before, '框架不再注入 deepseek 默认').not.toContain('model: deepseek/deepseek-flash');
 
     const result = updateProject(tmpDir);
 
     const after = readFileSync(p, 'utf-8');
-    expect(after).toContain('model: deepseek/deepseek-flash');
-    // 无差异 → skipped（幂等）
-    expect(result.skipped).toContain(p);
     expect(after).toBe(before);
+    expect(result.skipped).toContain(p);
   });
 
   it('stage-94 阴性：白名单外键（description）用户篡改仍被框架覆盖', () => {
@@ -839,13 +843,17 @@ describe('updateProject', () => {
     expect(after).toMatch(/^description: openfeel-schemer/m);
   });
 
-  it('stage-94 阴性：部署路径保护不触及 `--scope default` 语义（model 行仅由模板写）', () => {
-    // 对照取证：deployGlobalAsset 与 `openfeel model set --scope default` 分属两调用点；
-    // 后者（model-config.ts:218）不传白名单，其覆盖语义由 test/core/model-config.test.ts 独立锁定。
+  it('stage-94/v1.6.3 阴性：default 层写入路径已移除，用户主权键保护只在部署白名单面成立', () => {
+    // 对照取证：default 层的框架源写入 helper（frontmatter / opencode-config.ts）已在 v1.6.3 / REQ-070 删除；
+    // 用户主权键（model）的「无则创建、有则不覆盖」只由部署路径 mergeFrontmatter(existing, incoming, USER_SOVEREIGN_KEYS) 承担。
     updateProject(tmpDir);
-    const opencodeCfg = readFileSync(join(process.cwd(), 'src', 'core', 'model-config.ts'), 'utf-8');
-    expect(opencodeCfg, 'model-config.ts 调用点不得传白名单').toContain('mergeFrontmatter(split.frontmatter, { model })');
-    expect(opencodeCfg, '不得引入 USER_SOVEREIGN_KEYS').not.toContain('USER_SOVEREIGN_KEYS');
+    const modelCfg = readFileSync(join(process.cwd(), 'src', 'core', 'model-config.ts'), 'utf-8');
+    expect(modelCfg, 'default 层 frontmatter 写 helper 已移除').not.toContain('writeFrontmatterModel');
+    expect(modelCfg, 'default 层 frontmatter 合并写路径已移除').not.toContain('mergeFrontmatter(split.frontmatter, { model })');
+    expect(modelCfg, '不得引入 USER_SOVEREIGN_KEYS').not.toContain('USER_SOVEREIGN_KEYS');
+    // 部署路径仍以白名单保护用户主权键
+    const upd = readFileSync(join(process.cwd(), 'src', 'core', 'update.ts'), 'utf-8');
+    expect(upd, '部署路径仍传用户主权键白名单').toContain('mergeFrontmatter(existingFm, incomingFm, USER_SOVEREIGN_KEYS)');
   });
 
   // ── stage-66/D-A：写入侧刷新 openfeel_version ──

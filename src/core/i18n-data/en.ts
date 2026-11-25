@@ -1040,11 +1040,11 @@ export const help: I18nDomain = {
   'migrate.cleanGlobalCoreMd': { key: 'help.migrate.cleanGlobalCoreMd', zh: '', en: 'Delete the deprecated global core.md (opencode adapter: ~/.config/opencode/openfeel/core.md)' },
 
   // model (model configuration)
-  'model':               { key: 'help.model',               zh: '', en: 'Model configuration (three scopes: set/get/list)' },
+  'model':               { key: 'help.model',               zh: '', en: 'Model configuration (two scopes: global / project; set/get/list)' },
   'model.set':           { key: 'help.model.set',           zh: '', en: 'Set the model of a given agent' },
-  'model.set.scope':     { key: 'help.model.set.scope',     zh: '', en: 'Scope (default|global|project, default project)' },
-  'model.set.build':     { key: 'help.model.set.build',     zh: '', en: 'Trigger npm run build after writing default scope to regenerate deploy artifacts' },
-  'model.set.force':     { key: 'help.model.set.force',     zh: '', en: 'Confirm modifying the framework default (required for --scope default in non-TTY)' },
+  'model.set.scope':     { key: 'help.model.set.scope',     zh: '', en: 'Scope (global|project, default project; the default layer was removed)' },
+  'model.set.build':     { key: 'help.model.set.build',     zh: '', en: 'Trigger npm run build after writing to regenerate deploy artifacts (optional)' },
+  'model.set.force':     { key: 'help.model.set.force',     zh: '', en: 'Kept for compatibility; no effect since the default layer was removed' },
   'model.get':           { key: 'help.model.get',           zh: '', en: 'Read the model of a given agent' },
   'model.get.scope':     { key: 'help.model.get.scope',     zh: '', en: 'Scope (omit to show effective value)' },
   'model.get.json':      { key: 'help.model.get.json',      zh: '', en: 'Output { schemaVersion, scope, agent, provider, model, source } as JSON' },
@@ -1261,8 +1261,9 @@ export const model: I18nDomain = {
   'set.buildTriggered':{ key: 'model.set.buildTriggered',zh: '', en: 'Running npm run build ...' },
   'set.needConfirm':   { key: 'model.set.needConfirm',   zh: '', en: 'Modifying the framework default affects all future deployments. In non-TTY you must explicitly pass --force or --build to confirm; execution refused' },
   'set.noSourceRepo':  { key: 'model.set.noSourceRepo',  zh: '', en: 'default scope is only available in the OpenFeel source repo (src/core/templates-data not found). Use --scope global/project' },
+  'set.defaultRemoved':{ key: 'model.set.defaultRemoved',zh: '', en: '✗ The default layer was removed (v1.6.3 / REQ-070): the framework no longer presets models; use --scope global (machine-wide) or --scope project (current project) instead' },
   'set.failed':        { key: 'model.set.failed',        zh: '', en: '✗ Write failed: {message}' },
-  'set.example':       { key: 'model.set.example',       zh: '', en: 'Example: openfeel model set openfeel-vision deepseek/deepseek-flash --scope global' },
+  'set.example':       { key: 'model.set.example',       zh: '', en: 'Example: openfeel model set openfeel-vision sample-provider/sample-model --scope global' },
   // get
   'get.effective':     { key: 'model.get.effective',     zh: '', en: 'Effective model: {value}' },
   'get.byScope':       { key: 'model.get.byScope',       zh: '', en: '  {scope}: {value}' },

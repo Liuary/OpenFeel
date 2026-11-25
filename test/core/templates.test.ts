@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { getCurrentTemplate } from '../../src/core/templates.js';
-import { listAgentIds, listClaudeAgentIds } from '../../src/core/template-loader.js';
+import { listAgentIds, listClaudeAgentIds, listOpencodeAgentIds, loadOpencodeAgentTemplate, loadTemplate, loadClaudeConstraintTemplate } from '../../src/core/template-loader.js';
 import { splitFrontmatter } from '../../src/core/managed-region.js';
 
 const ROOT = process.cwd();
@@ -148,7 +148,7 @@ describe('共享 skills 中立化（stage-70）', () => {
   const OPENCODE_STRINGS: Record<string, string[]> = {
     'openfeel-agent-model-check': ['~/.local/share/opencode/auth.json', 'opencode.jsonc', '必须重启 opencode'],
     'openfeel-model-config': ['opencode.jsonc', '必须重启 opencode',
-      'openfeel model set/get/list --scope default|global|project', '项目 agents frontmatter > 全局 agents frontmatter'],
+      'openfeel model set/get/list --scope global|project', '项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > 平台默认'],
     'openfeel-model-check': ['opencode.jsonc', '.opencode/agents/', 'OpenCode（当前适配器）'],
     'openfeel-cli-usage': ['重启 harness（opencode）', 'external_directory: "allow"', '.opencode/agent/<name>.md'],
   };
@@ -1180,6 +1180,104 @@ describe('stage-91：跨 harness 对称（关键节 + 裸主语 + 语义正控�
       // fast 快线
       expect(feel, `${h}/${lang} feel fast 快线`).toContain(soft ? 'Workflow Fast Line' : '工作流快线');
       expect(planner, `${h}/${lang} planner 计划审查单轮`).toContain(soft ? 'plan_review' : 'plan_review');
+    }
+  });
+});
+
+/**
+ * v1.6.3 / REQ-070：彻底不预设模型。
+ * A70.1 —— 10 份 opencode agent 模板（双语 × 5 agent）frontmatter 零 `model:` 行，注入副本同步零；
+ * A70.7 —— agents-md ×2 / claude constraint ×2 的视觉行改「由平台提供」，8 份 agent 正文括注去厂商名。
+ * 断言对象是「源 + 注入副本」两侧：只改源漏 `npm run build` 会在这里红。
+ */
+describe('v1.6.3：opencode agent 模板零 model + 厂商名中性化（REQ-070）', () => {
+  const LANGS = ['zh-CN', 'en'] as const;
+  const MODEL_AGENTS = ['openfeel-executor', 'openfeel-explorer', 'openfeel-reviewer', 'openfeel-utility', 'openfeel-vision'];
+  const BODY_AGENTS = ['openfeel-planner', 'openfeel-schemer', 'openfeel-archiver', 'openfeel-feel-tester'];
+
+  /** 递归收集 dir 下所有 .md（仅测试用） */
+  function walkMd(dir: string, out: string[] = []): string[] {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) {
+        walkMd(p, out);
+      } else if (e.name.endsWith('.md')) {
+        out.push(p);
+      }
+    }
+    return out;
+  }
+
+  it('A70.1 10 份 opencode agent 模板 frontmatter 零 model 行（源 + 注入副本）', () => {
+    for (const lang of LANGS) {
+      for (const id of MODEL_AGENTS) {
+        const src = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'opencode', 'agents', lang, `${id}.md`), 'utf-8');
+        expect(src, `${lang}/${id} 源模板残留 model`).not.toMatch(/^model:/m);
+      }
+      // 注入副本：全量 10 个 agent（含 feel / planner 等原本无 model 的）一律零 model
+      const ids = listOpencodeAgentIds(lang);
+      expect(ids.length, `${lang} opencode agent 数`).toBe(10);
+      for (const id of ids) {
+        expect(loadOpencodeAgentTemplate(lang, id), `${lang}/${id} 注入副本残留 model`).not.toMatch(/^model:/m);
+      }
+    }
+  });
+
+  it('A70.7 agents-md / claude constraint 视觉行改「由平台提供」（源 + 注入副本）', () => {
+    const cases: Array<[string, string, string]> = [
+      ['zh-CN', '多模态模型（由平台提供）', '多模态模型 (deepseek-flash)'],
+      ['en', 'Multimodal model (platform-provided)', 'Multimodal model (deepseek-flash)'],
+    ];
+    for (const [lang, want, old] of cases) {
+      const agentsMd = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'agents-md', `${lang}.md`), 'utf-8');
+      const constraint = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'claude', 'constraint', `${lang}.md`), 'utf-8');
+      for (const [name, c] of [['agents-md', agentsMd], ['claude-constraint', constraint]] as const) {
+        expect(c, `${lang}/${name} 缺新文案`).toContain(want);
+        expect(c, `${lang}/${name} 残留旧文案`).not.toContain(old);
+        expect(c, `${lang}/${name} 残留 DeepSeek V4 Pro`).not.toContain('DeepSeek V4 Pro');
+      }
+      // 注入副本同步
+      const injAgentsMd = loadTemplate(lang, 'agents-md');
+      const injConstraint = loadClaudeConstraintTemplate(lang);
+      expect(injAgentsMd, `${lang} agents-md 注入副本缺新文案`).toContain(want);
+      expect(injConstraint, `${lang} constraint 注入副本缺新文案`).toContain(want);
+      expect(injAgentsMd, `${lang} agents-md 注入副本残留旧文案`).not.toContain(old);
+      expect(injConstraint, `${lang} constraint 注入副本残留旧文案`).not.toContain(old);
+    }
+  });
+
+  it('A70.7 opencode agent 正文 8 处括注去厂商名（源 + 注入副本）', () => {
+    for (const lang of LANGS) {
+      for (const id of BODY_AGENTS) {
+        const want = lang === 'en' ? '(e.g., the model you choose)' : '（例如你选择的模型）';
+        const src = readFileSync(join(ROOT, 'src', 'core', 'templates-data', 'opencode', 'agents', lang, `${id}.md`), 'utf-8');
+        expect(src, `${lang}/${id} 源正文缺新括注`).toContain(want);
+        expect(src, `${lang}/${id} 源正文残留厂商名`).not.toContain('DeepSeek V4 Pro');
+        const inj = loadOpencodeAgentTemplate(lang, id);
+        expect(inj, `${lang}/${id} 注入副本缺新括注`).toContain(want);
+        expect(inj, `${lang}/${id} 注入副本残留厂商名`).not.toContain('DeepSeek V4 Pro');
+      }
+    }
+  });
+
+  it('A70.7 全量 templates-data 零旧厂商串（含 skills）；v1.6.3 加固：5 条串 × 源 + 注入副本', () => {
+    // v1.6.3 加固（REV-136 / A70.7 假阴性修复）：原断言只查 3 条串，漏掉 DeepSeek V4 Flash / deepseek-flash / glm-5
+    const BANNED = ['DeepSeek V4 Pro', 'DeepSeek V4 Flash', 'deepseek-v4-pro', 'deepseek-flash', 'glm-5'];
+    const files = walkMd(join(ROOT, 'src', 'core', 'templates-data'));
+    expect(files.length, '模板文件数').toBeGreaterThan(50);
+    for (const f of files) {
+      const c = readFileSync(f, 'utf-8');
+      for (const s of BANNED) {
+        expect(c, `${f} 残留厂商串 ${s}`).not.toContain(s);
+      }
+    }
+    // 注入副本同步：只改模板源漏 `npm run build` 会在这里红（两份副本承载全量模板正文）
+    for (const rel of [join('src', 'core', 'template-loader.ts'), join('src', 'core', 'update.ts')]) {
+      const injected = readFileSync(join(ROOT, rel), 'utf-8');
+      expect(injected.length, `${rel} 非空（防假绿）`).toBeGreaterThan(1000);
+      for (const s of BANNED) {
+        expect(injected, `${rel} 残留厂商串 ${s}`).not.toContain(s);
+      }
     }
   });
 });

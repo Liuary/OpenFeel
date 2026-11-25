@@ -1118,13 +1118,13 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
       model: 'deepseek-flash', source: 'project',
     });
 
-    // 未指定 scope → 生效值 + default 层来源（框架默认 frontmatter）
+    // 未指定 scope → 生效值 + 项目层来源（v1.6.3 / REQ-070：default 层已移除，链为 project > global > 平台默认）
     const eff = await doc(['model', 'get', 'openfeel-executor', '--json']);
     expect(eff.scope).toBeNull();
     expect(eff.agent).toBe('openfeel-executor');
     expect(eff.provider).toBe('deepseek');
     expect(eff.model).toBe('deepseek-flash');
-    expect(eff.source).toBe('default');
+    expect(eff.source).toBe('project');
     expect(process.exitCode).toBe(0);
   });
 

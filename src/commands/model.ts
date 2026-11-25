@@ -1,20 +1,21 @@
 /**
  * model 命令注册
- * openfeel model set <agent> <model> [--scope default|global|project] [--build] [--force]
- * openfeel model get <agent> [--scope default|global|project]
- * openfeel model list [--scope default|global|project]
+ * v1.6.3 / REQ-070：`openfeel model` 只剩 global / project 两层（default 层已移除）。
+ * openfeel model set <agent> <model> [--scope global|project] [--build] [--force]
+ * openfeel model get <agent> [--scope default|global|project]（default 恒为未显式设置）
+ * openfeel model list [--scope default|global|project]（default 恒为未显式设置）
  */
 import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import {
-  setAgentModel, getAgentModel, listAgentModels, isFrameworkSourceReady,
+  setAgentModel, getAgentModel, listAgentModels,
   type ModelScope, type GetModelResult,
 } from '../core/model-config.js';
 import { t, getCliLang } from '../core/i18n.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
 import { failRefusal } from './shared/errors.js';
 
-/** 合法 scope 集合 */
+/** 合法 scope 集合（v1.6.3 / REQ-070：set 只接受 global / project；get/list 的 default 为只读「未显式设置」） */
 const SCOPES: ModelScope[] = ['default', 'global', 'project'];
 
 /** 构建超时上限（10 分钟；从常量声明便于调整，T41） */
@@ -30,7 +31,7 @@ function parseScope(raw: string): ModelScope {
 
 /**
  * JSON 视图派生：provider/model 按生效值首个 `/` 切分，source 取生效层。
- * 指定 scope 且值非空 → source = 该 scope；未指定 → default > project > global 首个非空。
+ * 指定 scope 且值非空 → source = 该 scope；未指定 → project > global 首个非空（v1.6.3：default 层已移除）。
  * @param r get/list 的结果条目
  * @param scope 用户显式指定的层级（未指定为 undefined）
  */
@@ -55,7 +56,7 @@ function toJsonModel(
   if (scope) {
     source = value !== null ? scope : null;
   } else if (value !== null) {
-    // 与非指定 scope 的 effective 链同源：default > project > global
+    // 与非指定 scope 的 effective 链同源（v1.6.3 / REQ-070）：project > global（default 恒 null，保留判定以防回潮）
     source = r.byScope.default != null
       ? 'default'
       : r.byScope.project != null
@@ -84,7 +85,7 @@ function printByScope(r: GetModelResult, scope: ModelScope | undefined, lang: st
   if (r.inconsistent) {
     console.log(t('model.get.inconsistent', lang));
   }
-  // REV-1701：default 层有显式框架默认值、且 project/global 也显式设置时，框架默认会遮蔽用户设置，给出提示
+  // v1.6.3 / REQ-070：default 层已移除（`byScope.default` 恒 null），阴影提示分支保留但恒不触发
   if (r.byScope.default != null && r.effective === r.byScope.default
     && (r.byScope.project != null || r.byScope.global != null)) {
     console.log(t('model.get.shadowed', lang));
@@ -112,14 +113,9 @@ export function registerModelCommand(program: Command): void {
         process.exit(1);
       }
 
-      // REV-1504：非 TTY 下 --scope default 须 --force 或 --build 双重确认
-      if (scope === 'default' && !process.stdout.isTTY && !options.force && !options.build) {
-        console.error(t('model.set.needConfirm', lang));
-        process.exit(1);
-      }
-      // default 层仅源码仓有效，预判给出清晰提示（REV-1703：复用 core 层路径推导，不受 cwd 影响）
-      if (scope === 'default' && !isFrameworkSourceReady()) {
-        console.error(t('model.set.noSourceRepo', lang));
+      // v1.6.3 / REQ-070：default 层已移除——框架不再预设模型，写入面明确拒绝并提示改用两层
+      if (scope === 'default') {
+        console.error(t('model.set.defaultRemoved', lang));
         process.exit(1);
       }
 

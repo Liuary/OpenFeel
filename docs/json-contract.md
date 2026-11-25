@@ -172,7 +172,7 @@ typeof doc.error === 'string'  → legacy
 | 32 | `project overview` | `schemaVersion,project,dirs,stats,entries,techStack` | `project{name,version,description}`；`dirs{src{exists,cli,commands,core,utils},opencode{exists,agents,skills},openfeel{exists,kb,plan,codeReview,bugs}}`；`stats{tsSourceFiles,agentDefs,cliModules,kbEntries,planVersions}`；`entries{available,cli,pkg,build}`；`techStack{runtime,language,cliFramework,validation,config,fileMatch,test}` | `dirs.*` 子项目录不存在时 `null`（`bugs` 为 boolean）；`stats` 恒 number；`entries.available` 反映 `src` 存在性 |
 | 33 | `archive <stage>` | `schemaVersion,stage,archivePath,opsCount,reviewsCount,knowledgeExtracts,generated` | `archivePath` 绝对路径；`opsCount/reviewsCount` 为 number；`knowledgeExtracts:string[]`；`generated{releaseNotes,skills,requirements}` 三键（v1.5.8 追加，路径相对项目根） | 阶段不存在 / 未初始化 → envelope `ARCHIVE_FAILED`/refusal/1；目标归档已存在且未 `--force` → `ARCHIVE_EXISTS`/refusal/1（零写盘）；非法 `--skill` slug → `INVALID_ARGUMENT`/refusal/1（零写盘）；异常 → `INTERNAL_ERROR`/internal/3（人类保持 1）；`generated` 为**追加键**，既有 6 键键序/语义零改动 |
 | 34 | `plan stage list` | `schemaVersion,stages,count` | `stages[]{id,phase,status,deps,workflowMode,opsTotal,opsDone}`；`phase/status` 可空，`deps` 恒数组 | flow.json 注册阶段（声明序）；`workflowMode` 经 `resolveStageWorkflowMode`；空态/未初始化 `stages:[]` + `count:0` + exit 0；人类输出保持计划目录清单（不同视图） |
-| 35 | `model list` | `schemaVersion,scope,agents` | `agents[]{agent,provider,model,source}`；`scope` 回显 `--scope`（未指定 `null`） | `provider/model` 按生效值首个 `/` 切分（无 `/` → `provider:null`）；`source` = 生效层（default > project > global），无值 `null` |
+| 35 | `model list` | `schemaVersion,scope,agents` | `agents[]{agent,provider,model,source}`；`scope` 回显 `--scope`（未指定 `null`） | `provider/model` 按生效值首个 `/` 切分（无 `/` → `provider:null`）；`source` = 生效层（v1.6.3 起 `project > global > 平台默认`，`default` 层已移除），无值 `null` |
 | 36 | `model get` | `schemaVersion,scope,agent,provider,model,source` | 单 agent 六键；派生规则同 #35 | 非法 scope → `INVALID_ARGUMENT`/refusal/1；人类输出不变 |
 | 37 | `flow retry` | `schemaVersion,op,attempts,maxAttempts,exhausted,state` | `attempts = getRetryCount(op)`；`maxAttempts = op.max_attempts`；`exhausted = attempts >= maxAttempts` | 只读；未初始化 → `NO_INIT`；阶段不存在 → `STAGE_NOT_FOUND`；非法 opId / op 不存在 → `INVALID_ARGUMENT`（detail.reason） |
 | 38 | `lint i18n` | `schemaVersion,target,ok,issues` | `target:"i18n"`；`issues[]{path,message}`；`path ∈ {src/core/i18n-data/zh-CN.ts, src/core/i18n-data/en.ts}` | `ok = issues.length === 0`；`ok:false` 仍为成功文档 + exit 1；人类输出逐字不变 |
@@ -426,7 +426,7 @@ typeof doc.error === 'string'  → legacy
 
 ### §15.3 A3：`model list|get --json`
 
-- `scope` 回显 `--scope`，未指定 `null`；指定 scope 时取 `byScope[scope]`，否则取 `effective`（default > project > global）。
+- `scope` 回显 `--scope`，未指定 `null`；指定 scope 时取 `byScope[scope]`，否则取 `effective`（v1.6.3 起 `project > global > 平台默认`；`default` 层已移除，`byScope.default` 键保留但恒 `null`）。
 - `provider`/`model`：有效值首个 `/` 之前为 provider、之后为 model；无 `/` → `provider:null`、`model` 为原值；无有效值 → 三者均 `null`。
 - `source`：指定 scope 且值非空 → 该 scope；未指定 → 解析链首个非空层；无值 → `null`。
 

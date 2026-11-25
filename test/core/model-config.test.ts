@@ -1,9 +1,10 @@
 /**
- * model-config 单元测试（stage-40 / op-001）
- * 覆盖三层级读写 / 校验 / 幂等 / frontmatter 合并 / 生效值解析。
- * mock homedir 隔离全局路径与 auth.json（REV-1505）；default 层复制仓库源到 tmp（REV-1506）。
+ * model-config 单元测试（stage-40 / op-001；v1.6.3 / REQ-070 改为两层级）
+ * 覆盖两层（global / project）读写 / 校验 / 幂等 / 生效值解析。
+ * default 层已移除（v1.6.3 / REQ-070）：`get --scope default` 恒 null（未显式设置），`set --scope default` 明确拒绝。
+ * mock homedir 隔离全局路径与 auth.json（REV-1505）。
  *
- * 注：effective 解析断言采用「实测修正链」（REV-1606）：default(frontmatter) > project(jsonc) > global(jsonc)。
+ * 注：effective 解析断言（v1.6.3）：project(jsonc) > global(jsonc) > 平台默认（两者都空 → undefined）。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -18,38 +19,11 @@ import {
   setAgentModel, getAgentModel, listAgentModels, validateModel, readAuthProviders,
 } from '../../src/core/model-config.js';
 import {
-  readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, readdirSync, statSync, copyFileSync,
+  existsSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseJsonc } from '../../src/core/opencode-config.js';
-
-/** 递归复制目录（复制仓库 templates-data 到 tmp） */
-function copyDirSync(src: string, dest: string): void {
-  mkdirSync(dest, { recursive: true });
-  for (const name of readdirSync(src)) {
-    const s = join(src, name);
-    const d = join(dest, name);
-    if (statSync(s).isDirectory()) {
-      copyDirSync(s, d);
-    } else {
-      copyFileSync(s, d);
-    }
-  }
-}
-
-/** 建立隔离的框架源码根（含 src/core/templates-data/opencode/agents + src/core/opencode-config.ts） */
-function setupFrameworkTmp(): string {
-  const root = mkdtempSync(join(tmpdir(), 'model-config-fw-'));
-  const srcCore = resolve(process.cwd(), 'src', 'core');
-  copyDirSync(
-    join(srcCore, 'templates-data', 'opencode', 'agents'),
-    join(root, 'src', 'core', 'templates-data', 'opencode', 'agents'),
-  );
-  mkdirSync(join(root, 'src', 'core'), { recursive: true });
-  copyFileSync(join(srcCore, 'opencode-config.ts'), join(root, 'src', 'core', 'opencode-config.ts'));
-  return root;
-}
 
 /** 写 mock auth.json（含指定 provider） */
 function writeAuthJson(providers: string[]): void {
@@ -60,19 +34,14 @@ function writeAuthJson(providers: string[]): void {
 
 describe('model-config', () => {
   let homeDir: string;
-  let fwRoots: string[];
   let projectDirs: string[];
 
   beforeEach(() => {
     homeDir = mkdtempSync(join(tmpdir(), 'model-config-home-'));
     mockHome.dir = homeDir;
-    fwRoots = [];
     projectDirs = [];
   });
   afterEach(() => {
-    for (const d of fwRoots) {
-      rmSync(d, { recursive: true, force: true });
-    }
     for (const d of projectDirs) {
       rmSync(d, { recursive: true, force: true });
     }
@@ -108,62 +77,40 @@ describe('model-config', () => {
     });
   });
 
-  describe('default 层', () => {
-    it('executor（仅 frontmatter）写双语 frontmatter，保留其他字段与正文', () => {
-      const fw = setupFrameworkTmp();
-      fwRoots.push(fw);
-      const r = setAgentModel('default', 'executor', 'deepseek/new-model', { frameworkRoot: fw });
-      expect(r.needsBuild).toBe(true);
-      expect(r.changedFiles).toHaveLength(2);
-      for (const lang of ['zh-CN', 'en']) {
-        const p = join(fw, 'src', 'core', 'templates-data', 'opencode', 'agents', lang, 'openfeel-executor.md');
-        const content = readFileSync(p, 'utf-8');
-        expect(content).toContain('model: deepseek/new-model');
-        // 其他字段与正文保留
-        expect(content).toContain('mode: subagent');
-        expect(content).toContain('description:');
-      }
-      const zh = readFileSync(join(fw, 'src', 'core', 'templates-data', 'opencode', 'agents', 'zh-CN', 'openfeel-executor.md'), 'utf-8');
-      expect(zh).toContain('你是 openfeel-executor');
+  describe('default 层已移除（v1.6.3 / REQ-070）', () => {
+    it('set --scope default 明确拒绝（提示 global / project，零写盘）', () => {
+      writeAuthJson(['deepseek']);
+      const proj = mkdtempSync(join(tmpdir(), 'model-config-proj-'));
+      projectDirs.push(proj);
+      expect(() => setAgentModel('default', 'openfeel-executor', 'deepseek/any', { projectPath: proj }))
+        .toThrow(/default 层已移除/);
+      expect(() => setAgentModel('default', 'openfeel-executor', 'deepseek/any', { projectPath: proj }))
+        .toThrow(/--scope global.*--scope project/);
+      // 零写盘：不创建项目 opencode.jsonc
+      expect(existsSync(join(proj, 'opencode.jsonc'))).toBe(false);
     });
 
-    it('openfeel-vision（frontmatter + opencode-config.ts）改 3 处且结构化定位不误伤 reviewer', () => {
-      const fw = setupFrameworkTmp();
-      fwRoots.push(fw);
-      const r = setAgentModel('default', 'openfeel-vision', 'deepseek/deepseek-flash', { frameworkRoot: fw });
-      expect(r.changedFiles).toHaveLength(3);
-      const cfg = readFileSync(join(fw, 'src', 'core', 'opencode-config.ts'), 'utf-8');
-      expect(cfg).toContain("'openfeel-vision': { model: 'deepseek/deepseek-flash' }");
-      // reviewer 条目不变
-      expect(cfg).toContain("'openfeel-reviewer': { model: 'deepseek/deepseek-flash' }");
+    it('get --scope default 恒 null（未显式设置；不再读模板 frontmatter / 框架注入段）', () => {
+      writeAuthJson(['deepseek']);
+      const proj = mkdtempSync(join(tmpdir(), 'model-config-proj-'));
+      projectDirs.push(proj);
+      writeFileSync(join(proj, 'opencode.jsonc'), JSON.stringify({
+        agent: { 'openfeel-executor': { model: 'deepseek/proj-v' } },
+      }, null, 2) + '\n', 'utf-8');
+      const r = getAgentModel('executor', 'default', { projectPath: proj });
+      expect(r.byScope.default).toBeNull();
+      expect(r.effective).toBeUndefined();
+      expect(r.inconsistent).toBe(false);
     });
 
-    it('stage-94/R-94-2：`--scope default` 覆盖语义回归——已存在 model 键仍被改写为入参值', () => {
-      const fw = setupFrameworkTmp();
-      fwRoots.push(fw);
-      // reviewer 模板 frontmatter 原本已有 model 键；`--scope default` 应「覆盖」而非「保留」
-      const r = setAgentModel('default', 'reviewer', 'user/other-provider-model', { frameworkRoot: fw });
-      expect(r.changedFiles).toHaveLength(3);
-      const zh = readFileSync(join(fw, 'src', 'core', 'templates-data', 'opencode', 'agents', 'zh-CN', 'openfeel-reviewer.md'), 'utf-8');
-      expect(zh, '--scope default 覆盖语义不受部署路径保护影响').toContain('model: user/other-provider-model');
-      const cfg = readFileSync(join(fw, 'src', 'core', 'opencode-config.ts'), 'utf-8');
-      expect(cfg).toContain("'openfeel-reviewer': { model: 'user/other-provider-model' }");
-    });
-
-    it('无显式 model 的 agent（feel）抛错，不产生文件变更', () => {
-      const fw = setupFrameworkTmp();
-      fwRoots.push(fw);
-      expect(() => setAgentModel('default', 'feel', 'x/y', { frameworkRoot: fw }))
-        .toThrow(/无框架默认 model/);
-    });
-
-    it('不传 frameworkRoot 时 default 层路径推导正确（真实项目根，REV-1601）', () => {
-      writeAuthJson(['deepseek', 'zhipuai', 'alibaba-cn']);
-      // 只读验证：不传 frameworkRoot，依赖 resolveFrameworkRoot 从 MODULE_DIR 上溯两级定位真实仓库源。
-      // 旧实现只上溯一级 → 拼出 src/src/core/... 双重 src，existsSync 失败 → default 读不到为 null。
-      const r = getAgentModel('executor', 'default', {});
-      // 路径正确 → 读到真实仓库源 frontmatter 的显式 model（executor 属「有显式 model 的 4 agent」）
-      expect(r.byScope.default).toBeTruthy();
+    it('byScope 保留 default 键（JSON 契约稳定）且 inconsistent 恒 false', () => {
+      writeAuthJson(['deepseek']);
+      const proj = mkdtempSync(join(tmpdir(), 'model-config-proj-'));
+      projectDirs.push(proj);
+      const r = getAgentModel('openfeel-vision', undefined, { projectPath: proj });
+      expect(Object.keys(r.byScope)).toEqual(['project', 'global', 'default']);
+      expect(r.byScope.default).toBeNull();
+      expect(r.inconsistent).toBe(false);
     });
   });
 
@@ -189,54 +136,35 @@ describe('model-config', () => {
   });
 
   describe('get / list / 生效值解析', () => {
-    it('无 scope 时 effective 按 default > project > global 取首个非空（实测修正链 REV-1606）', () => {
+    it('无 scope 时 effective 按 project > global 取首个非空（v1.6.3 两层链）', () => {
       writeAuthJson(['deepseek', 'zhipuai', 'alibaba-cn']);
       const proj = mkdtempSync(join(tmpdir(), 'model-config-proj-'));
       projectDirs.push(proj);
-      const fw = setupFrameworkTmp();
-      fwRoots.push(fw);
-      // executor 有框架默认 frontmatter model → default 最高，遮蔽 project/global jsonc（opencode 实测语义）
+      // 两 scope 都空 → 平台默认（undefined）
+      expect(getAgentModel('executor', undefined, { projectPath: proj }).effective).toBeUndefined();
+      // 仅 global → global 生效
       setAgentModel('global', 'executor', 'deepseek/global-v', {});
+      expect(getAgentModel('executor', undefined, { projectPath: proj }).effective).toBe('deepseek/global-v');
+      // project 显式 → project 优先
       setAgentModel('project', 'executor', 'deepseek/proj-v', { projectPath: proj });
-      const rex = getAgentModel('executor', undefined, { projectPath: proj, frameworkRoot: fw });
-      expect(rex.effective).toBe('deepseek/deepseek-flash'); // default 覆盖 project/global
-      expect(rex.byScope.project).toBe('deepseek/proj-v');
-      expect(rex.byScope.global).toBe('deepseek/global-v');
-
-      // feel 无框架默认 model → 由 project/global jsonc 补位，project > global
-      expect(getAgentModel('feel', undefined, { projectPath: proj, frameworkRoot: fw }).effective).toBeUndefined();
-      setAgentModel('global', 'feel', 'deepseek/global-f', {});
-      expect(getAgentModel('feel', undefined, { projectPath: proj, frameworkRoot: fw }).effective).toBe('deepseek/global-f');
-      setAgentModel('project', 'feel', 'deepseek/proj-f', { projectPath: proj });
-      expect(getAgentModel('feel', undefined, { projectPath: proj, frameworkRoot: fw }).effective).toBe('deepseek/proj-f');
+      const r = getAgentModel('executor', undefined, { projectPath: proj });
+      expect(r.effective).toBe('deepseek/proj-v');
+      expect(r.byScope.project).toBe('deepseek/proj-v');
+      expect(r.byScope.global).toBe('deepseek/global-v');
+      expect(r.byScope.default).toBeNull();
     });
 
-    it('default 层多源不一致时置 inconsistent 且 effective 取 frontmatter 值（REV-1606 修正）', () => {
-      writeAuthJson(['alibaba-cn', 'zhipuai']);
-      const fw = setupFrameworkTmp();
-      fwRoots.push(fw);
-      // frontmatter 改 vision 为 A，opencode-config.ts 保持 B → 不一致
-      setAgentModel('default', 'openfeel-vision', 'alibaba-cn/fm-only', { frameworkRoot: fw });
-      // 恢复 opencode-config.ts 为原值以制造不一致：重新复制原 opencode-config.ts
-      copyFileSync(resolve(process.cwd(), 'src', 'core', 'opencode-config.ts'), join(fw, 'src', 'core', 'opencode-config.ts'));
-      const r = getAgentModel('openfeel-vision', 'default', { frameworkRoot: fw });
-      expect(r.inconsistent).toBe(true);
-      // 实测修正链：agent markdown frontmatter 覆盖 opencode.jsonc（opencode-config.ts 侧），故取 frontmatter 值
-      expect(r.effective).toBe('alibaba-cn/fm-only');
-    });
-
-    it('listAgentModels 返回 10 条，每条 byScope 完整（REV-1507）', () => {
+    it('listAgentModels 返回 10 条，每条 byScope 完整（REV-1507 + v1.6.3 三键保留）', () => {
       writeAuthJson(['deepseek', 'zhipuai', 'alibaba-cn']);
       const proj = mkdtempSync(join(tmpdir(), 'model-config-proj-'));
       projectDirs.push(proj);
-      const fw = setupFrameworkTmp();
-      fwRoots.push(fw);
-      const list = listAgentModels(undefined, { projectPath: proj, frameworkRoot: fw });
+      const list = listAgentModels(undefined, { projectPath: proj });
       expect(list).toHaveLength(10);
       for (const item of list) {
         expect(item.byScope).toHaveProperty('project');
         expect(item.byScope).toHaveProperty('global');
         expect(item.byScope).toHaveProperty('default');
+        expect(item.byScope.default).toBeNull();
       }
     });
 
@@ -251,14 +179,12 @@ describe('model-config', () => {
   });
 
   describe('幂等', () => {
-    it('重复 set 同一值不漂移（frontmatter 不产生多余 model 行、jsonc 结构不变）', () => {
+    it('重复 set global 同一值不漂移（jsonc 结构不变）', () => {
       writeAuthJson(['deepseek']);
-      const fw = setupFrameworkTmp();
-      fwRoots.push(fw);
-      const p = join(fw, 'src', 'core', 'templates-data', 'opencode', 'agents', 'zh-CN', 'openfeel-executor.md');
-      setAgentModel('default', 'executor', 'deepseek/x', { frameworkRoot: fw });
+      setAgentModel('global', 'executor', 'deepseek/x', {});
+      const p = join(mockHome.dir, '.config', 'opencode', 'opencode.jsonc');
       const first = readFileSync(p, 'utf-8');
-      setAgentModel('default', 'executor', 'deepseek/x', { frameworkRoot: fw });
+      setAgentModel('global', 'executor', 'deepseek/x', {});
       expect(readFileSync(p, 'utf-8')).toBe(first);
     });
 

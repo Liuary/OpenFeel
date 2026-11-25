@@ -83,5 +83,5 @@ permission:
 
 ## 模型选择
 
-openfeel-schemer 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，方案制定需要细粒度推理能力。
+openfeel-schemer 由**主力推理模型**（例如你选择的模型）驱动，方案制定需要细粒度推理能力。
 

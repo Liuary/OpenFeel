@@ -1,7 +1,6 @@
 ---
 description: openfeel-explorer Agent (read-only), responsible for code / reference / data exploration and issue locating, outputting structured conclusions with no side effects.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#FFB020"
 permission:

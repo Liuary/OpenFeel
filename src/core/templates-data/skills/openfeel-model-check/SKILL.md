@@ -31,7 +31,7 @@ description: 主会话（Feel）自检时检查所有 Agent 的模型配置状�
 | 优先级 | 来源 | 识别方式 |
 |:--:|------|----------|
 | 1 | YAML frontmatter `model` 字段 | 如 `model: fast`，直接提取 |
-| 2 | 正文「模型选择」章节 | 搜索关键词：`主力推理模型` / `推理模型` / `快速模型` / `异种推理模型` |
+| 2 | 正文「模型选择」章节 | 搜索关键词：`推理模型` / `快速模型` / `多模态模型` |
 | 3 | frontmatter `description` 字段 | 搜索上述关键词 |
 | 4 | 角色回退表 | 按 Agent 文件名回退（见下方角色映射表） |
 
@@ -42,7 +42,7 @@ description: 主会话（Feel）自检时检查所有 Agent 的模型配置状�
 | `feel.md` | `primary_reasoning`（主力推理） |
 | `openfeel-planner.md` | `reasoning`（推理） |
 | `openfeel-executor.md` | `fast`（快速） |
-| `openfeel-reviewer.md` | `cross_model`（异种推理） |
+| `openfeel-reviewer.md` | `cross_model`（跨模型） |
 | `openfeel-archiver.md` | `reasoning`（推理） |
 | `openfeel-schemer.md` | `reasoning`（推理） |
 | `openfeel-feel-tester.md` | `reasoning`（推理） |
@@ -53,14 +53,14 @@ description: 主会话（Feel）自检时检查所有 Agent 的模型配置状�
 
 读取 `.openfeel/config.yaml`，检查 `models` 节是否存在。
 
-**已配置状态**：
+**已配置状态**（示例值，非框架默认——OpenFeel 不预设模型，下列名称仅说明结构）：
 ```yaml
 models:
   default:           # 兜底配置（必填）
-    provider: deepseek
-    model_name: deepseek-v4-pro
-    base_url: https://api.deepseek.com
-    api_key_env: DEEPSEEK_API_KEY
+    provider: sample-provider
+    model_name: sample-model-id
+    base_url: https://example.com/v1
+    api_key_env: SAMPLE_API_KEY
   agents:            # Agent 级覆盖（可选）
     openfeel-reviewer:
       provider: anthropic
@@ -68,8 +68,8 @@ models:
       base_url: https://api.anthropic.com
       api_key_env: ANTHROPIC_API_KEY
     openfeel-executor:
-      provider: deepseek
-      model_name: deepseek-flash
+      provider: sample-provider
+      model_name: sample-model-id
   roles:             # 角色级覆盖（可选）
     cross_model:
       provider: openai
@@ -101,9 +101,9 @@ models:
 ```markdown
 | Agent | 角色要求 | 实际模型 | 配置来源 | 状态 |
 |-------|----------|----------|----------|:--:|
-| 主会话 | 主力推理 | deepseek-v4-pro | default | ⚠️ |
-| openfeel-reviewer | **异种推理** | deepseek-v4-pro | default | ❌ 与主力相同！ |
-| openfeel-executor | 快速 | deepseek-v4-pro | default | ⚠️ 未使用快速模型 |
+| 主会话 | 由用户/平台决定 | — | 未预设 | — |
+| openfeel-reviewer | 由用户/平台决定 | — | 未预设 | — |
+| openfeel-executor | 由用户/平台决定 | — | 未预设 | — |
 ```
 
 ### 5. 输出检查报告

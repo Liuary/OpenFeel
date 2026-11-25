@@ -67,5 +67,5 @@ Priority: **high** = unusable feature / data loss or corruption / pipeline block
 
 ## Model Selection
 
-openfeel-feel-tester is driven by a **reasoning model** (such as DeepSeek V4 Pro), as test analysis requires deep reasoning capability.
+openfeel-feel-tester is driven by a **reasoning model** (e.g., the model you choose), as test analysis requires deep reasoning capability.
 

@@ -88,4 +88,4 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-archiver is driven by a **reasoning model** (such as DeepSeek V4 Pro), responsible for understanding context and extracting valuable experience.
+openfeel-archiver is driven by a **reasoning model** (e.g., the model you choose), responsible for understanding context and extracting valuable experience.

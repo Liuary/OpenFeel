@@ -7,7 +7,7 @@
 OpenFeel is a TypeScript CLI tool for end-to-end process governance in AI Agent development. Core philosophy: **"Slim prompts, process in tools"** — agents understand workflows by reading `flow.json` state, not long text documents.
 
 > **Current adapter harness**: **opencode (default)** ｜ **Claude Code** (`--tools claude`, since v1.1.6) ｜ **DSH** (`--tools dsh`, since v1.3.0); the framework targets multi-harness support (other adapters reserved).  
-> **Model selection**: `openfeel init` presets no model - agents use the model chosen by the platform/session (DSH / Claude, etc.); the optional `models` section in `config.yaml` is Awareness only and not applied.
+> **Model selection**: `openfeel init` presets no model - agents use the model chosen by the platform/session (DSH / Claude, etc.); the optional `models` section in `config.yaml` is Awareness only and not applied. Since v1.6.3 the opencode agent templates no longer carry a `model` key, the constraint layer and agent bodies no longer name a vendor model, and `openfeel model` keeps only the global / project scopes.
 >
 > ⚠️ The `openfeel <cmd>` examples below are the **installed-package usage**; when developing/running **inside this source repository**, use `node bin/openfeel.js <cmd>` instead (the global `openfeel` may lag behind this repository — it is not synced with the source here).
 
@@ -146,7 +146,7 @@ Upgrade/migration notes: see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) 
 | `openfeel req` | Requirement flow (add / list / show / claim / release / set / link / advance / board / next) |
 | `openfeel setup` | Global-only deployment (global AGENTS.md + agents + skills + adapter config); no project `.openfeel/`; `--tools <list>` explicitly enables the Claude Code adapter; **`--tools dsh`** deploys into DSH profiles (`--dsh-profile <name>` to narrow) |
 | `openfeel migrate` | Migrate legacy-layout projects (detect / backup / rollback) |
-| `openfeel model` | Three-tier agent model config (set / get / list, `--scope`) |
+| `openfeel model` | Two-tier agent model config (global / project; set / get / list, `--scope`) |
 | `openfeel stage` | Work stage status (status / set / task / create [deprecated]) |
 | `openfeel project` | Project management (overview) |
 | `openfeel view` | Review item management (list / accept; add/update/remove via `flow review add|update|remove`) |

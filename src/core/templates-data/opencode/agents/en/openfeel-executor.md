@@ -1,7 +1,6 @@
 ---
 description: openfeel-executor Agent, fast model, implements code according to operation schemes and self-tests.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#4CAF50"
 permission:
@@ -92,7 +91,7 @@ Extract the declared paths from the scheme's `## Output Files` -> scan the files
 
 ## Model Selection and Constraints
 
-openfeel-executor is driven by a **fast model** (such as DeepSeek V4 Flash), prioritizing speed for coding execution.
+openfeel-executor is driven by a **fast model** (e.g., the fast model you choose), prioritizing speed for coding execution.
 
 - Operations beyond the scheme scope must first be confirmed with caller; do not decide on your own.
 - If self-test fails 3 consecutive times, fall back and wait for caller to re-schedule openfeel-schemer.

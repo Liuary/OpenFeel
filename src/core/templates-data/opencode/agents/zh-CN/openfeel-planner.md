@@ -59,7 +59,7 @@ permission:
 
 ## 模型选择
 
-openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 调用方 体系设计中，openfeel-planner 职责可由 调用方 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
+openfeel-planner 由**推理模型**（例如你选择的模型）驱动。在 调用方 体系设计中，openfeel-planner 职责可由 调用方 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
 
 - **调用方 兼任 openfeel-planner 时**：仅在「小规模」判定条件下自行处理计划，不唤起独立 openfeel-planner
 - **独立 openfeel-planner 调用时**：仅在「大规模」场景（多阶段或跨模块架构变更）唤起，确保推理深度和审查独立性

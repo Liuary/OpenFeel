@@ -294,15 +294,15 @@ Read-only scan producing a fixed box/section report: banner box (`╔═×42╗`
 
 | Command | Positional | Flags | JSON |
 |---|---|---|---|
-| `model set` | `<agent> <model>` | `--scope <default\|global\|project>` (default `project`); `--build`; `--force` | — |
-| `model get` | `<agent>` | `--scope <default\|global\|project>` | — |
-| `model list` | — | `--scope <default\|global\|project>` | — |
+| `model set` | `<agent> <model>` | `--scope <global\|project>` (default `project`); `--build`; `--force`（兼容保留，v1.6.3 起无效果） | — |
+| `model get` | `<agent>` | `--scope <global\|project>`（`default` 只读：恒「未显式设置」） | — |
+| `model list` | — | `--scope <global\|project>`（同上） | — |
 
 - Invalid scope → `model.error.scope`, exit 1.
-- `--scope default` guards: non-TTY without `--force` and without `--build` → `model.set.needConfirm`, exit 1; framework source not present (no `src/core/templates-data/opencode/agents`) → `model.set.noSourceRepo`, exit 1.
+- **`model set --scope default` → already removed (v1.6.3 / REQ-070)**: prints `model.set.defaultRemoved` and exits 1 (use `--scope global` / `--scope project`). The old non-TTY `--force` / `--build` confirmation and the "framework source not present" guard are gone.
 - `model set` prints `model.set.ok {agentId, model, scope}`, then each changed file `  <path>`, optional `model.set.warning`, then `needsBuild` hint or, with `--build`, `model.set.buildTriggered` and `execSync('npm run build', {stdio:'inherit', timeout: 600000})`; build timeout (ETIMEDOUT/SIGTERM) → `Error: build timeout (10min)` with `process.exitCode = 1`, other build failures rethrow.
-- Resolution chain for `effective`: `default > project > global`. `model get` prints `Effective: …` + all three scopes (`(none)` for unset), `inconsistent` notice when the default layer has two disagreeing sources, and `model.get.shadowed` when the default layer masks explicit project/global values. `model list` prints `model.list.title` then `  <agentId>: <value|(none)>`.
-- Writes: `default` → framework source templates + `src/core/opencode-config.ts` (requires rebuild); `global` → `~/.config/opencode/opencode.jsonc` (+ global agent/skill files); `project` → project `.opencode/` + `opencode.jsonc`.
+- Resolution chain for `effective`: `project > global > platform default` (v1.6.3 / REQ-070: the `default` layer is removed). `model get` prints `Effective: …` + all three scope keys (`(none)` for unset; `default` is always `(none)`), the `inconsistent` notice never fires (field kept for JSON stability), and the `model.get.shadowed` branch is retained but unreachable. `model list` prints `model.list.title` then `  <agentId>: <value|(none)>`.
+- Writes: `global` → `~/.config/opencode/opencode.jsonc` (+ global agent/skill files); `project` → project `.opencode/` + `opencode.jsonc`. The framework `default` write path (templates + `src/core/opencode-config.ts`) is removed in v1.6.3.
 
 ### 3.12 `view` — review entries (`src/commands/view.ts`) — 2 leaves
 

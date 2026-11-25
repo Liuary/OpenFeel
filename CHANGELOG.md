@@ -1,3 +1,21 @@
+## [1.6.3] - 2026-11-25
+
+> 彻底不预设模型：opencode agent 模板去 `model`、框架去 agent 模型注入、`default` 层移除（两层语义）、模板正文去厂商名。
+> 需求 REQ-070。
+
+### Changed
+- [stage-136] **opencode agent 模板去 `model`（REQ-070 / A70.1）**：`templates-data/opencode/agents/{zh-CN,en}/openfeel-{executor,explorer,reviewer,utility,vision}.md` 删除 frontmatter `model: deepseek/deepseek-flash`（10 份）；注入副本（`template-loader.ts`）与部署副本同步零 `^model:`。
+- [stage-136] **框架不再注入 agent 模型（A70.2）**：`buildGlobalOpencodeFrameworkObj()` 只剩 `$schema` / `default_agent`；用户 `opencode.jsonc` 既有 `agent.*.model` 仍由 `deepMergeJsonc` / `mergeAgentDefaults` 原样透传（不清理、不覆盖）。
+- [stage-136] **`openfeel model` 两层语义（A70.3）**：`default` 层移除——`set --scope default` 明确拒绝（`model.set.defaultRemoved`，exit 1）；`get --scope default` 返回 `model:null,source:null`；生效链改 `project > global > 平台默认`；`byScope.default` 键与 `inconsistent` 字段保留（JSON 契约稳定）。i18n 新增中英 `model.set.defaultRemoved`。
+- [stage-136] **skills 去预设（A70.4）**：`openfeel-model-check` / `openfeel-model-config` / `openfeel-agent-model-check` / `openfeel-cli-usage` 不再把 deepseek 系列描述为默认 / 主力 / 异种；`openfeel-cli-usage` 正文改两层叙述（frontmatter 定长 2766 不动）。
+- [stage-136] **模板正文去厂商名（A70.7）**：`agents-md` ×2 与 `claude/constraint` ×2 的视觉行改「多模态模型（由平台提供）」/「Multimodal model (platform-provided)」；8 处 agent 正文「（如 DeepSeek V4 Pro）」→「（例如你选择的模型）」/`(e.g., the model you choose)`。
+- [stage-136] **DSH 适配器（A70.5）**：`feel_model` 的 `scope` 枚举去掉 `default`（`['global','project']`），description / 示例改两层；`dsh/docs/compat/commands.md` 的 `model` 小节同步；`dsh/ADAPTER.md` 的 `requiresCli` 抬到 `≥1.6.3` 并新增 `## v1.6.3` 小节。
+- [stage-136] 两包 lockstep → **1.6.3**；`openfeel.requiresCli` 抬到 `>=1.6.3`；`package-lock.json` 根版本同步；README×2 / `docs/commands.md` / `docs/json-contract.md` / `docs/VERSIONS.md` 的「三层级 / default > project > global」误述改为两层链。
+
+### Fixed
+- [stage-136] `test/core/update.test.ts` 的 stage-94 三条用例按「模板无 `model` ⇒ 部署不写；用户手工插入的 `model` 行仍保留」重定基线；`:842-849` 静态断言改为阴性（`writeFrontmatterModel` 等写 helper 已移除）。
+- [stage-136] `test/core/model-config.test.ts` / `test/commands/model.test.ts` / `test/cli/json-contract.test.ts` / `test/core/opencode-config.test.ts` 按两层语义重定基线；`test/core/templates.test.ts` 新增「模板零 `model`」与 A70.7 锁定断言（`templates-migration.test.ts` 逐字节用例继续绿）。
+
 ## [1.6.2] - 2026-11-25
 
 > 默认配置不预设模型：默认 config 模板移除硬编码 models 段，Agent 使用平台/会话所选模型。

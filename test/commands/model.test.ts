@@ -51,11 +51,12 @@ function runModel(args: string[]): { stdout: string; stderr: string; exitCode: n
 describe('openfeel model 命令', () => {
   afterEach(() => { vi.restoreAllMocks(); });
 
-  it('set --scope default 非 TTY 无 --force/--build 拒绝（REV-1504）', () => {
-    // vitest 下 process.stdout.isTTY === false，触发 REV-1504 拒绝路径
-    const r = runModel(['set', 'openfeel-executor', 'deepseek/flash', '--scope', 'default']);
+  it('set --scope default 明确拒绝并提示 global/project（v1.6.3 / REQ-070）', () => {
+    const r = runModel(['set', 'openfeel-executor', 'sample-provider/sample-model', '--scope', 'default']);
     expect(r.exitCode).toBe(1);
-    expect(r.stderr).toBeTruthy(); // 拒绝文案（model.set.needConfirm，语言随 getCliLang）
+    expect(r.stderr).toMatch(/default 层已移除|default layer was removed/);
+    expect(r.stderr).toContain('--scope global');
+    expect(r.stdout).toBe('');
   });
 
   it('set --scope 非法值报错 model.error.scope', () => {
@@ -135,7 +136,7 @@ describe('openfeel model 命令', () => {
     }
   });
 
-  it('A3 JSON：get 六键 + 未指定 scope 时 source=default', () => {
+  it('A3 JSON：get 六键 + 未指定 scope 时 source=project（v1.6.3 两层链）', () => {
     const proj = mkdtempSync(join(tmpdir(), 'model-cmd-json-get-'));
     const prevCwd = process.cwd();
     process.chdir(proj);
@@ -155,13 +156,35 @@ describe('openfeel model 命令', () => {
         model: 'deepseek-flash', source: 'project',
       });
 
-      // 未指定 scope → 生效值（default > project > global）→ 框架默认层
+      // 未指定 scope → 生效值（v1.6.3 / REQ-070：project > global，default 层已移除）→ 项目 jsonc 层
       const eff = runModel(['get', 'openfeel-executor', '--json']);
       expect(eff.exitCode).toBe(0);
       const effDoc = JSON.parse(eff.stdout) as Record<string, unknown>;
       expect(effDoc.scope).toBeNull();
       expect(effDoc).toMatchObject({
-        agent: 'openfeel-executor', provider: 'deepseek', model: 'deepseek-flash', source: 'default',
+        agent: 'openfeel-executor', provider: 'deepseek', model: 'deepseek-flash', source: 'project',
+      });
+    } finally {
+      process.chdir(prevCwd);
+      rmSync(proj, { recursive: true, force: true });
+    }
+  });
+
+  it('A3 JSON：get --scope default → model/source 双 null（default 层已移除，v1.6.3）', () => {
+    const proj = mkdtempSync(join(tmpdir(), 'model-cmd-json-def-'));
+    const prevCwd = process.cwd();
+    process.chdir(proj);
+    try {
+      // 项目层有显式值也不影响 default 层（default 恒「未显式设置」）
+      writeFileSync(join(proj, 'opencode.jsonc'), JSON.stringify({
+        agent: { 'openfeel-executor': { model: 'deepseek/deepseek-flash' } },
+      }, null, 2) + '\n', 'utf-8');
+
+      const r = runModel(['get', 'openfeel-executor', '--scope', 'default', '--json']);
+      expect(r.exitCode).toBe(0);
+      const doc = JSON.parse(r.stdout) as Record<string, unknown>;
+      expect(doc).toMatchObject({
+        scope: 'default', agent: 'openfeel-executor', provider: null, model: null, source: null,
       });
     } finally {
       process.chdir(prevCwd);

@@ -17,6 +17,8 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.6.3** — No preset models, part 2: the opencode agent templates no longer carry a `model` frontmatter key (10 files), the framework no longer injects `agent.*.model` into your `opencode.jsonc`, and the constraint layer / agent bodies no longer name a vendor model (`deepseek-flash` / `DeepSeek V4 Pro` → "platform-provided" / "the model you choose"). `openfeel model` keeps only the global / project scopes: `set --scope default` is rejected with a hint, `get --scope default` returns null, and the resolution chain is `project > global > platform default` (the `byScope.default` key and the JSON `source` field stay for contract stability). Two packages are 1.6.3 lockstep, `openfeel.requiresCli >=1.6.3`, and the DSH `feel_model` scope enum drops `default`.
+
 - **v1.6.2** — No preset models: the default config template no longer hardcodes any `models` block (previously `deepseek-v4-pro` / `deepseek-flash` / `glm-5.1`); agents use whatever model you select in your platform (DSH, Claude, etc.). The `models` section stays optional and read-compatible for awareness only, and `openfeel init` generates a model-free config.
 
 - **v1.6.1** — Release chain, write whitelist and measurable adherence: `npm run release` runs the whole six-step chain (version → build → publish → market → archive-commit → tag) with **zero real publish by default** (the only real-publish switch is `--publish`, guarded by `npm whoami`; `--dry-run`, `--skip-build`, `--with-market`, `--notes-only`, `--commit-archive`, `--tag`); `review_passed` / `test_passed` now allow doc/fixture writes (`docs/**`, root `*.md`, `test/fixtures/**`, `dsh/test/fixtures/**`) while source stays denied; requirements gain a `review_pending` state (`in_progress → review_pending → done`, old direct transition removed, `--force` recorded) with `req claim/advance/complete --json`; `req plan` generates the requirement-level plan in one command, `req body --from` imports many sections, `lint fill --fix-plan` fills only missing plans, and multi-line `--text` round-trips byte-for-byte; the dashboard adds four flow-debt buckets; the DSH adapter closes the dispatch loop (`feel_dispatch action=finish`, `open[]`/`closedRatio`) and exposes adherence metrics via `feel_verify action=adherence`; the write guard statically classifies wrapper scripts (`pwsh -File`, `cmd /c`, `bash <script>`) with undecidable/encoding-audited fallbacks. JSON contract moves to 51 success exits / 52 registered `--json` options, error-code table to 20 rows.
@@ -56,6 +58,15 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.6.3 — 彻底不预设模型：移除 opencode agent 默认、框架注入与厂商名残留
+
+- **opencode agent 模板去 `model`**：10 份（executor / explorer / reviewer / utility / vision × 双语）frontmatter 删掉 `model: deepseek/deepseek-flash`；部署到 `~/.config/opencode/agents/` 的副本同样不带 `model`，你的 global / project 设置不再被框架默认遮蔽。
+- **框架不再注入 agent 模型**：`buildGlobalOpencodeFrameworkObj()` 只剩 `$schema` / `default_agent`，不再向你的 `opencode.jsonc` 补 `openfeel-vision` / `openfeel-reviewer` 的 `{ model }`；你已写的 `agent.*.model` 原样保留（深度合并不清理）。
+- **`openfeel model` 两层语义**：`set --scope default` 明确拒绝（exit 1，提示改用 global / project）；`get --scope default` 恒「未显式设置」（`model:null,source:null`）；生效链 `project > global > 平台默认`。`byScope.default` 键与 JSON `source` 字段保留（契约稳定）。
+- **文案面去厂商名**：`agents-md` / `claude constraint` 的视觉行改为「多模态模型（由平台提供）」；8 处 agent 正文「（如 DeepSeek V4 Pro）」改为「（例如你选择的模型）」；4 个 skill 不再把 deepseek 系列当默认 / 主力 / 异种，`openfeel-cli-usage` 正文改按两层叙述。
+- **DSH 适配器**：`feel_model` 的 `scope` 枚举去掉 `default`（两层级），`requiresCli` 抬到 `>=1.6.3`；`dsh/docs/compat/commands.md` 的 `model` 小节同步。
+- 版本 1.6.3（root / dsh lockstep、`requiresCli >=1.6.3`）。升级：`npm i -g openfeel@latest` → `openfeel setup` → 重启 harness。
 
 ## v1.6.2 — 默认不预设模型（平台/会话选什么就用什么）
 

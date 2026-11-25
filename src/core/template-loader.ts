@@ -288,12 +288,11 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-archiver is driven by a **reasoning model** (such as DeepSeek V4 Pro), responsible for understanding context and extracting valuable experience.
+openfeel-archiver is driven by a **reasoning model** (e.g., the model you choose), responsible for understanding context and extracting valuable experience.
 `,
     'openfeel-executor': `---
 description: openfeel-executor Agent, fast model, implements code according to operation schemes and self-tests.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#4CAF50"
 permission:
@@ -384,7 +383,7 @@ Extract the declared paths from the scheme's \`## Output Files\` -> scan the fil
 
 ## Model Selection and Constraints
 
-openfeel-executor is driven by a **fast model** (such as DeepSeek V4 Flash), prioritizing speed for coding execution.
+openfeel-executor is driven by a **fast model** (e.g., the fast model you choose), prioritizing speed for coding execution.
 
 - Operations beyond the scheme scope must first be confirmed with caller; do not decide on your own.
 - If self-test fails 3 consecutive times, fall back and wait for caller to re-schedule openfeel-schemer.
@@ -417,7 +416,6 @@ When creating a project or initializing \`package.json\`, the minimal required f
     'openfeel-explorer': `---
 description: openfeel-explorer Agent (read-only), responsible for code / reference / data exploration and issue locating, outputting structured conclusions with no side effects.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#FFB020"
 permission:
@@ -556,7 +554,7 @@ Priority: **high** = unusable feature / data loss or corruption / pipeline block
 
 ## Model Selection
 
-openfeel-feel-tester is driven by a **reasoning model** (such as DeepSeek V4 Pro), as test analysis requires deep reasoning capability.
+openfeel-feel-tester is driven by a **reasoning model** (e.g., the model you choose), as test analysis requires deep reasoning capability.
 
 `,
     'openfeel-planner': `---
@@ -626,7 +624,7 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the caller system design, openfeel-planner duties can be concurrently handled by caller, but exist as an independent agent definition to support flexible scheduling strategies.
+openfeel-planner is driven by a **reasoning model** (e.g., the model you choose). In the caller system design, openfeel-planner duties can be concurrently handled by caller, but exist as an independent agent definition to support flexible scheduling strategies.
 
 - **When caller concurrently handles openfeel-planner duties**: Only handle plans under the "small scale" criteria; do not invoke independent openfeel-planner
 - **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (multi-stage or cross-module architecture changes), ensuring reasoning depth and review independence
@@ -634,7 +632,6 @@ openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). I
     'openfeel-reviewer': `---
 description: openfeel-reviewer Agent, responsible for cross-reviewing plans/schemes/code (the template default does not hardcode a heterogeneous model).
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -827,13 +824,12 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-schemer is driven by a **flagship reasoning model** (such as DeepSeek V4 Pro), as scheme formulation requires fine-grained reasoning capability.
+openfeel-schemer is driven by a **flagship reasoning model** (e.g., the model you choose), as scheme formulation requires fine-grained reasoning capability.
 
 `,
     'openfeel-utility': `---
 description: openfeel-utility Agent, fast model, responsible for file operations, format conversion, build/test and other mechanical auxiliary tasks.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: low
 color: "#8B9DC3"
 permission:
@@ -901,12 +897,11 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-The openfeel-utility Agent is driven by a **fast model** (such as DeepSeek V4 Flash). Mechanical operations do not require deep reasoning. The fast model ensures low-latency response and low operating cost, suitable for frequently invoked auxiliary tasks.
+The openfeel-utility Agent is driven by a **fast model** (e.g., the fast model you choose). Mechanical operations do not require deep reasoning. The fast model ensures low-latency response and low operating cost, suitable for frequently invoked auxiliary tasks.
 `,
     'openfeel-vision': `---
 description: openfeel-vision Agent, multimodal model, responsible for general visual analysis — receives image input and outputs structured analysis results.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#06B6D4"
 permission:
@@ -1252,12 +1247,11 @@ permission:
 
 ## 模型选择
 
-openfeel-archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，负责理解上下文并提取有价值的经验。
+openfeel-archiver 由**推理模型**（例如你选择的模型）驱动，负责理解上下文并提取有价值的经验。
 `,
     'openfeel-executor': `---
 description: openfeel-executor 执行官 Agent，快速模型，按操作方案编码实现并自测。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#4CAF50"
 permission:
@@ -1347,7 +1341,7 @@ permission:
 
 ## 模型选择与约束
 
-openfeel-executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码执行追求速度优先。
+openfeel-executor 由**快速模型**（例如你选择的快速模型）驱动，编码执行追求速度优先。
 
 - 超出方案范围的操作须先向 调用方 确认，不得自行决定。
 - 自测连续 3 次不通过时，回退并等待 调用方 重新调度 openfeel-schemer。
@@ -1379,7 +1373,6 @@ openfeel-executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码�
     'openfeel-explorer': `---
 description: openfeel-explorer 探索者 Agent，只读模型，负责代码 / 资料 / 数据探查与问题定位，输出结构化结论，不产生任何副作用。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#FFB020"
 permission:
@@ -1511,7 +1504,7 @@ YAML frontmatter：\`status: open\` / \`priority: high|medium|low\` / \`module:\
 
 ## 模型选择
 
-openfeel-feel-tester 由**推理模型**（如 DeepSeek V4 Pro）驱动，测试分析需要深度推理能力。
+openfeel-feel-tester 由**推理模型**（例如你选择的模型）驱动，测试分析需要深度推理能力。
 
 `,
     'openfeel-planner': `---
@@ -1575,7 +1568,7 @@ permission:
 
 ## 模型选择
 
-openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 调用方 体系设计中，openfeel-planner 职责可由 调用方 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
+openfeel-planner 由**推理模型**（例如你选择的模型）驱动。在 调用方 体系设计中，openfeel-planner 职责可由 调用方 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
 
 - **调用方 兼任 openfeel-planner 时**：仅在「小规模」判定条件下自行处理计划，不唤起独立 openfeel-planner
 - **独立 openfeel-planner 调用时**：仅在「大规模」场景（多阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
@@ -1583,7 +1576,6 @@ openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 调用
     'openfeel-reviewer': `---
 description: openfeel-reviewer 审查官 Agent，负责交叉审查计划/方案/代码（模板默认不硬编码异族）。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -1767,13 +1759,12 @@ permission:
 
 ## 模型选择
 
-openfeel-schemer 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，方案制定需要细粒度推理能力。
+openfeel-schemer 由**主力推理模型**（例如你选择的模型）驱动，方案制定需要细粒度推理能力。
 
 `,
     'openfeel-utility': `---
 description: 事务官 Agent，快速模型，负责文件操作、格式转换、构建测试等机械性辅助任务。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: low
 color: "#8B9DC3"
 permission:
@@ -1841,12 +1832,11 @@ task_type: utility
 
 ## 模型选择
 
-事务官由**快速模型**（如 DeepSeek V4 Flash）驱动，机械性操作无需深度推理。快速模型确保低延迟响应和低成本运行，适合频繁调起的辅助任务。
+事务官由**快速模型**（例如你选择的快速模型）驱动，机械性操作无需深度推理。快速模型确保低延迟响应和低成本运行，适合频繁调起的辅助任务。
 `,
     'openfeel-vision': `---
 description: openfeel-vision 视觉官 Agent，多模态模型，负责通用视觉分析，接收图片输入并输出结构化分析结果。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#06B6D4"
 permission:
@@ -2018,12 +2008,12 @@ Deviating from the above constraints is considered a violation and will be flagg
 | Feel | Overall Commander | Flagship reasoning model | primary |
 | openfeel-planner | Planning Officer | Reasoning model | subagent |
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | subagent |
-| openfeel-explorer | Exploration Officer | Fast model (Flash) | subagent |
-| openfeel-executor | Execution Officer | Fast model (Flash) | subagent |
+| openfeel-explorer | Exploration Officer | fast model (platform-provided) | subagent |
+| openfeel-executor | Execution Officer | fast model (platform-provided) | subagent |
 | openfeel-reviewer | Review Officer | Reasoning model (heterogeneous optional) | subagent |
 | openfeel-feel-tester | Testing Officer | Reasoning model | subagent |
-| openfeel-utility Agent | Utility Officer | Fast model (Flash) | subagent |
-| openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | subagent |
+| openfeel-utility Agent | Utility Officer | fast model (platform-provided) | subagent |
+| openfeel-vision | Vision Officer | Multimodal model (platform-provided) | subagent |
 | openfeel-archiver | Archiving Officer | Reasoning model | subagent |
 
 > **Write constraint**: openfeel-planner and openfeel-archiver must operate on flow.json indirectly through Feel, and must not directly \`edit\` or \`write\` flow.json.
@@ -2183,12 +2173,12 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | Feel | 总统领 | 主力推理模型 | primary |
 | openfeel-planner | 计划官 | 推理模型 | subagent |
 | openfeel-schemer | 方案官 | 主力推理模型 | subagent |
-| openfeel-explorer | 探索者 | 快速模型 (Flash) | subagent |
-| openfeel-executor | 执行官 | 快速模型 (Flash) | subagent |
+| openfeel-explorer | 探索者 | 快速模型（由平台提供） | subagent |
+| openfeel-executor | 执行官 | 快速模型（由平台提供） | subagent |
 | openfeel-reviewer | 审查官 | 推理模型（异族可选增强） | subagent |
 | openfeel-feel-tester | 测试官 | 推理模型 | subagent |
-| openfeel-utility | 事务官 | 快速模型 (Flash) | subagent |
-| openfeel-vision | 视觉官 | 多模态模型 (deepseek-flash) | subagent |
+| openfeel-utility | 事务官 | 快速模型（由平台提供） | subagent |
+| openfeel-vision | 视觉官 | 多模态模型（由平台提供） | subagent |
 | openfeel-archiver | 归档官 | 推理模型 | subagent |
 
 > **写入约束**：openfeel-planner 和 openfeel-archiver 对 flow.json 的操作必须通过 Feel 间接完成，不得直接 \`edit\` 或 \`write\` flow.json。
@@ -2577,12 +2567,11 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-archiver is driven by a **reasoning model** (such as DeepSeek V4 Pro), responsible for understanding context and extracting valuable experience.
+openfeel-archiver is driven by a **reasoning model** (e.g., the model you choose), responsible for understanding context and extracting valuable experience.
 `,
     'openfeel-executor': `---
 description: openfeel-executor Agent, fast model, implements code according to operation schemes and self-tests.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#4CAF50"
 permission:
@@ -2673,7 +2662,7 @@ Extract the declared paths from the scheme's \`## Output Files\` -> scan the fil
 
 ## Model Selection and Constraints
 
-openfeel-executor is driven by a **fast model** (such as DeepSeek V4 Flash), prioritizing speed for coding execution.
+openfeel-executor is driven by a **fast model** (e.g., the fast model you choose), prioritizing speed for coding execution.
 
 - Operations beyond the scheme scope must first be confirmed with caller; do not decide on your own.
 - If self-test fails 3 consecutive times, fall back and wait for caller to re-schedule openfeel-schemer.
@@ -2706,7 +2695,6 @@ When creating a project or initializing \`package.json\`, the minimal required f
     'openfeel-explorer': `---
 description: openfeel-explorer Agent (read-only), responsible for code / reference / data exploration and issue locating, outputting structured conclusions with no side effects.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#FFB020"
 permission:
@@ -2845,7 +2833,7 @@ Priority: **high** = unusable feature / data loss or corruption / pipeline block
 
 ## Model Selection
 
-openfeel-feel-tester is driven by a **reasoning model** (such as DeepSeek V4 Pro), as test analysis requires deep reasoning capability.
+openfeel-feel-tester is driven by a **reasoning model** (e.g., the model you choose), as test analysis requires deep reasoning capability.
 
 `,
     'openfeel-planner': `---
@@ -2915,7 +2903,7 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). In the caller system design, openfeel-planner duties can be concurrently handled by caller, but exist as an independent agent definition to support flexible scheduling strategies.
+openfeel-planner is driven by a **reasoning model** (e.g., the model you choose). In the caller system design, openfeel-planner duties can be concurrently handled by caller, but exist as an independent agent definition to support flexible scheduling strategies.
 
 - **When caller concurrently handles openfeel-planner duties**: Only handle plans under the "small scale" criteria; do not invoke independent openfeel-planner
 - **When independent openfeel-planner is invoked**: Only for "large scale" scenarios (multi-stage or cross-module architecture changes), ensuring reasoning depth and review independence
@@ -2923,7 +2911,6 @@ openfeel-planner is driven by a **reasoning model** (such as DeepSeek V4 Pro). I
     'openfeel-reviewer': `---
 description: openfeel-reviewer Agent, responsible for cross-reviewing plans/schemes/code (the template default does not hardcode a heterogeneous model).
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -3116,13 +3103,12 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-openfeel-schemer is driven by a **flagship reasoning model** (such as DeepSeek V4 Pro), as scheme formulation requires fine-grained reasoning capability.
+openfeel-schemer is driven by a **flagship reasoning model** (e.g., the model you choose), as scheme formulation requires fine-grained reasoning capability.
 
 `,
     'openfeel-utility': `---
 description: openfeel-utility Agent, fast model, responsible for file operations, format conversion, build/test and other mechanical auxiliary tasks.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: low
 color: "#8B9DC3"
 permission:
@@ -3190,12 +3176,11 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-The openfeel-utility Agent is driven by a **fast model** (such as DeepSeek V4 Flash). Mechanical operations do not require deep reasoning. The fast model ensures low-latency response and low operating cost, suitable for frequently invoked auxiliary tasks.
+The openfeel-utility Agent is driven by a **fast model** (e.g., the fast model you choose). Mechanical operations do not require deep reasoning. The fast model ensures low-latency response and low operating cost, suitable for frequently invoked auxiliary tasks.
 `,
     'openfeel-vision': `---
 description: openfeel-vision Agent, multimodal model, responsible for general visual analysis — receives image input and outputs structured analysis results.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#06B6D4"
 permission:
@@ -3541,12 +3526,11 @@ permission:
 
 ## 模型选择
 
-openfeel-archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，负责理解上下文并提取有价值的经验。
+openfeel-archiver 由**推理模型**（例如你选择的模型）驱动，负责理解上下文并提取有价值的经验。
 `,
     'openfeel-executor': `---
 description: openfeel-executor 执行官 Agent，快速模型，按操作方案编码实现并自测。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#4CAF50"
 permission:
@@ -3636,7 +3620,7 @@ permission:
 
 ## 模型选择与约束
 
-openfeel-executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码执行追求速度优先。
+openfeel-executor 由**快速模型**（例如你选择的快速模型）驱动，编码执行追求速度优先。
 
 - 超出方案范围的操作须先向 调用方 确认，不得自行决定。
 - 自测连续 3 次不通过时，回退并等待 调用方 重新调度 openfeel-schemer。
@@ -3668,7 +3652,6 @@ openfeel-executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码�
     'openfeel-explorer': `---
 description: openfeel-explorer 探索者 Agent，只读模型，负责代码 / 资料 / 数据探查与问题定位，输出结构化结论，不产生任何副作用。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#FFB020"
 permission:
@@ -3800,7 +3783,7 @@ YAML frontmatter：\`status: open\` / \`priority: high|medium|low\` / \`module:\
 
 ## 模型选择
 
-openfeel-feel-tester 由**推理模型**（如 DeepSeek V4 Pro）驱动，测试分析需要深度推理能力。
+openfeel-feel-tester 由**推理模型**（例如你选择的模型）驱动，测试分析需要深度推理能力。
 
 `,
     'openfeel-planner': `---
@@ -3864,7 +3847,7 @@ permission:
 
 ## 模型选择
 
-openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 调用方 体系设计中，openfeel-planner 职责可由 调用方 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
+openfeel-planner 由**推理模型**（例如你选择的模型）驱动。在 调用方 体系设计中，openfeel-planner 职责可由 调用方 兼任，但作为独立 Agent 定义存在以支持灵活的调度策略。
 
 - **调用方 兼任 openfeel-planner 时**：仅在「小规模」判定条件下自行处理计划，不唤起独立 openfeel-planner
 - **独立 openfeel-planner 调用时**：仅在「大规模」场景（多阶段或跨模块架构变更）唤起，确保推理深度和审查独立性
@@ -3872,7 +3855,6 @@ openfeel-planner 由**推理模型**（如 DeepSeek V4 Pro）驱动。在 调用
     'openfeel-reviewer': `---
 description: openfeel-reviewer 审查官 Agent，负责交叉审查计划/方案/代码（模板默认不硬编码异族）。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:
@@ -4056,13 +4038,12 @@ permission:
 
 ## 模型选择
 
-openfeel-schemer 由**主力推理模型**（如 DeepSeek V4 Pro）驱动，方案制定需要细粒度推理能力。
+openfeel-schemer 由**主力推理模型**（例如你选择的模型）驱动，方案制定需要细粒度推理能力。
 
 `,
     'openfeel-utility': `---
 description: 事务官 Agent，快速模型，负责文件操作、格式转换、构建测试等机械性辅助任务。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: low
 color: "#8B9DC3"
 permission:
@@ -4130,12 +4111,11 @@ task_type: utility
 
 ## 模型选择
 
-事务官由**快速模型**（如 DeepSeek V4 Flash）驱动，机械性操作无需深度推理。快速模型确保低延迟响应和低成本运行，适合频繁调起的辅助任务。
+事务官由**快速模型**（例如你选择的快速模型）驱动，机械性操作无需深度推理。快速模型确保低延迟响应和低成本运行，适合频繁调起的辅助任务。
 `,
     'openfeel-vision': `---
 description: openfeel-vision 视觉官 Agent，多模态模型，负责通用视觉分析，接收图片输入并输出结构化分析结果。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#06B6D4"
 permission:
@@ -4243,14 +4223,14 @@ Model not found: {provider_key}/{model_id}
 
 | 能力需求 | 需确认的字段 | 示例 |
 |----------|-------------|------|
-| 视觉/图像分析 | Input = Yes | \`deepseek-flash\` |
+| 视觉/图像分析 | Input = Yes | \`sample-model-id\`（任一支持图像输入的模型） |
 | 工具调用 | Tool Call = Yes | \`qwen3.7-plus\` |
 | 结构化输出 | Structured = Yes | \`qwen3.7-flash\` |
 | 推理/思考 | Reasoning = Yes | \`qwq-plus\` |
 
 **常见陷阱**：
 - \`qwen3.7-plus\` 是纯文本模型，不支持图像输入
-- \`deepseek-flash\` 支持多模态图像输入（openfeel-vision 现用模型）
+- openfeel-vision 须选支持图像输入的模型（由平台/会话或 global/project 配置决定；框架不预设）
 - 备选视觉模型：\`qwen3-vl-plus\`（模型名中的 \`vl\` 表示 Vision-Language）
 
 ### 第六步：验证
@@ -4326,16 +4306,15 @@ cat ~/.local/share/opencode/auth.json
 
 ## 多模态（openfeel-vision）Agent 专项
 
-openfeel-vision Agent 必须配置多模态模型。当前默认使用 \`deepseek/deepseek-flash\`（已支持多模态图像输入）：
+openfeel-vision Agent 必须配置多模态模型（须支持图像输入；由平台/会话或 global/project 配置决定，框架不预设）：
 
 | 模型 ID | 完整引用 | 上下文 | 图像输入 |
 |---------|---------|--------|---------|
-| deepseek-flash | \`deepseek/deepseek-flash\` | — | ✅ |
 | qwen3-vl-plus | \`alibaba-cn/qwen3-vl-plus\` | 262K | ✅（备选） |
 | qwen-vl-plus | \`alibaba-cn/qwen-vl-plus\` | 131K | ❌（旧版） |
 | qwen-vl-max | \`alibaba-cn/qwen-vl-max\` | 131K | ❌（旧版） |
 
-**推荐**：优先使用 \`deepseek-flash\`（已内置多模态）；如需更大上下文可备选 \`qwen3-vl-plus\`。
+**选择建议**：以平台实际可用清单与 models.dev 的 \`Input = Yes\` 为准；下表候选仅供参考，框架不预设任何模型。
 
 > **Claude Code 适配器**：多模态由 Claude 侧模型决定；\`openfeel-vision\` subagent 须选支持图像输入的模型。
 
@@ -4346,7 +4325,7 @@ openfeel-vision Agent 必须配置多模态模型。当前默认使用 \`deepsee
 | \`Model not found: Alibaba(China)/xxx\` | 使用了自定义 provider name 而非 auth.json key | 改为 auth.json 中的实际 key |
 | \`Model not found: alibaba/xxx\` | 内置 key 与实际注册的 key 不一致 | 检查 auth.json，使用实际 key |
 | \`Model not found: xxx. Did you mean: yyy\` | 模型名拼写错误或不存在 | 使用 \`Did you mean\` 建议的名称 |
-| Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为支持图像输入的模型（如 \`deepseek-flash\`） |
+| Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为支持图像输入的模型（以平台可用清单为准） |
 
 > **Claude Code 适配器**：以上排查针对 opencode 的 \`auth.json\`/\`opencode.jsonc\`；Claude 侧的模型解析以 \`/model\`、\`settings.json\`/\`env\` 或网关配置为准。
 `,
@@ -4541,7 +4520,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | \`openfeel plan scheme create\\|publish\\|rename\\|list\\|remove\\|register\` | 操作方案管理 | \`create <stage> <title> [--draft]\`、\`publish <stage> <opId>\`、\`rename <stage> <opId> --title <text>\`、\`remove <stage> <opId> [--force] [--dry-run]\`、\`register <stage> [opId] [--dry-run]\`（补注册 fileOrphans）；\`plan stage list [--json]\`（v1.2.4 #34） |
 | \`openfeel stage status\\|set\\|task\\|verify\` | \`status.md\` 原子操作 + 阶段验证证据 | \`set <id> --status/--exec-mode/--auto-advance/--review-agent/--workflow-mode\`、\`task <id> [no] --add/--done/--undone\`、**\`verify <id> --result <pass\\|fail> --kind <test\\|manual\\|build> --by <who> --note <text> [--evidence <path>]\`（v1.5.8，仅 \`archiving\` 相位可记录）**（\`stage create\` 已弃用） |
 | \`openfeel config ...\` | 配置管理 | \`get\\|set <key> <value> [--global]\`（支持全量 \`defaults.*\`，且 \`defaults.X ≡ X\`）、\`get --all [--json]\`（v1.2.4：项目全量 defaults）、\`set ... --sync-stages [--stage <ids...>]\`（批量写入已注册阶段 \`status.md\` 的 \`自动推进\`/\`执行模式\`/\`工作流模式\`；\`--stage\` 限定作用域，单独使用 / 与 \`--global\` 组合 → exit 1）、\`get-lang\\|set-lang\`、\`list-projects\`、\`effective [key]\` |
-| \`openfeel model set\\|get\\|list\` | 模型三层级配置 | \`set <agent> <model>\`；\`get/list [--scope] [--json]\`（v1.2.4 #35/#36） |
+| \`openfeel model set\\|get\\|list\` | 模型两层配置（global / project） | \`set <agent> <model>\`；\`get/list [--scope] [--json]\`（v1.2.4 #35/#36） |
 | \`openfeel lint i18n\\|kb\\|req\` | 健康检查（i18n 键一致性 / kb 过期引用 / 需求正文命令名） | \`[--json]\`（\`{target,ok,issues}\`；\`lint req\` 另含 \`suspects\` / \`unknownCount\` / \`suspectCount\`；发现问题**非 0 退出**，\`lint req\` 仅 A 类非 0） |
 | \`openfeel knowledge ...\` | 知识库管理 | \`list\` / \`add\` / \`search\` / \`index\` / \`dedup\` |
 | \`openfeel archive <stage>\` | 归档指定阶段（汇总产出、生成摘要与发布说明、提取知识、按 harness 生成 skill） | \`<stage> [--json] [--force] [--skill <slug>]\`（v1.2.4：已有归档默认拒绝，\`ARCHIVE_EXISTS\` 零写盘；**v1.5.8：\`generated{releaseNotes,skills,requirements}\` 追加 + \`--skill <slug>\` 按探测 harness 生成开发 skill、\`--force\` 同时覆盖发布说明与 skill**） |
@@ -4807,7 +4786,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 - **A1 \`archive <stage> [--json] [--force]\`**：已有归档且未 \`--force\` → \`ARCHIVE_EXISTS\`/refusal/1，**零写盘**（存在性检查先于任何写盘）；\`--force\` 才覆盖；保护为归档文件级（别名派生不同文件、互不触发）。
 - **A2 \`plan stage list --json\`（#34）**：\`{schemaVersion,stages,count}\`；\`stages[]\` 七键 \`id,phase,status,deps,workflowMode,opsTotal,opsDone\`（flow.json 注册阶段视图）。
-- **A3 \`model list|get --json\`（#35/#36）**：\`agents[]{agent,provider,model,source}\` / 单 agent 六键；首个 \`/\` 切分；\`source\` = default > project > global。
+- **A3 \`model list|get --json\`（#35/#36）**：\`agents[]{agent,provider,model,source}\` / 单 agent 六键；首个 \`/\` 切分；\`source\` = 生效层（v1.6.3 起 project > global > 平台默认，default 层已移除）。
 - **A4 \`flow retry --op <id> --json\`（#37）/ \`lint i18n|kb --json\`（#38/#39）/ \`roadmap show [version] --json\`（#40）**：retry 六键；lint \`{target,ok,issues:[{path,message}]}\`（\`ok:false\` 仍成功文档 + exit 1）；roadmap 表头驱动 \`milestones[{title,theme,stage,deliverable}]\`（兼容 3/4 列）。
 - **A5 \`config get --all --json\`**：项目 \`{scope:"project",defaults}\` 四键固定序；不再 \`key-required\`；\`--all\` 与 \`--global\`/key 组合 → \`INVALID_ARGUMENT\`。
 
@@ -4830,7 +4809,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **三模式（\`full\` / \`fast\` / \`general\`）**：\`plan stage add --workflow-mode\` / \`stage set --workflow-mode\` / \`config set defaults.workflow_mode\` / \`flow phases --mode\` 值域均为 \`full|fast|general\`（**\`general\` 仅需求级合法**——阶段级 / 部署级写入面拒绝，wizard 不提供选项）；需求侧 \`req add\` / \`req set --workflow-mode\`；解析链增需求级层（\`status.md > 需求级 > config.yaml > builtin\`）；**升级不降级**。
 - **可观测性**：\`metrics.json\` 经 \`recordRun\` 接线（\`flow metrics\`）；CLI 日志行含 \`duration_ms\` / \`project\` / \`session_id\`；op 级时间戳（\`attempted_at\` / \`completed_at\`）；跨会话恢复标注 \`resumed\`。
 - **审查档位（\`flow advance --review-tier <full|lean|skip>\`）**：与工作流模式**分属两轴**；缺省按模式派生（\`flow phases --json.reviewTier\`）；显式 \`lean\` / \`skip\` 一行非阻断警告；值域非法 exit 1 零写盘。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进（v1.2.1-stage-93 修复 \`cli/BUG-011\`）；「**进入**被裁剪关」仍不可达。
-- **模型默认值统一 + 部署非破坏性（用户主权键 \`model\`）**：部署（\`setup\` / \`update\`）对用户既有 \`model\` 键**无则创建、有则不覆盖**；opencode 侧显式默认收敛为 \`deepseek/deepseek-flash\`。
+- **模型默认值统一 + 部署非破坏性（用户主权键 \`model\`）**：部署（\`setup\` / \`update\`）对用户既有 \`model\` 键**无则创建、有则不覆盖**；框架不预设任何模型（v1.6.3 / REQ-070）：opencode 侧不再注入 agent model，模型由平台/会话或用户 \`--scope global|project\` 决定。
 
 ## v1.2.0 新增能力（stage-78~84）
 
@@ -5549,7 +5528,7 @@ description: 主会话（Feel）自检时检查所有 Agent 的模型配置状�
 | 优先级 | 来源 | 识别方式 |
 |:--:|------|----------|
 | 1 | YAML frontmatter \`model\` 字段 | 如 \`model: fast\`，直接提取 |
-| 2 | 正文「模型选择」章节 | 搜索关键词：\`主力推理模型\` / \`推理模型\` / \`快速模型\` / \`异种推理模型\` |
+| 2 | 正文「模型选择」章节 | 搜索关键词：\`推理模型\` / \`快速模型\` / \`多模态模型\` |
 | 3 | frontmatter \`description\` 字段 | 搜索上述关键词 |
 | 4 | 角色回退表 | 按 Agent 文件名回退（见下方角色映射表） |
 
@@ -5560,7 +5539,7 @@ description: 主会话（Feel）自检时检查所有 Agent 的模型配置状�
 | \`feel.md\` | \`primary_reasoning\`（主力推理） |
 | \`openfeel-planner.md\` | \`reasoning\`（推理） |
 | \`openfeel-executor.md\` | \`fast\`（快速） |
-| \`openfeel-reviewer.md\` | \`cross_model\`（异种推理） |
+| \`openfeel-reviewer.md\` | \`cross_model\`（跨模型） |
 | \`openfeel-archiver.md\` | \`reasoning\`（推理） |
 | \`openfeel-schemer.md\` | \`reasoning\`（推理） |
 | \`openfeel-feel-tester.md\` | \`reasoning\`（推理） |
@@ -5571,14 +5550,14 @@ description: 主会话（Feel）自检时检查所有 Agent 的模型配置状�
 
 读取 \`.openfeel/config.yaml\`，检查 \`models\` 节是否存在。
 
-**已配置状态**：
+**已配置状态**（示例值，非框架默认——OpenFeel 不预设模型，下列名称仅说明结构）：
 \`\`\`yaml
 models:
   default:           # 兜底配置（必填）
-    provider: deepseek
-    model_name: deepseek-v4-pro
-    base_url: https://api.deepseek.com
-    api_key_env: DEEPSEEK_API_KEY
+    provider: sample-provider
+    model_name: sample-model-id
+    base_url: https://example.com/v1
+    api_key_env: SAMPLE_API_KEY
   agents:            # Agent 级覆盖（可选）
     openfeel-reviewer:
       provider: anthropic
@@ -5586,8 +5565,8 @@ models:
       base_url: https://api.anthropic.com
       api_key_env: ANTHROPIC_API_KEY
     openfeel-executor:
-      provider: deepseek
-      model_name: deepseek-flash
+      provider: sample-provider
+      model_name: sample-model-id
   roles:             # 角色级覆盖（可选）
     cross_model:
       provider: openai
@@ -5619,9 +5598,9 @@ models:
 \`\`\`markdown
 | Agent | 角色要求 | 实际模型 | 配置来源 | 状态 |
 |-------|----------|----------|----------|:--:|
-| 主会话 | 主力推理 | deepseek-v4-pro | default | ⚠️ |
-| openfeel-reviewer | **异种推理** | deepseek-v4-pro | default | ❌ 与主力相同！ |
-| openfeel-executor | 快速 | deepseek-v4-pro | default | ⚠️ 未使用快速模型 |
+| 主会话 | 由用户/平台决定 | — | 未预设 | — |
+| openfeel-reviewer | 由用户/平台决定 | — | 未预设 | — |
+| openfeel-executor | 由用户/平台决定 | — | 未预设 | — |
 \`\`\`
 
 ### 5. 输出检查报告
@@ -5763,7 +5742,7 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 {
   "agent": {
     "openfeel-vision": {
-      "model": "deepseek/deepseek-flash"   // 模型名格式：provider/model-id 或 model-id
+      "model": "{provider}/{model-id}"   // 示例占位（非框架默认）；模型名格式：provider/model-id 或 model-id
     }
   }
 }
@@ -5771,7 +5750,7 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 
 > ⚠️ **配置修改后必须重启 opencode 才能生效**。运行中的会话使用启动时加载的配置。
 
-> 💡 **推荐**：可用 \`openfeel model set/get/list --scope default|global|project\` 一键读写三层级模型（工具默认 / 全局 / 当前项目），无需手工定位文件。
+> 💡 **推荐**：可用 \`openfeel model set/get/list --scope global|project\` 一键读写两层级模型（全局 / 当前项目），无需手工定位文件。
 
 ### Claude Code 适配器
 
@@ -5790,15 +5769,17 @@ Agent 模型配置在 **\`opencode.jsonc\`**（项目根目录）中：
 
 ### opencode 适配器
 
-\`.opencode/agents/<name>.md\` 的 frontmatter \`model:\` 字段**是生效的，且优先于** \`opencode.jsonc\` 的 \`agent.<name>.model\`（stage-40 REV-1606 实测）。opencode 模型解析优先级链：
+模型生效链（v1.6.3 / REQ-070）为**两层配置 + 平台默认**：
 
 \`\`\`
-项目 agents frontmatter > 全局 agents frontmatter > 项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > opencode 默认
+项目 opencode.jsonc agent.model > 全局 opencode.jsonc agent.model > 平台默认
 \`\`\`
 
-因此修改模型时以 frontmatter 为准（只改 jsonc 会被 frontmatter 遮蔽），建议两处同步保持一致：
-1. 修改 \`.opencode/agents/<name>.md\` 的 frontmatter \`model:\`（模板源 \`src/core/templates-data/opencode/agents/\` 同步）
-2. （可选，保持一致）同步修改 \`opencode.jsonc\` 的 \`agent.<name>.model\`
+- 框架**不再提供 default 层**，部署的 agent \`.md\` 也**不带 frontmatter \`model\` 默认**——frontmatter 不构成来源，无需改模板源。
+- 只有两处显式配置位，取第一个非空值；两层都未设置时走平台默认：
+  1. 项目根 \`opencode.jsonc\` 的 \`agent.<name>.model\`（\`--scope project\`）
+  2. \`~/.config/opencode/opencode.jsonc\` 的 \`agent.<name>.model\`（\`--scope global\`）
+- 推荐 \`openfeel model set <agent> <provider>/<model-id> --scope global|project\`（避免手工定位与改错层）。
 
 ### Claude Code 适配器
 
@@ -5816,9 +5797,9 @@ Claude Code 模型解析优先级链：项目 \`.claude/agents\` > 用户 \`~/.c
 
 ### opencode 适配器
 
-- 主会话（Feel）的主力模型（DeepSeek V4 Pro）不支持图片输入
+- 主会话（Feel）的能力边界取决于平台/会话所选模型，框架不预设
 - 遇到图片输入时主会话会自动委托 openfeel-vision Agent
-- openfeel-vision Agent 需要配置多模态模型（现用 \`deepseek-flash\`，备选 \`qwen3-vl-plus\`）
+- openfeel-vision Agent 须选支持图像输入的模型（由平台/会话或 global/project 配置决定；框架不预设）
 - 模型名不要随意添加前缀（如 \`alibaba/\`），以平台提示的可用名为准
 - **模型引用格式**：\`{auth.json中的key}/{模型ID}\`，不是 \`provider.name\` 也不是 \`provider.id\`
 - 读取 \`~/.local/share/opencode/auth.json\` 确认实际 provider key（常见：\`alibaba-cn\`、\`deepseek\`、\`zhipuai\`）
@@ -5830,16 +5811,16 @@ Claude Code 模型解析优先级链：项目 \`.claude/agents\` > 用户 \`~/.c
 
 ## 项目 Agent 模型概览
 
-| Agent | 模型类型 | 备注 |
+| Agent | 模型类型（能力建议） | 备注 |
 |-------|---------|------|
-| 主会话（Feel） | 推理模型 | DeepSeek V4 Pro — 不支持多模态 |
+| 主会话（Feel） | 推理模型 | —（由平台/会话决定） |
 | openfeel-planner | 推理模型 | — |
 | openfeel-schemer | 推理模型 | — |
-| openfeel-executor | 快速模型 (Flash) | — |
+| openfeel-executor | 快速模型（由平台提供） | — |
 | openfeel-reviewer | 推理模型（异族可选增强） | — |
 | openfeel-feel-tester | 推理模型 | — |
-| 事务官 | 快速模型 (Flash) | — |
-| openfeel-vision | 多模态模型 | 需配 deepseek-flash |
+| 事务官 | 快速模型（由平台提供） | — |
+| openfeel-vision | 多模态模型 | 须选支持图像输入的模型（由平台/会话或 global/project 决定） |
 | openfeel-archiver | 推理模型 | — |
 `,
   'openfeel-recover': `---
@@ -8542,12 +8523,12 @@ Deviating from the above constraints is considered a violation and will be flagg
 | Feel | Overall Commander | Flagship reasoning model | Main session (\`settings.json\` \`agent:"feel"\`) |
 | openfeel-planner | Planning Officer | Reasoning model | Claude subagent (Task dispatch) |
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | Claude subagent (Task dispatch) |
-| openfeel-explorer | Exploration Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
-| openfeel-executor | Execution Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
+| openfeel-explorer | Exploration Officer | fast model (platform-provided) | Claude subagent (Task dispatch) |
+| openfeel-executor | Execution Officer | fast model (platform-provided) | Claude subagent (Task dispatch) |
 | openfeel-reviewer | Review Officer | Reasoning model (heterogeneous optional) | Claude subagent (Task dispatch) |
 | openfeel-feel-tester | Testing Officer | Reasoning model | Claude subagent (Task dispatch) |
-| openfeel-utility Agent | Utility Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
-| openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | Claude subagent (Task dispatch) |
+| openfeel-utility Agent | Utility Officer | fast model (platform-provided) | Claude subagent (Task dispatch) |
+| openfeel-vision | Vision Officer | Multimodal model (platform-provided) | Claude subagent (Task dispatch) |
 | openfeel-archiver | Archiving Officer | Reasoning model | Claude subagent (Task dispatch) |
 
 > **Write constraint**: openfeel-planner and openfeel-archiver must operate on flow.json indirectly through the **main session**, and must not directly \`Edit\` or \`Write\` flow.json.
@@ -8710,12 +8691,12 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | Feel | 总统领 | 主力推理模型 | 主会话（\`settings.json\` \`agent:"feel"\`） |
 | openfeel-planner | 计划官 | 推理模型 | Claude subagent（Task 调度） |
 | openfeel-schemer | 方案官 | 主力推理模型 | Claude subagent（Task 调度） |
-| openfeel-explorer | 探索者 | 快速模型 (Flash) | Claude subagent（Task 调度） |
-| openfeel-executor | 执行官 | 快速模型 (Flash) | Claude subagent（Task 调度） |
+| openfeel-explorer | 探索者 | 快速模型（由平台提供） | Claude subagent（Task 调度） |
+| openfeel-executor | 执行官 | 快速模型（由平台提供） | Claude subagent（Task 调度） |
 | openfeel-reviewer | 审查官 | 推理模型（异族可选增强） | Claude subagent（Task 调度） |
 | openfeel-feel-tester | 测试官 | 推理模型 | Claude subagent（Task 调度） |
-| openfeel-utility | 事务官 | 快速模型 (Flash) | Claude subagent（Task 调度） |
-| openfeel-vision | 视觉官 | 多模态模型 (deepseek-flash) | Claude subagent（Task 调度） |
+| openfeel-utility | 事务官 | 快速模型（由平台提供） | Claude subagent（Task 调度） |
+| openfeel-vision | 视觉官 | 多模态模型（由平台提供） | Claude subagent（Task 调度） |
 | openfeel-archiver | 归档官 | 推理模型 | Claude subagent（Task 调度） |
 
 > **写入约束**：openfeel-planner 和 openfeel-archiver 对 flow.json 的操作必须通过**主会话**间接完成，不得直接 \`Edit\` 或 \`Write\` flow.json。

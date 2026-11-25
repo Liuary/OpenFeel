@@ -95,12 +95,12 @@ Deviating from the above constraints is considered a violation and will be flagg
 | Feel | Overall Commander | Flagship reasoning model | primary |
 | openfeel-planner | Planning Officer | Reasoning model | subagent |
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | subagent |
-| openfeel-explorer | Exploration Officer | Fast model (Flash) | subagent |
-| openfeel-executor | Execution Officer | Fast model (Flash) | subagent |
+| openfeel-explorer | Exploration Officer | fast model (platform-provided) | subagent |
+| openfeel-executor | Execution Officer | fast model (platform-provided) | subagent |
 | openfeel-reviewer | Review Officer | Reasoning model (heterogeneous optional) | subagent |
 | openfeel-feel-tester | Testing Officer | Reasoning model | subagent |
-| openfeel-utility Agent | Utility Officer | Fast model (Flash) | subagent |
-| openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | subagent |
+| openfeel-utility Agent | Utility Officer | fast model (platform-provided) | subagent |
+| openfeel-vision | Vision Officer | Multimodal model (platform-provided) | subagent |
 | openfeel-archiver | Archiving Officer | Reasoning model | subagent |
 
 > **Write constraint**: openfeel-planner and openfeel-archiver must operate on flow.json indirectly through Feel, and must not directly `edit` or `write` flow.json.

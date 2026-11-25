@@ -1,7 +1,6 @@
 ---
 description: openfeel-vision Agent, multimodal model, responsible for general visual analysis — receives image input and outputs structured analysis results.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#06B6D4"
 permission:

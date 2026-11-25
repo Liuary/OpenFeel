@@ -11,15 +11,16 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-/** 框架级全局平台适配器配置内容对象（当前：opencode；N7；全局 AGENTS.md 由约定自动加载承载约束，故不写 instructions） */
+/**
+ * 框架级全局平台适配器配置内容对象（当前：opencode；N7；全局 AGENTS.md 由约定自动加载承载约束，故不写 instructions）
+ * v1.6.3 / REQ-070：框架不注入任何 agent 默认（原先视觉官 / 审查官两条默认模型条目已删除）——
+ * 模型由平台/会话或用户 global / project 配置决定；用户 `opencode.jsonc` 既有 `agent.<name>` 条目仍由
+ * deepMergeJsonc / mergeAgentDefaults 原样透传（不清理、不覆盖）。
+ */
 export function buildGlobalOpencodeFrameworkObj(): Record<string, unknown> {
   return {
     $schema: 'https://opencode.ai/config.json',
     default_agent: 'feel',
-    agent: {
-      'openfeel-vision': { model: 'deepseek/deepseek-flash' },
-      'openfeel-reviewer': { model: 'deepseek/deepseek-flash' },
-    },
     // N3：experimental.agent_manager_tool 已被移除（op-000 实测 schema 未定义 + 静默丢弃），故不写
     // v1.1.1：instructions 已移除——op-000 实测全局 AGENTS.md 自动加载（YES），约束无需显式 instructions 引用
   };

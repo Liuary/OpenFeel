@@ -32,14 +32,14 @@ Model not found: {provider_key}/{model_id}
 
 | 能力需求 | 需确认的字段 | 示例 |
 |----------|-------------|------|
-| 视觉/图像分析 | Input = Yes | `deepseek-flash` |
+| 视觉/图像分析 | Input = Yes | `sample-model-id`（任一支持图像输入的模型） |
 | 工具调用 | Tool Call = Yes | `qwen3.7-plus` |
 | 结构化输出 | Structured = Yes | `qwen3.7-flash` |
 | 推理/思考 | Reasoning = Yes | `qwq-plus` |
 
 **常见陷阱**：
 - `qwen3.7-plus` 是纯文本模型，不支持图像输入
-- `deepseek-flash` 支持多模态图像输入（openfeel-vision 现用模型）
+- openfeel-vision 须选支持图像输入的模型（由平台/会话或 global/project 配置决定；框架不预设）
 - 备选视觉模型：`qwen3-vl-plus`（模型名中的 `vl` 表示 Vision-Language）
 
 ### 第六步：验证
@@ -115,16 +115,15 @@ cat ~/.local/share/opencode/auth.json
 
 ## 多模态（openfeel-vision）Agent 专项
 
-openfeel-vision Agent 必须配置多模态模型。当前默认使用 `deepseek/deepseek-flash`（已支持多模态图像输入）：
+openfeel-vision Agent 必须配置多模态模型（须支持图像输入；由平台/会话或 global/project 配置决定，框架不预设）：
 
 | 模型 ID | 完整引用 | 上下文 | 图像输入 |
 |---------|---------|--------|---------|
-| deepseek-flash | `deepseek/deepseek-flash` | — | ✅ |
 | qwen3-vl-plus | `alibaba-cn/qwen3-vl-plus` | 262K | ✅（备选） |
 | qwen-vl-plus | `alibaba-cn/qwen-vl-plus` | 131K | ❌（旧版） |
 | qwen-vl-max | `alibaba-cn/qwen-vl-max` | 131K | ❌（旧版） |
 
-**推荐**：优先使用 `deepseek-flash`（已内置多模态）；如需更大上下文可备选 `qwen3-vl-plus`。
+**选择建议**：以平台实际可用清单与 models.dev 的 `Input = Yes` 为准；下表候选仅供参考，框架不预设任何模型。
 
 > **Claude Code 适配器**：多模态由 Claude 侧模型决定；`openfeel-vision` subagent 须选支持图像输入的模型。
 
@@ -135,6 +134,6 @@ openfeel-vision Agent 必须配置多模态模型。当前默认使用 `deepseek
 | `Model not found: Alibaba(China)/xxx` | 使用了自定义 provider name 而非 auth.json key | 改为 auth.json 中的实际 key |
 | `Model not found: alibaba/xxx` | 内置 key 与实际注册的 key 不一致 | 检查 auth.json，使用实际 key |
 | `Model not found: xxx. Did you mean: yyy` | 模型名拼写错误或不存在 | 使用 `Did you mean` 建议的名称 |
-| Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为支持图像输入的模型（如 `deepseek-flash`） |
+| Agent 调度成功但无法处理图片 | 配置了纯文本模型 | 改为支持图像输入的模型（以平台可用清单为准） |
 
 > **Claude Code 适配器**：以上排查针对 opencode 的 `auth.json`/`opencode.jsonc`；Claude 侧的模型解析以 `/model`、`settings.json`/`env` 或网关配置为准。

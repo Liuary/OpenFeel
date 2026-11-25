@@ -60,5 +60,5 @@ YAML frontmatter：`status: open` / `priority: high|medium|low` / `module:` / `a
 
 ## 模型选择
 
-openfeel-feel-tester 由**推理模型**（如 DeepSeek V4 Pro）驱动，测试分析需要深度推理能力。
+openfeel-feel-tester 由**推理模型**（例如你选择的模型）驱动，测试分析需要深度推理能力。
 

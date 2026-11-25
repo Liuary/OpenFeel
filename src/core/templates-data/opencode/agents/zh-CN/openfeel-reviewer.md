@@ -1,7 +1,6 @@
 ---
 description: openfeel-reviewer 审查官 Agent，负责交叉审查计划/方案/代码（模板默认不硬编码异族）。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#EC4899"
 permission:

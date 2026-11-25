@@ -84,4 +84,4 @@ permission:
 
 ## 模型选择
 
-openfeel-archiver 由**推理模型**（如 DeepSeek V4 Pro）驱动，负责理解上下文并提取有价值的经验。
+openfeel-archiver 由**推理模型**（例如你选择的模型）驱动，负责理解上下文并提取有价值的经验。

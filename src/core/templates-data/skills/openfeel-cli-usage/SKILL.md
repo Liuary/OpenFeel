@@ -31,7 +31,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 | `openfeel plan scheme create\|publish\|rename\|list\|remove\|register` | 操作方案管理 | `create <stage> <title> [--draft]`、`publish <stage> <opId>`、`rename <stage> <opId> --title <text>`、`remove <stage> <opId> [--force] [--dry-run]`、`register <stage> [opId] [--dry-run]`（补注册 fileOrphans）；`plan stage list [--json]`（v1.2.4 #34） |
 | `openfeel stage status\|set\|task\|verify` | `status.md` 原子操作 + 阶段验证证据 | `set <id> --status/--exec-mode/--auto-advance/--review-agent/--workflow-mode`、`task <id> [no] --add/--done/--undone`、**`verify <id> --result <pass\|fail> --kind <test\|manual\|build> --by <who> --note <text> [--evidence <path>]`（v1.5.8，仅 `archiving` 相位可记录）**（`stage create` 已弃用） |
 | `openfeel config ...` | 配置管理 | `get\|set <key> <value> [--global]`（支持全量 `defaults.*`，且 `defaults.X ≡ X`）、`get --all [--json]`（v1.2.4：项目全量 defaults）、`set ... --sync-stages [--stage <ids...>]`（批量写入已注册阶段 `status.md` 的 `自动推进`/`执行模式`/`工作流模式`；`--stage` 限定作用域，单独使用 / 与 `--global` 组合 → exit 1）、`get-lang\|set-lang`、`list-projects`、`effective [key]` |
-| `openfeel model set\|get\|list` | 模型三层级配置 | `set <agent> <model>`；`get/list [--scope] [--json]`（v1.2.4 #35/#36） |
+| `openfeel model set\|get\|list` | 模型两层配置（global / project） | `set <agent> <model>`；`get/list [--scope] [--json]`（v1.2.4 #35/#36） |
 | `openfeel lint i18n\|kb\|req` | 健康检查（i18n 键一致性 / kb 过期引用 / 需求正文命令名） | `[--json]`（`{target,ok,issues}`；`lint req` 另含 `suspects` / `unknownCount` / `suspectCount`；发现问题**非 0 退出**，`lint req` 仅 A 类非 0） |
 | `openfeel knowledge ...` | 知识库管理 | `list` / `add` / `search` / `index` / `dedup` |
 | `openfeel archive <stage>` | 归档指定阶段（汇总产出、生成摘要与发布说明、提取知识、按 harness 生成 skill） | `<stage> [--json] [--force] [--skill <slug>]`（v1.2.4：已有归档默认拒绝，`ARCHIVE_EXISTS` 零写盘；**v1.5.8：`generated{releaseNotes,skills,requirements}` 追加 + `--skill <slug>` 按探测 harness 生成开发 skill、`--force` 同时覆盖发布说明与 skill**） |
@@ -297,7 +297,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 
 - **A1 `archive <stage> [--json] [--force]`**：已有归档且未 `--force` → `ARCHIVE_EXISTS`/refusal/1，**零写盘**（存在性检查先于任何写盘）；`--force` 才覆盖；保护为归档文件级（别名派生不同文件、互不触发）。
 - **A2 `plan stage list --json`（#34）**：`{schemaVersion,stages,count}`；`stages[]` 七键 `id,phase,status,deps,workflowMode,opsTotal,opsDone`（flow.json 注册阶段视图）。
-- **A3 `model list|get --json`（#35/#36）**：`agents[]{agent,provider,model,source}` / 单 agent 六键；首个 `/` 切分；`source` = default > project > global。
+- **A3 `model list|get --json`（#35/#36）**：`agents[]{agent,provider,model,source}` / 单 agent 六键；首个 `/` 切分；`source` = 生效层（v1.6.3 起 project > global > 平台默认，default 层已移除）。
 - **A4 `flow retry --op <id> --json`（#37）/ `lint i18n|kb --json`（#38/#39）/ `roadmap show [version] --json`（#40）**：retry 六键；lint `{target,ok,issues:[{path,message}]}`（`ok:false` 仍成功文档 + exit 1）；roadmap 表头驱动 `milestones[{title,theme,stage,deliverable}]`（兼容 3/4 列）。
 - **A5 `config get --all --json`**：项目 `{scope:"project",defaults}` 四键固定序；不再 `key-required`；`--all` 与 `--global`/key 组合 → `INVALID_ARGUMENT`。
 
@@ -320,7 +320,7 @@ description: OpenFeel CLI 命令用法参考：命令清单与关键参数、15 
 - **三模式（`full` / `fast` / `general`）**：`plan stage add --workflow-mode` / `stage set --workflow-mode` / `config set defaults.workflow_mode` / `flow phases --mode` 值域均为 `full|fast|general`（**`general` 仅需求级合法**——阶段级 / 部署级写入面拒绝，wizard 不提供选项）；需求侧 `req add` / `req set --workflow-mode`；解析链增需求级层（`status.md > 需求级 > config.yaml > builtin`）；**升级不降级**。
 - **可观测性**：`metrics.json` 经 `recordRun` 接线（`flow metrics`）；CLI 日志行含 `duration_ms` / `project` / `session_id`；op 级时间戳（`attempted_at` / `completed_at`）；跨会话恢复标注 `resumed`。
 - **审查档位（`flow advance --review-tier <full|lean|skip>`）**：与工作流模式**分属两轴**；缺省按模式派生（`flow phases --json.reviewTier`）；显式 `lean` / `skip` 一行非阻断警告；值域非法 exit 1 零写盘。**裁剪只作用于入边 / 目标侧**——阶段恰停于被裁剪相位时保留出边、可向该档位下游推进（v1.2.1-stage-93 修复 `cli/BUG-011`）；「**进入**被裁剪关」仍不可达。
-- **模型默认值统一 + 部署非破坏性（用户主权键 `model`）**：部署（`setup` / `update`）对用户既有 `model` 键**无则创建、有则不覆盖**；opencode 侧显式默认收敛为 `deepseek/deepseek-flash`。
+- **模型默认值统一 + 部署非破坏性（用户主权键 `model`）**：部署（`setup` / `update`）对用户既有 `model` 键**无则创建、有则不覆盖**；框架不预设任何模型（v1.6.3 / REQ-070）：opencode 侧不再注入 agent model，模型由平台/会话或用户 `--scope global|project` 决定。
 
 ## v1.2.0 新增能力（stage-78~84）
 

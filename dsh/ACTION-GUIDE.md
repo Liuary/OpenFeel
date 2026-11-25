@@ -220,7 +220,7 @@ openfeel model get executor --json # 同上
 
 适配器两处：`feel_model action=list`（L1142）、`action=get`（L1151）。
 
-模型意识配置（三层级 default / global / project）在适配器里要展示「哪个 agent 用哪个模型、
+模型意识配置（两层级 global / project + 平台默认；v1.6.3 / REQ-070 起 default 层已移除）在适配器里要展示「哪个 agent 用哪个模型、
 值来自哪一层」。文本形态无法区分生效来源与层级覆盖关系。
 
 ### 建议输出
@@ -230,8 +230,8 @@ openfeel model get executor --json # 同上
   "schemaVersion": 1,
   "scope": "project",
   "agents": [
-    { "agent": "openfeel-executor", "provider": "deepseek",
-      "model": "deepseek-flash", "source": "project" }
+    { "agent": "openfeel-executor", "provider": "<你的 provider>",
+      "model": "<你的模型>", "source": "project" }
   ]
 }
 ```

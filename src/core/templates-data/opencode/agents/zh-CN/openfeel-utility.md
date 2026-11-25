@@ -1,7 +1,6 @@
 ---
 description: 事务官 Agent，快速模型，负责文件操作、格式转换、构建测试等机械性辅助任务。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: low
 color: "#8B9DC3"
 permission:
@@ -69,4 +68,4 @@ task_type: utility
 
 ## 模型选择
 
-事务官由**快速模型**（如 DeepSeek V4 Flash）驱动，机械性操作无需深度推理。快速模型确保低延迟响应和低成本运行，适合频繁调起的辅助任务。
+事务官由**快速模型**（例如你选择的快速模型）驱动，机械性操作无需深度推理。快速模型确保低延迟响应和低成本运行，适合频繁调起的辅助任务。

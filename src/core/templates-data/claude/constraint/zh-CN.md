@@ -97,12 +97,12 @@ AI Agent 行为约束与编码规范。本文件为永久性约束，适用于�
 | Feel | 总统领 | 主力推理模型 | 主会话（`settings.json` `agent:"feel"`） |
 | openfeel-planner | 计划官 | 推理模型 | Claude subagent（Task 调度） |
 | openfeel-schemer | 方案官 | 主力推理模型 | Claude subagent（Task 调度） |
-| openfeel-explorer | 探索者 | 快速模型 (Flash) | Claude subagent（Task 调度） |
-| openfeel-executor | 执行官 | 快速模型 (Flash) | Claude subagent（Task 调度） |
+| openfeel-explorer | 探索者 | 快速模型（由平台提供） | Claude subagent（Task 调度） |
+| openfeel-executor | 执行官 | 快速模型（由平台提供） | Claude subagent（Task 调度） |
 | openfeel-reviewer | 审查官 | 推理模型（异族可选增强） | Claude subagent（Task 调度） |
 | openfeel-feel-tester | 测试官 | 推理模型 | Claude subagent（Task 调度） |
-| openfeel-utility | 事务官 | 快速模型 (Flash) | Claude subagent（Task 调度） |
-| openfeel-vision | 视觉官 | 多模态模型 (deepseek-flash) | Claude subagent（Task 调度） |
+| openfeel-utility | 事务官 | 快速模型（由平台提供） | Claude subagent（Task 调度） |
+| openfeel-vision | 视觉官 | 多模态模型（由平台提供） | Claude subagent（Task 调度） |
 | openfeel-archiver | 归档官 | 推理模型 | Claude subagent（Task 调度） |
 
 > **写入约束**：openfeel-planner 和 openfeel-archiver 对 flow.json 的操作必须通过**主会话**间接完成，不得直接 `Edit` 或 `Write` flow.json。

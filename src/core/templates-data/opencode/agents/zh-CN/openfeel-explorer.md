@@ -1,7 +1,6 @@
 ---
 description: openfeel-explorer 探索者 Agent，只读模型，负责代码 / 资料 / 数据探查与问题定位，输出结构化结论，不产生任何副作用。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#FFB020"
 permission:

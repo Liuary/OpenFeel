@@ -1,7 +1,6 @@
 ---
 description: openfeel-executor 执行官 Agent，快速模型，按操作方案编码实现并自测。
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: medium
 color: "#4CAF50"
 permission:
@@ -91,7 +90,7 @@ permission:
 
 ## 模型选择与约束
 
-openfeel-executor 由**快速模型**（如 DeepSeek V4 Flash）驱动，编码执行追求速度优先。
+openfeel-executor 由**快速模型**（例如你选择的快速模型）驱动，编码执行追求速度优先。
 
 - 超出方案范围的操作须先向 调用方 确认，不得自行决定。
 - 自测连续 3 次不通过时，回退并等待 调用方 重新调度 openfeel-schemer。

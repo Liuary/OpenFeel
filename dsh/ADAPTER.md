@@ -15,7 +15,7 @@
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
   （v1.6.1 起 51 个成功出口 / 52 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.6.0；`req body` / `feel_req body` / 五个新门禁码是硬依赖）。
+  的 `openfeel.requiresCli`（≥1.6.3；`model` 两层语义与 opencode agent 模板去 `model` 是硬依赖）。
 
 ## 设计边界
 
@@ -260,6 +260,14 @@ v1.6.0 的 13 键（`dispatchId,ts,leadSessionId,origin,stage,phase,targetAgent,
 - **放行**：`docs/**`、工作区根级 `*.md`（`README.md` / `CHANGELOG.md` 等）、`test/fixtures/**`、`dsh/test/fixtures/**`；审计 `reason:'doc-asset-phase'`。
 - **仍拒**：`src/**`（含 `src/*.md` / `*.svg`）、`test/core/**` / `test/commands/**`（夹具 ≠ 测试代码）、以及所有受保护路径。
 - 判定发生在**相位层**（`dsh/lib/guard.js` 的命令分类 / 相位判定区）；`CODE_DIRECTORIES` / `isCodeDirectoryPath` / `isExemptPath` **未改**，豁免不扩散到源码树。
+
+## v1.6.3：两层级模型与适配器收窄
+
+> 基线：CLI `1.6.3`（`openfeel.requiresCli >=1.6.3`）；工具面**仍 15 个**（仅参数值域收窄，不增删工具）。
+
+- **`feel_model` 去 default 层**：`scope` 枚举 `['default','global','project']` → **`['global','project']`**（缺省仍 `project`）；传 `default` 现在被 schema 拒绝（此前可透传到 CLI）。`description` 已改为「两层级」，示例模型改为通用占位 `provider/model-id`。
+- **CLI 侧对应语义（A70.3）**：`openfeel model set --scope default` 明确拒绝（`model.set.defaultRemoved`，exit 1）；`openfeel model get --scope default` 恒返回「未显式设置」（`model:null,source:null`）；生效链改为 `project > global > 平台默认`。`byScope.default` 键与 JSON `source` 键保留不变。
+- **兼容性**：用户既有 `opencode.jsonc` 的 `agent.*.model` 原样保留（适配器与 CLI 都不清理）；框架不再向用户配置注入 agent 默认模型，`opencode` agent 模板 frontmatter 也不带 `model` 键。`dsh/docs/compat/commands.md` 的 `model` 小节已同步。
 
 ## 目录
 

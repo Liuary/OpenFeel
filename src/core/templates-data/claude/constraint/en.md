@@ -97,12 +97,12 @@ Deviating from the above constraints is considered a violation and will be flagg
 | Feel | Overall Commander | Flagship reasoning model | Main session (`settings.json` `agent:"feel"`) |
 | openfeel-planner | Planning Officer | Reasoning model | Claude subagent (Task dispatch) |
 | openfeel-schemer | Scheme Officer | Flagship reasoning model | Claude subagent (Task dispatch) |
-| openfeel-explorer | Exploration Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
-| openfeel-executor | Execution Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
+| openfeel-explorer | Exploration Officer | fast model (platform-provided) | Claude subagent (Task dispatch) |
+| openfeel-executor | Execution Officer | fast model (platform-provided) | Claude subagent (Task dispatch) |
 | openfeel-reviewer | Review Officer | Reasoning model (heterogeneous optional) | Claude subagent (Task dispatch) |
 | openfeel-feel-tester | Testing Officer | Reasoning model | Claude subagent (Task dispatch) |
-| openfeel-utility Agent | Utility Officer | Fast model (Flash) | Claude subagent (Task dispatch) |
-| openfeel-vision | Vision Officer | Multimodal model (deepseek-flash) | Claude subagent (Task dispatch) |
+| openfeel-utility Agent | Utility Officer | fast model (platform-provided) | Claude subagent (Task dispatch) |
+| openfeel-vision | Vision Officer | Multimodal model (platform-provided) | Claude subagent (Task dispatch) |
 | openfeel-archiver | Archiving Officer | Reasoning model | Claude subagent (Task dispatch) |
 
 > **Write constraint**: openfeel-planner and openfeel-archiver must operate on flow.json indirectly through the **main session**, and must not directly `Edit` or `Write` flow.json.

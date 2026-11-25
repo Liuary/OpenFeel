@@ -6,3 +6,4 @@
 | [2026-11-25-Liuary-001.md](2026-11-25-Liuary-001.md) | Liuary | 阶段 v1.7.0-stage-133 完成 |
 | [2026-11-25-Liuary-002.md](2026-11-25-Liuary-002.md) | Liuary | 阶段 v1.6.1-stage-134 完成 |
 | [2026-11-25-Liuary-003.md](2026-11-25-Liuary-003.md) | Liuary | 阶段 v1.6.2-stage-135 完成 |
+| [2026-11-25-Liuary-004.md](2026-11-25-Liuary-004.md) | Liuary | 阶段 v1.6.3-stage-136 完成 |

@@ -1,7 +1,6 @@
 ---
 description: openfeel-utility Agent, fast model, responsible for file operations, format conversion, build/test and other mechanical auxiliary tasks.
 mode: subagent
-model: deepseek/deepseek-flash
 reasoning_effort: low
 color: "#8B9DC3"
 permission:
@@ -69,4 +68,4 @@ For subtasks beyond this Agent's responsibility that require referral to another
 
 ## Model Selection
 
-The openfeel-utility Agent is driven by a **fast model** (such as DeepSeek V4 Flash). Mechanical operations do not require deep reasoning. The fast model ensures low-latency response and low operating cost, suitable for frequently invoked auxiliary tasks.
+The openfeel-utility Agent is driven by a **fast model** (e.g., the fast model you choose). Mechanical operations do not require deep reasoning. The fast model ensures low-latency response and low operating cost, suitable for frequently invoked auxiliary tasks.

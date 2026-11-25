@@ -769,6 +769,8 @@ Backup layout (`~/.openfeel/backup/{yyyyMMddTHHmmssSSS}/`):
 
 ## 6.2 What `setup` deploys
 
+> （历史快照，v1.2.1；现行见 ADAPTER v1.6.3）
+
 `setupGlobalFramework(lang = 'zh-CN', tools = ['opencode'])` — **pure global**, creates no project `.openfeel/`. Every file goes through `deployGlobalAsset` (managed-region three-state, idempotent, re-runnable) and returns `{ created, updated, skipped, appended }`.
 
 opencode branch:

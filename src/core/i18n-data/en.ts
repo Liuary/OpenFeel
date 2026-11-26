@@ -1268,8 +1268,6 @@ export const model: I18nDomain = {
   'get.effective':     { key: 'model.get.effective',     zh: '', en: 'Effective model: {value}' },
   'get.byScope':       { key: 'model.get.byScope',       zh: '', en: '  {scope}: {value}' },
   'get.none':          { key: 'model.get.none',          zh: '', en: '(not explicitly set, using platform default; current adapter: opencode)' },
-  'get.inconsistent':  { key: 'model.get.inconsistent',  zh: '', en: '⚠ default layer multi-source mismatch (frontmatter differs from the adapter default config value); frontmatter takes precedence' },
-  'get.shadowed':      { key: 'model.get.shadowed',      zh: '', en: '⚠ project/global setting is shadowed by the framework default frontmatter (default takes precedence); use --scope default to change the effective value' },
   'get.failed':        { key: 'model.get.failed',        zh: '', en: '✗ Read failed: {message}' },
   // list
   'list.title':        { key: 'model.list.title',        zh: '', en: 'Agent model list:' },

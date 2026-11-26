@@ -1315,8 +1315,6 @@ export const model: I18nDomain = {
   'get.effective':     { key: 'model.get.effective',     zh: '生效模型：{value}', en: '' },
   'get.byScope':       { key: 'model.get.byScope',       zh: '  {scope}：{value}', en: '' },
   'get.none':          { key: 'model.get.none',          zh: '（未显式设置，走平台默认；当前适配器 opencode）', en: '' },
-  'get.inconsistent':  { key: 'model.get.inconsistent',  zh: '⚠ default 层多源不一致（frontmatter 与适配器默认配置值不同），以 frontmatter 为准', en: '' },
-  'get.shadowed':      { key: 'model.get.shadowed',      zh: '⚠ project/global 设置被框架默认 frontmatter 遮蔽（default 优先），如需修改生效值请用 --scope default', en: '' },
   'get.failed':        { key: 'model.get.failed',        zh: '✗ 读取失败：{message}', en: '' },
   // list
   'list.title':        { key: 'model.list.title',        zh: 'Agent 模型列表：', en: '' },

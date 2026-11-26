@@ -73,22 +73,11 @@ function printByScope(r: GetModelResult, scope: ModelScope | undefined, lang: st
   if (scope) {
     const v = r.byScope[scope];
     console.log(t('model.get.byScope', lang, { scope, value: v ?? t('model.get.none', lang) }));
-    if (scope === 'default' && r.inconsistent) {
-      console.log(t('model.get.inconsistent', lang));
-    }
     return;
   }
   console.log(t('model.get.effective', lang, { value: r.effective ?? t('model.get.none', lang) }));
   for (const s of SCOPES) {
     console.log(t('model.get.byScope', lang, { scope: s, value: r.byScope[s] ?? t('model.get.none', lang) }));
-  }
-  if (r.inconsistent) {
-    console.log(t('model.get.inconsistent', lang));
-  }
-  // v1.6.3 / REQ-070：default 层已移除（`byScope.default` 恒 null），阴影提示分支保留但恒不触发
-  if (r.byScope.default != null && r.effective === r.byScope.default
-    && (r.byScope.project != null || r.byScope.global != null)) {
-    console.log(t('model.get.shadowed', lang));
   }
 }
 

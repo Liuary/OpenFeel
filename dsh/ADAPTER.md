@@ -15,7 +15,7 @@
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
   （v1.6.1 起 51 个成功出口 / 52 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.6.3；`model` 两层语义与 opencode agent 模板去 `model` 是硬依赖）。
+  的 `openfeel.requiresCli`（≥1.6.4；`model` 两层语义与 opencode agent 模板去 `model` 是硬依赖）。
 
 ## 设计边界
 
@@ -269,6 +269,14 @@ v1.6.0 的 13 键（`dispatchId,ts,leadSessionId,origin,stage,phase,targetAgent,
 - **CLI 侧对应语义（A70.3）**：`openfeel model set --scope default` 明确拒绝（`model.set.defaultRemoved`，exit 1）；`openfeel model get --scope default` 恒返回「未显式设置」（`model:null,source:null`）；生效链改为 `project > global > 平台默认`。`byScope.default` 键与 JSON `source` 键保留不变。
 - **兼容性**：用户既有 `opencode.jsonc` 的 `agent.*.model` 原样保留（适配器与 CLI 都不清理）；框架不再向用户配置注入 agent 默认模型，`opencode` agent 模板 frontmatter 也不带 `model` 键。`dsh/docs/compat/commands.md` 的 `model` 小节已同步。
 
+## v1.6.4：清理债（零行为变更）
+
+> 基线：CLI `1.6.4`（`openfeel.requiresCli >=1.6.4`）；工具面**仍 15 个**，本版无行为 / 契约变更。
+
+- **model 死文案 / 死分支清理（REQ-071 / A71.1）**：`model.get.inconsistent` / `model.get.shadowed` 两条 i18n 文案与 `src/commands/model.ts` 的三段不可达分支删除；`GetModelResult` 的 `inconsistent` / `byScope.default` 字段保留，`model get/list --json` 键集与键序不变（A71.2）。`dsh/docs/compat/commands.md` 已同步为「两分支已删（字段保留）」。
+- **验证计数（A71.3）**：见「验证」段——五套，contract 54 / verify 136 / guard 193 / preflight 10 / integration 跳过（2026-11-26 实测）。
+- **兼容性**：适配器代码零改动；本版只抬 `requiresCli` 基线与刷新文档。
+
 ## 目录
 
 | 路径 | 内容 |
@@ -288,17 +296,18 @@ v1.6.0 的 13 键（`dispatchId,ts,leadSessionId,origin,stage,phase,targetAgent,
 | `lib/tools/shared.js` | 输出封装、参数编译、渲染 |
 | `lib/surface/command.js` | `/feel` 人类命令 |
 | `lib/surface/prompt.js` | `<feel_mode>` 系统提示段（v1.6.0 压到 ≤1200 字符 / ≤25 行） |
-| `test/` | 契约 / 行为 / 门禁 / 真实注册表 四套验证（断言数随版本增长，以 `dsh/test/*` 实测输出为准） |
+| `test/` | 契约 / 行为 / 门禁 / 写前自愈 / 真实注册表 五套验证（断言数随版本增长，以 `dsh/test/*` 实测输出为准） |
 | `docs/compat/` | OpenFeel v1.2.1 逆向兼容性契约（6 份；仅供回归参照，权威以 [docs/json-contract.md](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为准） |
 
 ## 验证
 
 ```bash
 cd dsh
-node test/contract.js      # 53 — DSH schema 契约（真实 assertSupportedJsonSchema；v1.6.0 实测）
-node test/verify.js        # 129 — 行为（真实 CLI + 真实 .openfeel 副本；v1.6.0 实测）
-node test/guard.js         # 180 — 写入门禁（fake ToolExecution + 临时工作区；v1.6.0 实测）
-node test/integration.js   # 10 — 真实 cordis + 真实 ToolRuntime 挂载（取不到 tools 服务时跳过，exit 0）
+node test/contract.js      # 54 — DSH schema 契约（真实 assertSupportedJsonSchema；2026-11-26 实测）
+node test/verify.js        # 136 — 行为（真实 CLI + 真实 .openfeel 副本；2026-11-26 实测）
+node test/guard.js         # 193 — 写入门禁（fake ToolExecution + 临时工作区；2026-11-26 实测）
+node test/preflight.js     # 10 — 写前自愈（账本窗口与写入前刷新；2026-11-26 实测）
+node test/integration.js   # 真实注册表：真 cordis + 真 ToolRuntime 挂载（取不到 tools 服务时跳过，exit 0）
 ```
 
 ## 发布说明

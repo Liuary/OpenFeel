@@ -240,7 +240,7 @@ export function getAgentModel(agentIdRaw: string, scope?: ModelScope, opts?: Mod
   const project = readJsoncAgentModel(join(projectPath, 'opencode.jsonc'), agentId);
   const global = readJsoncAgentModel(getGlobalOpencodeJsoncPath(), agentId);
 
-  // default 键保留（JSON 契约稳定），值恒 null = 「未显式设置，走平台默认」
+  // default 键保留（JSON 契约稳定；v1.6.4 起仅内部保留，CLI 不再打印阴影提示），值恒 null = 「未显式设置，走平台默认」
   const byScope: Partial<Record<ModelScope, string | null>> = {
     project,
     global,
@@ -250,7 +250,7 @@ export function getAgentModel(agentIdRaw: string, scope?: ModelScope, opts?: Mod
   const effective = scope
     ? (byScope[scope] ?? undefined)
     : (project ?? global ?? undefined);
-  // inconsistent 字段保留（JSON 契约稳定）：default 层多源比对已移除，恒为 false
+  // inconsistent 字段保留（JSON 契约稳定；v1.6.4 起仅内部保留）：default 层多源比对已移除，恒为 false
   return { agentId, effective, byScope, inconsistent: false };
 }
 

@@ -17,6 +17,8 @@
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 
+- **v1.6.4** — Cleanup release with **zero behavior change**: the unreachable `model.get.inconsistent` / `model.get.shadowed` i18n strings and their three dead branches in `model.ts` are gone, while the internal `byScope.default` / `inconsistent` fields and every `model --json` key stay put — `dsh/docs/compat/commands.md` now says the branches were removed in v1.6.4. The adapter's verification counts are refreshed to five suites (snapshot dated 2026-11-26) across `dsh/ADAPTER.md`, `dsh/README.md` and `dsh/ACTION-GUIDE.md`; `docs/GETTING_STARTED.md` explains how to drop the stale, non-effective `models:` block from an old project's `.openfeel/config.yaml` (manual edit only — the file is guard-protected — then restart the session). Two packages are 1.6.4 lockstep, `openfeel.requiresCli >=1.6.4`.
+
 - **v1.6.3** — No preset models, part 2: the opencode agent templates no longer carry a `model` frontmatter key (10 files), the framework no longer injects `agent.*.model` into your `opencode.jsonc`, and the constraint layer / agent bodies no longer name a vendor model (`deepseek-flash` / `DeepSeek V4 Pro` → "platform-provided" / "the model you choose"). `openfeel model` keeps only the global / project scopes: `set --scope default` is rejected with a hint, `get --scope default` returns null, and the resolution chain is `project > global > platform default` (the `byScope.default` key and the JSON `source` field stay for contract stability). Two packages are 1.6.3 lockstep, `openfeel.requiresCli >=1.6.3`, and the DSH `feel_model` scope enum drops `default`.
 
 - **v1.6.2** — No preset models: the default config template no longer hardcodes any `models` block (previously `deepseek-v4-pro` / `deepseek-flash` / `glm-5.1`); agents use whatever model you select in your platform (DSH, Claude, etc.). The `models` section stays optional and read-compatible for awareness only, and `openfeel init` generates a model-free config.
@@ -58,6 +60,13 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.6.4 — 清理债：model 死文案/死分支、验证计数与 config models 迁移提示
+
+- **model 死文案与死分支清理**：`model.get.inconsistent` / `model.get.shadowed` 两条 i18n 文案（中英各 2 行）与 `src/commands/model.ts` 的三段不可达分支删除；`GetModelResult` 的 `inconsistent` / `byScope.default` 字段与所有 `model --json` 键保留（契约稳定），`dsh/docs/compat/commands.md` 同步为「两分支已在 v1.6.4 删除（字段保留）」。
+- **验证计数刷新**：DSH 适配器验证改为五套（契约 / 行为 / 门禁 / 写前自愈 / 真实注册表），`dsh/ADAPTER.md` / `dsh/README.md` / `dsh/ACTION-GUIDE.md` 三处同源旧值一次修正，并标注 2026-11-26 快照。
+- **旧项目 config 迁移提示**：`docs/GETTING_STARTED.md` 说明旧项目 `.openfeel/config.yaml` 的 `models:` 段不生效、可整段手动删除（受 guard 保护只能人工改），删除后重启会话；`openfeel init` 新项目已无该段。
+- 版本 1.6.4（root / dsh lockstep、`requiresCli >=1.6.4`）。升级：`npm i -g openfeel@latest` → `openfeel setup` → 重启 harness。
 
 ## v1.6.3 — 彻底不预设模型：移除 opencode agent 默认、框架注入与厂商名残留
 

@@ -76,7 +76,7 @@
 | 成功 `--json` 出口 | **33**（存档；现行 **51**，注册选项 **52**） |
 | 适配器已消费 | **25** 个出口（存档；现行按工具实现，不按出口总数折算） |
 | 适配器文本回显 | **8** 处（存档；现行仅 `dev status` 与 `instructions` XML 默认形态） |
-| 适配器验证 | 存档 110 断言；现行 contract 53 / verify 129 / guard 180 / integration 10 |
+| 适配器验证 | 存档 110 断言；现行 contract 54 / verify 136 / guard 193 / preflight 10 / integration 跳过 |
 | 适配器位置 | `OpenFeel/dsh/`（与 `claude/`、`kilo/` 同级的一等适配器） |
 
 **为什么要关心文本回显那 7 处**：适配器要把结构化结果交给模型。落地为人类中文文本后，

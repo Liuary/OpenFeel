@@ -153,6 +153,8 @@ openfeel init ./my-agent-project
 
 > **不预设模型**（v1.6.2 / REQ-069）：生成的 `config.yaml` 不含 `models` 段——Agent 使用平台/会话所选模型（DSH / Claude 等）；如需 Awareness 记录可自行添加 `models` 段（不生效）。
 
+> **旧项目迁移（v1.6.4 / REQ-071）**：v1.6.2 之前初始化的项目，`.openfeel/config.yaml` 可能仍残留旧的 `models` 段。该段只做 Awareness 记录、**不生效**，可以放心清理：用编辑器把它**整段删除**（连同下面缩进的子行）即可。注意 `config.yaml` **受 guard 保护**——agent 的写入工具会被拒绝，只能由人工编辑；删除后**重启会话**，让 guard 与适配器重新读取配置（`openfeel config get --all --json` 可确认 `defaults` 仍是五个键）。`openfeel init` 生成的新项目（v1.6.2 起）已不含该段。
+
 ## 5. 基本工作流
 
 ### 5.1 查看流水线状态

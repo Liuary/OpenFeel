@@ -1,3 +1,15 @@
+## [1.6.4] - 2026-11-26
+
+> 清理 1.6.3 遗留的文档/死代码债：model 死文案与死分支、ADAPTER 验证计数快照、config `models:` 迁移提示；零行为与 JSON 契约变更。
+> 需求 REQ-071。
+
+### Changed
+- [stage-137] **model 死文案清零（REQ-071 / A71.1）**：`src/core/i18n-data/{zh-CN,en}.ts` 删除 `model.get.inconsistent` / `model.get.shadowed`（中英各 2 行）；`src/commands/model.ts` 删除三段不可达分支（`scope=default` 的 inconsistent、未指定 scope 的 inconsistent、shadowed）；`dsh/docs/compat/commands.md` 的 `model` 小节改为「两分支已在 v1.6.4 删除（`inconsistent` / `byScope` 字段保留以稳定 JSON）」。
+- [stage-137] **JSON 契约不变（A71.2）**：`GetModelResult` 的 `inconsistent`（恒 `false`）与 `byScope.default`（恒 `null`）字段保留；`model get --json` 六键序、`model list --json` 顶层/条目键序、`get --scope default --json` 的 `model:null,source:null`（exit 0）均不变。
+- [stage-137] **验证计数刷新（A71.3）**：`dsh/ADAPTER.md` 验证段改「五套」（contract 54 / verify 136 / guard 193 / preflight 10 / integration 跳过，2026-11-26 实测）；`dsh/README.md` 与 `dsh/ACTION-GUIDE.md` 的同源旧值（53/129/180/191/四套）同步修正。
+- [stage-137] **旧项目 config 迁移提示（A71.4）**：`docs/GETTING_STARTED.md` 新增说明——旧项目 `.openfeel/config.yaml` 的 `models:` 段不生效，可整段手动删除（受 guard 保护、agent 不可写），删除后重启会话；`openfeel init` 新项目已无该段。
+- [stage-137] 两包 lockstep → **1.6.4**；`openfeel.requiresCli` 抬到 `>=1.6.4`；`package-lock.json` 根版本同步；`dsh/ADAPTER.md` 新增 `## v1.6.4` 小节；新建 `docs/releases/v1.6.4.md`。
+
 ## [1.6.3] - 2026-11-25
 
 > 彻底不预设模型：opencode agent 模板去 `model`、框架去 agent 模型注入、`default` 层移除（两层语义）、模板正文去厂商名。

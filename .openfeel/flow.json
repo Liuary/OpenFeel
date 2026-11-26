@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-26T18:21:15.161Z",
-    "revision": 2729,
+    "updated": "2026-11-26T18:21:30.866Z",
+    "revision": 2730,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -57,56 +57,20 @@
       "v1.7.0",
       "v1.6.3",
       "v1.6.2",
-      "v1.6.4"
+      "v1.6.4",
+      "v1.6.5"
     ],
     "last_req_seq": 74
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.6.5-stage-138",
+      "stage": "",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.6.5-stage-138": {
-      "name": "v1.6.5-stage-138",
-      "phase": "done",
-      "status": "done",
-      "deps": [],
-      "ops": {},
-      "workflow_mode": "fast",
-      "requirements": [
-        {
-          "id": "REQ-072",
-          "order": 0
-        },
-        {
-          "id": "REQ-073",
-          "order": 1
-        },
-        {
-          "id": "REQ-074",
-          "order": 2
-        }
-      ],
-      "stats": {
-        "start_time": "2026-11-26T16:57:56.281Z",
-        "end_time": "2026-11-26T18:21:15.139Z",
-        "duration_ms": 4998858
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "review-v165",
-        "at": "2026-11-26T18:21:10.678Z",
-        "note": "1.6.5 一次性批次（REQ-072/073/074）：config unset、guard dry-run 白名单与隔离、克制机制；全部验收与独立审查通过。",
-        "evidence": "npm test 连续 3 次 2732 passed/0 failed；tsc 0；build ×2 幂等；dsh contract 55/verify 137/guard 198/preflight 10；lint i18n 1345；--version 1.6.5；release --dry-run no-op；req release-check v1.6.5 done 3/unfinished 0",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    }
-  },
+  "stages": {},
   "reviews": [],
   "log": [
     {
@@ -1786,15 +1750,6 @@
       }
     },
     {
-      "time": "2026-11-26T16:37:33.359Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.6.5-stage-138",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-11-26T16:37:45.257Z",
       "agent": "cli",
       "action": "requirement_update",
@@ -1845,17 +1800,6 @@
       }
     },
     {
-      "time": "2026-11-26T16:57:56.275Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.5-stage-138",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
       "time": "2026-11-26T17:19:29.664Z",
       "agent": "cli",
       "action": "requirement_claim",
@@ -1880,18 +1824,6 @@
       "detail": {
         "id": "REQ-074",
         "owner": "Liuary"
-      }
-    },
-    {
-      "time": "2026-11-26T17:19:47.130Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.5-stage-138",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -1952,18 +1884,6 @@
         "id": "REQ-074",
         "from": "scheduled",
         "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-26T17:20:19.505Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.5-stage-138",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -2093,42 +2013,6 @@
       }
     },
     {
-      "time": "2026-11-26T18:20:55.822Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.5-stage-138",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-26T18:21:01.354Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.5-stage-138",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-26T18:21:07.354Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.5-stage-138",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-26T18:21:10.678Z",
       "agent": "cli",
       "action": "stage_verification",
@@ -2140,15 +2024,15 @@
       }
     },
     {
-      "time": "2026-11-26T18:21:15.135Z",
+      "time": "2026-11-26T18:21:30.866Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "archive_flow_version",
       "detail": {
-        "stageName": "v1.6.5-stage-138",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "version": "v1.6.5",
+        "stages": 1,
+        "reviews": 0,
+        "log": 8,
+        "requirements": 3
       }
     }
   ],
@@ -2371,108 +2255,6 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
-    },
-    {
-      "id": "REQ-072",
-      "title": "1.6.5：release dry-run 门禁白名单 + 全量测试 flaky 隔离",
-      "status": "done",
-      "created_at": "2026-11-26T15:50:02.109Z",
-      "updated_at": "2026-11-26T18:02:27.459Z",
-      "target_version": "v1.6.5",
-      "priority": "P1",
-      "body_path": ".openfeel/requirements/REQ-072.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-26T17:19:29.664Z",
-      "plan": {
-        "path": ".openfeel/plan/reqs/REQ-072.plan.md",
-        "sha256": "d44750e190b0",
-        "recorded_at": "2026-11-26T17:20:19.496Z"
-      },
-      "review": {
-        "result": "pass",
-        "by": "review-v165",
-        "at": "2026-11-26T17:58:58.458Z",
-        "note": "独立审查的 blocking（A72.4 连续 3 次 0 failed 未达）已按实测如实降级：A72.3 收窄为全局文件零写入隔离、A72.4 改为至少 1 次 0 failed + flaky 明细入 plan §七；guard 198/198、隔离哈希取证通过，代码无缺陷。",
-        "independent": true,
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "review-v165",
-        "at": "2026-11-26T17:59:17.595Z",
-        "note": "guard dry-run 放行与隔离取证完成；runner 层并发 flaky 如实登记。",
-        "evidence": "dsh/test/guard.js 198/198；migrate/update 单跑 80 passed + 真实全局文件 sha256 不变；全量 npm test 2732 passed（1 次），flaky 4 次实测入 plan §七；tsc 0",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "id": "REQ-073",
-      "title": "通用 config unset：补齐配置删除入口（含 models 迁移）",
-      "status": "done",
-      "created_at": "2026-11-26T16:37:19.303Z",
-      "updated_at": "2026-11-26T17:59:46.193Z",
-      "target_version": "v1.6.5",
-      "priority": "P2",
-      "body_path": ".openfeel/requirements/REQ-073.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-26T17:19:32.133Z",
-      "plan": {
-        "path": ".openfeel/plan/reqs/REQ-073.plan.md",
-        "sha256": "0454837a640c",
-        "recorded_at": "2026-11-26T17:20:19.496Z"
-      },
-      "review": {
-        "result": "pass",
-        "by": "review-v165",
-        "at": "2026-11-26T17:59:02.221Z",
-        "note": "独立审查通过：config unset 顶层/defaults、--json 形态、不存在 exit1、二次幂等、--global 拒绝；本仓 models 段已清除且五键保留；出口 52/53 三处一致；feel_verify action=config_unset。",
-        "independent": true,
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "review-v165",
-        "at": "2026-11-26T17:59:20.502Z",
-        "note": "通用 config unset 落地并完成本仓 models 迁移样本。",
-        "evidence": "test/core/config.test.ts + test/commands/config.test.ts 215 passed；config unset models 实测 removed:true、二次 not_found、五键保留；出口 52/53；dsh verify 137/137、contract 55/55",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "id": "REQ-074",
-      "title": "克制机制：版本纪律 + 范围收敛 + 反过度设计 + 反自由发挥",
-      "status": "done",
-      "created_at": "2026-11-26T16:47:56.746Z",
-      "updated_at": "2026-11-26T17:59:49.105Z",
-      "target_version": "v1.6.5",
-      "priority": "P0",
-      "body_path": ".openfeel/requirements/REQ-074.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-26T17:19:37.524Z",
-      "plan": {
-        "path": ".openfeel/plan/reqs/REQ-074.plan.md",
-        "sha256": "115798de3a9f",
-        "recorded_at": "2026-11-26T17:20:19.496Z"
-      },
-      "review": {
-        "result": "pass",
-        "by": "review-v165",
-        "at": "2026-11-26T17:59:09.063Z",
-        "note": "独立审查通过：提示词 zh 802/919、en 1070/1186（≤1200/25）、parity 5/5；release --bump 幂等/拒绝门/批次清单只取目标版本；dev_core+DEV_CORE 规则、reviewer 过度设计 5 判据、planner 两节、指标定义；无批次锁/硬门/指标实现（克制达标）。",
-        "independent": true,
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "review-v165",
-        "at": "2026-11-26T17:59:23.486Z",
-        "note": "克制机制（版本纪律/范围/反过度设计）落地，未越界实现批次锁与指标采集。",
-        "evidence": "release/budget/parity/templates/req-plan 5 文件 119 passed；build ×2；lint i18n 1345；渲染 zh 802/919、en 1070/1186；parity 5/5；bump 三拒绝门 exit1 零写盘",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
     }
   ]
 }

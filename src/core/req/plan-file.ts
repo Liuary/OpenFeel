@@ -20,8 +20,21 @@ import { extractSection, isRequirementPlanFilled, isSectionFilled } from '../pla
 import { getRequirementBodyPath } from './body-file.js';
 import type { RequirementData } from './types.js';
 
-/** 计划骨架四节（声明序即落盘序；与 `filled.ts` 的必备三节同源，`偏差与回写` 为第四列） */
-export const REQUIREMENT_PLAN_SKELETON_SECTIONS = ['目标', '任务拆解', '验收判据', '偏差与回写'] as const;
+/**
+ * 计划骨架六节（声明序即落盘序）。
+ *
+ * 前四节与 `filled.ts` 的必备三节同源（`偏差与回写` 为第四列）；`不做清单` / `允许改动`
+ * 是 v1.6.5 / A74.4 新增的**范围纪律占位**——只保证小节存在，**不是写实判据**
+ * （`isRequirementPlanFilled` 仍只查 目标 / 任务拆解 / 验收判据 三节）。
+ */
+export const REQUIREMENT_PLAN_SKELETON_SECTIONS = [
+  '目标',
+  '任务拆解',
+  '验收判据',
+  '不做清单',
+  '允许改动',
+  '偏差与回写',
+] as const;
 
 /** 空小节占位（**不是写实判据**；仅用于「需求正文未写实」时诚实留空，绝不冒充内容） */
 const PLAN_PLACEHOLDER = '（待补充）';
@@ -174,12 +187,33 @@ function buildDeviationSection(): string {
 }
 
 /**
+ * `## 不做清单` 占位（v1.6.5 / A74.4）：范围纪律小节，**不是写实判据**。
+ * 写实由计划作者人工补；`isRequirementPlanFilled` 不查本节（防存量计划被误判为空壳）。
+ */
+function buildNotToDoSection(): string {
+  return [
+    '- （占位，不是写实判据）本计划**明确不做**的事（含被移出本批次的发散项）；防止范围在执行中膨胀。',
+  ].join('\n');
+}
+
+/**
+ * `## 允许改动` 占位（v1.6.5 / A74.4）：文件 / 目录白名单，**不是写实判据**。
+ * 清单外文件属计划外改动，reviewer 直接打回（blocking REV）。
+ */
+function buildAllowedChangesSection(): string {
+  return [
+    '- （占位，不是写实判据）本计划允许改动的文件 / 目录白名单（逐条列出）；清单外文件属计划外改动，reviewer 直接打回。',
+  ].join('\n');
+}
+
+/**
  * 生成需求级计划全文（纯读；零写盘）。
  *
  * 四节 + `## 变更记录`；内容一律从需求正文派生：
  * - `## 目标` ← `## 摘要`（未写实则占位）；
  * - `## 任务拆解` ← `## 目标与验收` 的判据行（逐条转可勾任务）；
  * - `## 验收判据` ← `## 目标与验收` 原文；
+ * - `## 不做清单` / `## 允许改动` ← 范围纪律占位（v1.6.5 / A74.4，**不是写实判据**）；
  * - `## 偏差与回写` ← 固定回写格式模板。
  *
  * @param projectPath 项目根（相对路径按它解析）
@@ -216,6 +250,14 @@ export function buildRequirementPlanSkeleton(
     '## 验收判据',
     '',
     buildCriteriaSection(bodyMd),
+    '',
+    '## 不做清单',
+    '',
+    buildNotToDoSection(),
+    '',
+    '## 允许改动',
+    '',
+    buildAllowedChangesSection(),
     '',
     '## 偏差与回写',
     '',

@@ -7,7 +7,9 @@
  * v1.6.0 / T10（REQ-060）：按 plan §5.1 重写。
  * - 正文压到 **≤1000 字符 / ≤20 行**（渲染后总数含 Free Mode 附录 ≤1200，A10 判据）；
  * - 只留三件事：角色、三个可判定检查点（条件 → 动作 → 拒绝形态）、一句兜底；
- * - 版本号 / 退出码 / shell 档位 / 15 相位表 / 模式表 / 重复细则**全部移出**
+ * - v1.6.5 / REQ-074 A74.1：加一行「版本纪律」（发布时定版本 / 一批次一版本 / 新想法进 backlog /
+ *   同批不连发补丁），EN 侧压缩 checkpoint 1—3 腾预算（四组渲染仍 ≤1200 字符 / ≤25 行）；
+ * - 版本号**分级规则**（patch / minor / major 的取舍）保留在「版本纪律」一行；退出码 / shell 档位 / 15 相位表 / 模式表 / 重复细则**全部移出**
  *   （去向：`feel_flow action=phases`、`feel_next().dispatch`、skill 渐进披露）。
  *
  * 正文常量 `FEEL_BODY_ZH` / `FEEL_BODY_EN` 是**单一源**：五处副本
@@ -36,7 +38,7 @@ export const FEEL_BODY_ZH = `## 你的角色：调度者，不是执行者
 2. 需求没有 \`.openfeel/plan/reqs/REQ-NNN.plan.md\`（或仍是占位空壳）→ 不执行：先补正文（\`feel_req action=body\`）与需求级计划；否则被拒 \`REQ_PLAN_GATE\` / \`STAGE_PLAN_GATE\`。
 3. 要执行任何一步 → 必须派发子 agent（planner 定计划 / executor 执行 / reviewer 审查）并用 \`feel_dispatch\` 记账，主会话只收 ≤10 行回报；主会话直接改仓库即违规（台账无记录 = 未派发）。
 
-版本号默认按补丁推进（x.y.Z）；结构性/行为性变更才升 minor，破坏性才升 major，小改不跳级。
+版本纪律：版本只在发布时动；一次发布=一个批次（同批需求拆阶段不拆版本）；新想法进 backlog；同批不连发补丁；结构性才 minor、破坏性才 major。
 
 ## 兜底
 不确定时调 \`feel_status\` / \`feel_next\`，不要凭记忆；禁手改 \`flow.json\` / \`status.md\`。
@@ -50,11 +52,11 @@ export const FEEL_BODY_EN = `## Your role: orchestrator, not implementer
 Subagents write files, edit code and run tests; you decide who acts, dispatch, log and judge.
 
 ## Three checkpoints (condition → action → refusal)
-1. No open stage or requirement → \`feel_stage action=add\`, then \`feel_req action=add\` **with \`summary\` + \`goal\` + \`acceptance\`** (else \`start\` is refused by \`REQ_BODY_GATE\`); writes denied = \`no active stage\`.
-2. No \`.openfeel/plan/reqs/REQ-NNN.plan.md\` (or placeholder) → stop; write body + plan first; else \`REQ_PLAN_GATE\` / \`STAGE_PLAN_GATE\`.
-3. Before executing → dispatch a subagent (planner / executor / reviewer) and log it with \`feel_dispatch\`; main session gets ≤10 lines; direct repo edits = violation.
+1. No stage/requirement → \`feel_stage action=add\`, \`feel_req action=add\` **with \`summary\`+\`goal\`+\`acceptance\`** (else \`start\` → \`REQ_BODY_GATE\`); denied = \`no active stage\`.
+2. No plan (\`.openfeel/plan/reqs/REQ-NNN.plan.md\`) → body+plan first; else \`REQ_PLAN_GATE\`/\`STAGE_PLAN_GATE\`.
+3. Before executing → dispatch a subagent (planner / executor / reviewer), log with \`feel_dispatch\`; main session gets ≤10 lines; direct edits = violation.
 
-Version: patch; minor structural; major breaking.
+Version: release-only; one batch; ideas→backlog; no back-to-back patches; patch, minor structural, major breaking.
 
 Unsure? \`feel_status\` / \`feel_next\`; never memory-only. Never hand-edit \`flow.json\` / \`status.md\`.
 `;

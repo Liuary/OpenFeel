@@ -1,3 +1,32 @@
+## [1.6.5] - 2026-11-27
+
+> 把「克制」做成机制：版本只在发布窗口动、一次发布一个批次、发布前看得见本批次清单；同时补齐配置删除入口、让发布预演不再被门禁拦死。
+> 需求 REQ-072、REQ-073、REQ-074（**本批次一次性发布**）。
+
+### Added
+- [stage-138] **`config unset <key>`（REQ-073 / A73.1—A73.4）**：`src/core/config.ts` 新增 `unsetConfigValue`（紧邻 `setConfigValue`，同一 YAML Document `deleteIn` → `parseYaml` + `ConfigSchema.safeParse` 复验 → 原子写回），`src/commands/config.ts` 新增 `unset` 子命令。支持 `defaults.X`（不限 schema，`test_enabled` 这类退役键同样可删）、`defaults` 整段、无点号的**顶层段**（如 `models`）；注释 / 行内注释 / 其它键序与配置全部保留，空文档不删文件。
+- [stage-138] **`config unset --json`（A73.2 / 出口 #52）**：`{schemaVersion,key,removed,path}` 4 键固定序；键不存在或配置缺失 → 同形末位追加 `reason`（`not_found` / `config-missing`）并 **exit 1**（置 `process.exitCode` 后 return，不 `process.exit`）；非法键路径（`defaults.` / `a..b` / `__proto__` / `constructor` / `prototype`）与 **`--global` 不支持** → `INVALID_ARGUMENT`/1 零写盘。`config set` 仍无 `--json`，unset 是**故意例外**（需要 `removed` 机读位）。
+- [stage-138] **`feel_verify action=config_unset`（A73.5）**：DSH 适配器只扩 action 枚举（复用 `key`，走同一 `config unset --json`），**工具数仍 15**；`test/cli/json-contract.test.ts` 增契约用例（#52）、`dsh/test/contract.js` / `dsh/test/verify.js` 增断言。
+- [stage-138] **本仓库首个清理样本（A73.4）**：`.openfeel/config.yaml` 的退役 `models:` 段经 `config unset models` 删除（`^models:` 零命中，`defaults` 五键与注释不动），`readConfig` / `lint` / `init` 不受影响。
+
+### Changed
+- [stage-138] **`npm run release -- --bump patch|minor|major`（REQ-074 / A74.2）**：版本**只在发布窗口**推进 —— 目标版本 = 上次发布基线（`flow-archive` 中 semver ≤ 当前版本的最新一版，不按 mtime）递增，不取当前 `package.json`；写 `package.json` / `dsh/package.json` / `package-lock.json` 的 **4 个版本字段**；当前版本已等于目标 → `no-op: already <v>`、exit 0、**零写盘**（1.6.5 后再跑 `--bump patch` 不会变 1.6.6）；与 `--publish` / `--push` / `--commit-archive` / `--tag` / `--notes-only` 互斥。`STEPS` 六步链、`steps[].id` 与既有 20 个 `it` **零改动**，新 `--json` 键追加在末位。
+- [stage-138] **本批次清单（A74.2）**：真实动作前打印「REQ-(n) / 阶段(n) / 改动文件(n)」，只含 `status=done` 且（`target_version` = 目标版本 **或** 关联 `<目标版本>-stage-*` 阶段）的 REQ —— 仓库里 17 条旧 done（v1.2.2—v1.5.6）被过滤；改动文件数用 `git rev-list -1 HEAD -- .openfeel/flow-archive/<上次版本>.json` + `git diff --name-only` 再并 `git status --porcelain` 去重（不依赖 tag）；`--dry-run` 不跑 git → `files=null`；`flow.json` 不可读时降级不阻断。
+- [stage-138] **确认与 24h warn（A74.2）**：**只有 `--bump` 要 `--confirm`**（`--publish` / `--push` 语义不变、`docs/VERSIONS.md` 的兜底命令不改）；`--bump minor|major` 必须 `--reason`；距上次发布 < 24h 再发 patch 打印明确 warn，真实 bump 额外要求 **`--confirm-twice`**（与 `--confirm` 各管各的）。本版只 warn，**`<24h` 硬门不实现**（登记后续需求）。
+- [stage-138] **feel_mode 提示词新增「版本纪律」（A74.1）**：版本只在发布时动 / 一次发布=一个批次 / 新想法进 backlog / 同批不连发 patch / 结构性才 minor、破坏性才 major。四组渲染态全部在 ≤1200 字符 / ≤25 行内（zh 802 / 919，en 1070 / 1186，16/19/15/18 行），4 份 `feel.md` 镜像与 `template-loader.ts` 同批重生成（parity 5/5），budget 测试新增 `批次` / `backlog` / `连发`（`back-to-back`）关键词断言。
+- [stage-138] **reviewer 模板「过度设计」5 判据 + 计划外改动（A74.4）**：4 份 `openfeel-reviewer.md`（claude/opencode × zh-CN/en）新增不必要抽象 / 新依赖 / 兼容层 / IO 分支 / REQ 外公开契约五条，以及「改动文件不在 `## 允许改动` 或 REQ 范围 → **必须落 blocking REV**（`feel_flow action=review_add` + `auto_fix` 处置建议），不得只口头」；4 份 `openfeel-planner.md` 与 `src/core/req/plan-file.ts` 骨架新增 `## 不做清单` / `## 允许改动` 两节。模板尺寸按预期上调（四份 reviewer `ceiling = baseline`：7168 / 6685 / 7317 / 6841）。
+- [stage-138] **规则文本（A74.3 / A74.5 / A74.6）**：`.openfeel/dev/dev_core.md` 与 `DEV_CORE_TEMPLATE_ZH/EN` 新增「版本与范围纪律」；`docs/VERSIONS.md` 新增「发布节奏（批次）」机制化表述与「发布指标定义」五指标（`releasesLast7d` / `medianIntervalHours` / `reqsPerVersion` / `patchPerMinor` / `outOfBatchRatio`，**只定义口径、不实现采集**）；`docs/commands.md` 的 release 段同步 `--bump/--reason/--confirm/--confirm-twice/本批次清单/24h warn`。
+- [stage-138] 两包 lockstep → **1.6.5**；`openfeel.requiresCli` 抬到 `>=1.6.5`；`package-lock.json` 根版本同步；`dsh/ADAPTER.md` 新增 `## v1.6.5` 小节；新建 `docs/releases/v1.6.5.md`。
+
+### Fixed
+- [stage-138] **guard 放行仓库自身的发布预演（REQ-072 / A72.1—A72.2）**：`node scripts/release.mjs` + 纯预演参数（`argv ⊆ {--dry-run, --skip-build}` 且至少一个）→ class 4 warn 放行 + 审计 `detail.reason='release-dry-run-allowlisted'`；判定经 realpath **绑定「含 `.openfeel/` 的项目根」且相对路径恰为 `scripts/release.mjs`**，TEMP / 仓外同名脚本仍 class1 拒绝；含任一真实发布/提交参数（`--publish` / `--commit-archive` / `--tag` / `--push`）或未知参数仍走原 deny 路径，A67.5 断言零改动；`continue` 而非 `return`（防多语句后门）。`npm run release` 的 class4 既有分类不动。
+- [stage-138] **migrate / update 全局配置测试隔离（A72.3）**：`test/core/migrate.test.ts` 的全局 `opencode.jsonc` 用例 `vi.mock('node:os')` 令 `homedir()` 指向每测试临时目录，并显式隔离 `HOME` / `USERPROFILE` / `CLAUDE_CONFIG_DIR`；断言**真实**全局文件 sha256 前后不变（4 个文件逐一对比，零真实写入）；根因**未复现**（只登记「未复现」，不写「已修复」；「保存原内容再写回」仍不作为隔离手段）。
+
+### Notes
+- 本批次**一次性**发布 REQ-072 / REQ-073 / REQ-074：1.6.0—1.6.4 曾是 5 个版本 / 17 个 REQ / 约 50 小时，其中两版归档相隔 32 秒且同属一个主题 —— 本版起用机制（`--bump` + 批次清单 + 24h warn + 提示词纪律）替代「完成即发布」的惯性；发布后本会话不再逐项升版。
+- **未达 / 不实现（如实登记）**：`npm test` 连续 3 次 0 failed 未达（4 次中 1 次满绿，失败全在 runner 层并发 / 超时，根因未复现；不放宽超时、不禁并行掩盖）；dashboard/metrics 采集、批次锁 `BATCH_LOCKED`、`<24h` 硬门均登记为后续需求。
+- 发布走 CI（push master 后自动 `npm publish` 两个包），**不手动 publish、不打 tag**。
+
 ## [1.6.4] - 2026-11-26
 
 > 清理 1.6.3 遗留的文档/死代码债：model 死文案与死分支、ADAPTER 验证计数快照、config `models:` 迁移提示；零行为与 JSON 契约变更。

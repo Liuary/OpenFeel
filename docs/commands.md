@@ -1,6 +1,6 @@
 # OpenFeel CLI 命令参考
 
-> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.6.1 快照** | 更新日期：2026-11-25
+> 生成时间：2026-06-26（持续更新）| 适用版本：**v1.6.5 快照** | 更新日期：2026-11-27
 >
 > 📌 本文件为**版本快照**，命令与参数细节**以 `openfeel <cmd> --help` 实时输出为准**（防文档-实现发散；与 `openfeel-cli-usage` skill 同口径）。
 >
@@ -25,7 +25,7 @@
 
 **全局 `--project` 边界（v1.2.2）**：`runCli` argv 预扫描后 `process.chdir` 单点注入；多值且不一致 → `INVALID_ARGUMENT`（exit 1），路径不存在或非目录 → `PROJECT_NOT_FOUND`（exit 1）；命令输出语言按**目标项目**解析，而 `--help` 语言按原始 cwd（`applyHelpI18n` 于 chdir 前执行）；`--log-file` 相对路径按**原始 cwd**；`knowledge dedup` 保留其本地 `--project <path>` 声明（语法零变化，经 `optsWithGlobals()` + 单点解析读取）；CLI 为单进程单命令，`chdir` 每进程至多一次。
 
-**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 51 个成功出口、也不计入 52 个注册选项**。
+**`--version --json`（v1.2.2）**：`--version --json` / `-v --json` 输出 `{schemaVersion:1,version,node}`（三键，exit 0）；纯文本 `--version` 逐字不变。该形态为顶层成功 JSON 形态，**单列，不计入 52 个成功出口、也不计入 53 个注册选项**。
 
 ## 错误封装（v1.2.2）
 
@@ -980,6 +980,26 @@ openfeel config set <key> <value> [--global] [--sync-stages] [--stage <ids...>]
 - **枚举校验 + 不写盘**：非法取值（如 `execution_mode bogus`）以非 0 退出并报错，**不修改目标文件**（文件 hash 与 mtime 不变）。
 - **preflight（v1.5.6，REV-004）**：仅 `--sync-stages` 同步分支受门（非同步分支只改 `config.yaml` 的项目默认值，不改阶段状态）。门插在 `setConfigValue` **之前** → strict 拒绝时 `config.yaml` / `status.md` / `flow.json`（`stages[*].workflow_mode`）**三处零写盘**。详见 [preflight 写命令闸](#preflight-写命令闸v156)。
 
+### config unset
+
+删除项目 `config.yaml` 中的一个键（`defaults.` 前缀或**顶层段**）。**v1.6.5 / REQ-073 新增**：`config set` 长期没有删除入口，`models:` 这类退役段只能手改（而 `.openfeel/config.yaml` 受 guard 保护、agent 不可写），本命令是**唯一的删除入口**。
+
+```bash
+openfeel config unset <key> [--json]
+```
+
+| 参数 | 说明 |
+|------|------|
+| `key` | 要删的键：`defaults.X` → 删 `defaults` 下的单段键（如 `defaults.feel_mode`；**不限 schema**，`test_enabled` 这类退役键同样可删）；`defaults` → 整段；**无点号** → 顶层段（如 `models` / `meta`）。命中与否以 YAML Document 的 `hasIn` 为准 |
+| `--json` | `{schemaVersion,key,removed,path}`（**4 键固定序**，出口 #52）；键不存在时同形末位追加条件键 `reason`（`not_found` / `config-missing`）并 **exit 1**。`config set` 仍无 `--json`，unset 是**故意例外**（A73.2 需要 `removed` 机读位） |
+
+- **保留原貌**：同一个 YAML Document 上 `deleteIn` 后原子写回 —— 文件注释、行内注释、其它键序与其它配置全部保留；文档删空时不删文件。
+- **退出码**：成功 `0`；键不存在 / 配置文件不存在 → `1`（`removed:false` + `reason`，置 `process.exitCode` 后 return，**不** `process.exit`，防 Windows 管道截断）；非法键路径（`defaults.` / `a..b` / `__proto__` / `constructor` / `prototype`）与 **`--global` 不支持**（不覆盖 profile 键域）→ envelope `INVALID_ARGUMENT`（refusal/1、**零写盘**）。
+- **删除后复验**：`parseYaml` + `ConfigSchema.safeParse` 复验（`ConfigSchema` 三层全 `optional`，删空不破 schema）；复验失败 → 抛错、**零写盘**（`INTERNAL_ERROR`/3）。
+- **回落语义**：删掉 `defaults.X` 后 `config effective X` 按 `status.md` > `config.yaml` > `profile.yaml` > `builtin` 回落并打印来源；受管五键 schema 不受影响。
+- **DSH 侧**：`feel_verify action=config_unset`（参数 `key`）走同一 CLI，summary 回 `removed`；**不新增工具**（仍 15），只扩 action 枚举。
+- 示例：`openfeel config unset models`（清理旧项目的退役段）、`openfeel config unset defaults.feel_mode`（回落内置默认）。
+
 ### config get-lang / set-lang
 
 读取/修改全局默认语言。
@@ -1239,9 +1259,9 @@ openfeel dashboard --json             # stdout 恰好一个 JSON 文档（不写
 - **退出码**：`0` 成功（含空数据、含 `health.ok=false`、含 `--open` 拉起失败）；`1` 参数拒绝（`INVALID_ARGUMENT`）/ 未初始化（`NO_INIT`）；`3` 建目录或写盘失败（`INTERNAL_ERROR`）。**无 2**（零 `flow.json` 写、不加锁）。
 - 完整 JSON 契约见 [json-contract.md](json-contract.md) §5 #43。
 
-## JSON 出口一览（v1.6.1 快照：#47~#49 `req claim/advance/complete`、#50 `req plan`、#51 `lint adherence` 新增）
+## JSON 出口一览（v1.6.5 快照：#52 `config unset`；此前 v1.6.1 #47~#49 `req claim/advance/complete`、#50 `req plan`、#51 `lint adherence`）
 
-> 计数口径：**51 个成功出口 / 52 个注册 `--json` 选项**（51 + `flow advance --json` 错误模式开关 1 个；v1.5.6 新增 #41 `lint req`；v1.5.8 / REQ-030 新增 #42 `req release-check`；v1.5.10 新增 #43 `dashboard`；v1.6.0 补登 #44 `dev clean`、新增 #45 `req body` / #46 `lint fill`；v1.6.1 新增 #47 `req claim` / #48 `req advance` / #49 `req complete` / #50 `req plan` / #51 `lint adherence`）。`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）；**`npm run release --json` 也不计入**（`scripts/release.mjs` 的脚本自有输出，不是 CLI 子命令）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。
+> 计数口径：**52 个成功出口 / 53 个注册 `--json` 选项**（52 + `flow advance --json` 错误模式开关 1 个；v1.5.6 新增 #41 `lint req`；v1.5.8 / REQ-030 新增 #42 `req release-check`；v1.5.10 新增 #43 `dashboard`；v1.6.0 补登 #44 `dev clean`、新增 #45 `req body` / #46 `lint fill`；v1.6.1 新增 #47 `req claim` / #48 `req advance` / #49 `req complete` / #50 `req plan` / #51 `lint adherence`；v1.6.5 / REQ-073 新增 #52 `config unset`）。`--version --json` **单列，不计入**（既非 Commander 选项、也非出口）；**`npm run release --json` 也不计入**（`scripts/release.mjs` 的脚本自有输出，不是 CLI 子命令）。权威表见 [json-contract.md](json-contract.md) §5；`flow advance --json` 为错误模式开关（成功仍人类文本）。
 
 | # | 出口 | 命令面 | 顶层键序 |
 |:-:|------|--------|----------|
@@ -1296,17 +1316,19 @@ openfeel dashboard --json             # stdout 恰好一个 JSON 文档（不写
 | 49 | `req complete` | `req complete <id> --json` | `schemaVersion,id,from,to,status`（`gates` 末位条件键） |
 | 50 | `req plan` | `req plan <id> [--force] --json` | `schemaVersion,id,path,created,overwritten,lines`（`--force` 覆盖时末位追加 `replaced`） |
 | 51 | `lint adherence` | `lint adherence --json` | `schemaVersion,target,ok,main_write_ratio,subagent_per_req,sync_gap,violation_rate` |
-| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 51 / 52**） |
+| 52 | `config unset` | `config unset <key> --json` | `schemaVersion,key,removed,path`（键不存在时末位追加 `reason`） |
+| 单列 | `--version --json` | `--version --json` / `-v --json` | `schemaVersion,version,node`（**不计入 52 / 53**） |
 
-> 说明：以上为 **v1.6.1 快照**（51 个成功出口；v1.5.6 #41 → v1.5.8 #42 → v1.5.10 #43 → v1.6.0 #44 补登 + #45/#46 → v1.6.1 #47~#51）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
+> 说明：以上为 **v1.6.5 快照**（52 个成功出口；v1.5.6 #41 → v1.5.8 #42 → v1.5.10 #43 → v1.6.0 #44 补登 + #45/#46 → v1.6.1 #47~#51 → v1.6.5 #52 `config unset`）的命令面概览；完整子命令 / 选项以 `openfeel <cmd> --help` 为准。
 
-## release — 发布链路（v1.6.1 / REQ-061；`npm run release`，非 CLI 子命令）
+## release — 发布链路（v1.6.1 / REQ-061；v1.6.5 / REQ-074 增 `--bump`；`npm run release`，非 CLI 子命令）
 
 `scripts/release.mjs` 把发版收成**一条命令**，六步固定序：`version` → `build` → `publish` → `market` → `archive-commit` → `tag`（`--json` 的 `steps[].id` 逐字等于该数组）。它是 `package.json` 启动的独立脚本，**不是 `openfeel` CLI 子命令**，因此其 `--json` **不计入** CLI JSON 出口表（形状锁在 `test/scripts/release.test.ts`）。
 
 ```bash
 npm run release -- [<version>] [--dry-run | --publish] [--skip-build] [--with-market]
                    [--notes-only [--write-notes]] [--commit-archive] [--tag] [--push] [--json]
+                   [--bump patch|minor|major [--reason <text>] [--confirm] [--confirm-twice]]
 ```
 
 | 开关 | 语义 |
@@ -1321,9 +1343,15 @@ npm run release -- [<version>] [--dry-run | --publish] [--skip-build] [--with-ma
 | `--commit-archive` | 只 `git add` 归档产物白名单（单点常量 `ARCHIVE_ARTIFACTS`，**7 项**：`.openfeel/log/archive-*.md`、`docs/releases/*.md`、`.openfeel/checkpoints/*.json`、`.openfeel/flow-archive/*.json`、`CHANGELOG.md`、`docs/VERSIONS.md`、`docs/market/index.json`）后 `git commit -m "chore(release): <版本>"`；**不 push、不打 tag**；无匹配产物 → `skipped`（不空提交） |
 | `--tag` | 打 `v<version>` tag（不 push）；缺省不打记 `skipped`，`--dry-run` 下记 `planned` 并给出 tag 名 |
 | `--push` | **收尾推送**（六步之外，不占 `steps[].id`）：在 `archive-commit` / `tag` 之后执行 `git push`（打了 tag 时再 `git push origin v<版本>`）；`--dry-run` 下只标 `planned`、**不真推**；缺省记 `skipped`、零 git 推送。推到 master 且版本与 npm 不同 → CI 自动 `npm publish` |
+| `--bump <patch\|minor\|major>` | **版本只在发布窗口动**（v1.6.5 / REQ-074；独立模式，不进六步链）：目标版本 = 上次发布基线递增（**不取当前 `package.json`**）；当前版本已等于目标 → 打印 `no-op: already <v>`、exit 0、**零写盘**；写 `package.json` / `dsh/package.json` / `package-lock.json` 的 **4 个版本字段**，不写 CHANGELOG / VERSIONS / `requiresCli`（归发布批次人工）。与 `--publish` / `--push` / `--commit-archive` / `--tag` / `--notes-only` **互斥**（同给 → exit 1） |
+| `--reason <text>` | `--bump minor` / `--bump major` 必须给出理由（缺 → exit 1 零写盘） |
+| `--confirm` | **只约束 `--bump`**：真实 bump 必须显式确认（缺 → exit 1 零写盘、三文件哈希不变）；`--publish` / `--push` 语义不变、**不需要**它 |
+| `--confirm-twice` | 距上次发布 < 24h 仍要再发 patch 时的**第二次确认**（与 `--confirm` 各管各的）；本版只 warn、**不是硬门**。数据源 `.openfeel/release/last.json` 的 `at` → 回退 `flow-archive` 的 `archived_at`；都拿不到则不 warn |
 | `--json` | 脚本自有机器可读输出 `{ok, exitCode, version, mode, steps[{id,status,cmd,substeps,…}], push, draft, draftPath, draftWritten}`；`steps[].status` ∈ {`pending`, `ok`, `failed`, `skipped`, `planned`}（`planned`/`ok` 可带 `paths`/`tag`/`substeps`/`reason`/`note`）；`push` 是六步之外的收尾动作（`{status,cmd,reason?,note?}`）；**不进 CLI 出口表** |
 
 > **默认语义**：既无 `--publish` 也无 `--dry-run` → `publish` 步骤 `skipped`（`publishMode='ci'`，`reason` 含 `publish skipped`；`cmd` 仅作说明书，**零真实 `npm publish`**）；`market` / `archive-commit` / `tag` 各自缺省也 `skipped`，分别需 `--with-market` / `--commit-archive` / `--tag`；`push` 缺省 `skipped`，需 `--push`。任何前序步骤失败 → exit 1 且后续步骤全 `skipped`。发版提交发生在 `done` 相位，脚本**由人类在外部终端执行**；agent 只交付脚本与 `--dry-run` / `--notes-only` 取证。
+>
+> **本批次清单（`--bump` 输出）**：只列 `status=done` 且（`target_version` = 目标版本 **或** 关联 `<目标版本>-stage-*` 阶段）的 REQ，**旧的 done 会被过滤**；真实模式下改动文件数用 `git rev-list -1 HEAD -- .openfeel/flow-archive/<上次版本>.json` + `git diff --name-only`，再并上 `git status --porcelain` 去重（不依赖 tag）；`--dry-run` 不跑 git → `files=null`。距上次发布 < 24h 再发 patch 打印明确 warn。`--json` 在末位追加 `batch{version,reqs,stages,files,warn}` 与 `bump{from,to,kind,reason,files,written,dryRun,baseline}`（既有键序不变）。
 >
 > **发布流程（CI 自动发布）**：**push 到 master** 且 `package.json` 版本与 npm 已发版本不同 → CI 的 publish job（`.github/workflows/ci.yml`，`if: github.ref == 'refs/heads/master'`）自动 `npm publish` 两个包；**tag / release 不触发**，**不需要手动 `npm publish`**（也不必打 tag）。本地用 `npm run release -- --push` 推送 commit；只有 CI 失败时才用 `--publish` 兜底，并在提交信息 / 日志记录原因。
 >

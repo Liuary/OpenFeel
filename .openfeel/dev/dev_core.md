@@ -258,3 +258,15 @@ OpenFeel **不指定 Agent 模型**：默认配置模板不写死 `provider` / `
 - **不要往默认模板写死 provider/model_name**：默认配置模板保持「不预设模型」注释，`openfeel init` 生成的新配置不含模型默认值。
 - `config.yaml` 的 `models` 段**可选**、仅 Awareness 记录、**不生效**；用户如需记录可自行添加，读兼容保留（不删 `ModelsSchema`、不改 `readConfig`）。
 - 不要把「某平台/某厂商模型」当成框架约定写进文档、模板或规则。
+
+---
+
+## [+] 版本与范围纪律 (2026-11-27)
+
+**版本是发布信号，不是开发里程碑**：开发期不改版本号，只有发布窗口才 `--bump`。
+
+- **一批次一版本**：一次发布 = 一个批次（可含多个 REQ / 多个阶段）；同批绝不拆成多个 patch 连发。
+- **同批需求拆阶段、不拆版本**：同一批次的多个需求放进同一阶段的 `requirements[]`；阶段是版本容器，长期保持 `exec_running`。
+- **新想法进 backlog**：执行中冒出与本批次无关的想法 → 记 `draft` 需求 + 下一版本 `target_version`，不塞进当前批次。
+- **小改动不单独发版**：修 CI / 改文档 / 补测试 / 调 lint / 修 bug 并入当前批次，不为它单独升版。
+- **发布动作**：`npm run release -- --bump patch --confirm`（minor / major 需 `--reason`；距上次发布 < 24h 再发 patch 需 `--confirm-twice`；真实 publish / push 语义不变）。

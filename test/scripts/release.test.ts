@@ -18,6 +18,9 @@ import { join } from 'node:path';
 import {
   ARCHIVE_ARTIFACTS,
   expandArchiveArtifacts,
+  incVersion,
+  parseArgs,
+  selectReleaseBaseline,
   runRelease,
 } from '../../scripts/release.mjs';
 
@@ -561,5 +564,328 @@ describe('scripts/release.mjs', () => {
     expect(calls.filter((call) => call.cmd === 'npm' && call.args[0] === 'whoami')).toHaveLength(1);
     // 兜底路径同样不 push（push 只认 --push）
     expect(gitCalls(calls, 'push')).toHaveLength(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// v1.6.5 / REQ-074 A74.2 —— `--bump`（独立模式：版本只在发布时动）
+// 既有 20 个用例零改动；本段全部为新增（bump / 幂等 / 批次清单 / 同名归档 / 24h）。
+// ═══════════════════════════════════════════════════════════════════════
+
+type BumpSummary = {
+  from?: string | null;
+  to?: string | null;
+  kind?: string;
+  reason?: string | null;
+  files?: string[];
+  written?: boolean;
+  noop?: boolean;
+  dryRun?: boolean;
+  baseline?: string;
+};
+
+type BatchSummary = {
+  version?: string;
+  reqs?: string[];
+  stages?: string[];
+  files?: string[] | null;
+  filesReason?: string | null;
+  warn?: string | null;
+  reason?: string;
+};
+
+type BumpRunResult = {
+  exitCode: number;
+  ok: boolean;
+  mode: string;
+  version?: string | null;
+  batch?: BatchSummary;
+  bump?: BumpSummary;
+};
+
+/** 写一个带 flow.json / flow-archive / 可写 package-lock 的发布夹具。 */
+function makeBumpProject(options: {
+  version?: string;
+  archives?: string[];
+  archivedAt?: string;
+  requirements?: Array<{ id: string; status: string; target_version?: string }>;
+  stages?: unknown;
+  lastReleaseAt?: string | null;
+} = {}): string {
+  const {
+    version = '1.6.4',
+    archives = ['v1.6.4.json'],
+    archivedAt = '2026-11-20T00:00:00.000Z',
+    requirements = [
+      { id: 'REQ-021', status: 'done', target_version: 'v1.5.6' },
+      { id: 'REQ-025', status: 'done', target_version: 'v1.5.6' },
+      { id: 'REQ-030', status: 'done', target_version: 'v1.5.6' },
+      { id: 'REQ-072', status: 'done', target_version: 'v1.6.5' },
+      { id: 'REQ-073', status: 'done', target_version: 'v1.6.5' },
+      { id: 'REQ-074', status: 'done', target_version: 'v1.6.5' },
+      { id: 'REQ-075', status: 'in_progress', target_version: 'v1.6.5' },
+    ],
+    stages = [{ id: 'v1.6.5-stage-138', requirements: [{ id: 'REQ-072' }, { id: 'REQ-074' }] }],
+    lastReleaseAt = null,
+  } = options;
+  const cwd = makeProject({ version });
+  writeFixture(
+    cwd,
+    'package-lock.json',
+    `${JSON.stringify(
+      { name: 'openfeel', version, lockfileVersion: 3, packages: { '': { name: 'openfeel', version } } },
+      null,
+      2,
+    )}\n`,
+  );
+  writeFixture(cwd, '.openfeel/flow.json', `${JSON.stringify({ requirements, stages }, null, 2)}\n`);
+  for (const file of archives) {
+    writeFixture(
+      cwd,
+      `.openfeel/flow-archive/${file}`,
+      `${JSON.stringify(
+        { version: file.replace(/\.json$/, ''), stages: {}, requirements: [], archived_at: archivedAt },
+        null,
+        2,
+      )}\n`,
+    );
+  }
+  if (lastReleaseAt !== null) {
+    writeFixture(cwd, '.openfeel/release/last.json', `${JSON.stringify({ at: lastReleaseAt }, null, 2)}\n`);
+  }
+  return cwd;
+}
+
+/** 三个版本来源的字节快照（零写盘断言用）。 */
+function versionSnapshot(cwd: string): string {
+  return ['package.json', 'dsh/package.json', 'package-lock.json']
+    .filter((rel) => existsSync(join(cwd, rel)))
+    .map((rel) => readFileSync(join(cwd, rel), 'utf8'))
+    .join('\u0000');
+}
+
+/** bump 模式执行器（可注入 nowMs，保证 24h 判定确定）。 */
+function runBump(
+  cwd: string,
+  argv: string[],
+  runner: Runner,
+  extra: { nowMs?: () => number } = {},
+): { result: BumpRunResult; messages: string[]; output: string } {
+  const messages: string[] = [];
+  const result = runRelease({
+    argv,
+    cwd,
+    runner,
+    log: (line: unknown) => messages.push(String(line)),
+    ...extra,
+  }) as BumpRunResult;
+  return { result, messages, output: messages.join('\n') };
+}
+
+const FAR_PAST = '2026-11-20T00:00:00.000Z';
+
+describe('REQ-074 A74.2 — --bump：版本起点 / 本批次清单 / 确认门', () => {
+  it('incVersion 三档：patch / minor / major', () => {
+    expect(incVersion('1.6.4', 'patch')).toBe('1.6.5');
+    expect(incVersion('1.6.4', 'minor')).toBe('1.7.0');
+    expect(incVersion('1.6.4', 'major')).toBe('2.0.0');
+    expect(() => incVersion('1.6.4', 'nope')).toThrow();
+  });
+
+  it('--bump patch --dry-run：目标=基线递增 + 本批次只含目标版本 done（陈旧 done 不混入）+ files=null + 零写盘零 git', () => {
+    const cwd = makeBumpProject();
+    const before = versionSnapshot(cwd);
+    const { runner, calls } = makeRunner();
+    const { result, output } = runBump(cwd, ['--bump', 'patch', '--dry-run', '--skip-build'], runner, {
+      nowMs: () => Date.parse('2026-11-27T00:00:00.000Z'),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.mode).toBe('bump');
+    expect(result.version).toBe('1.6.5');
+    expect(result.bump?.from).toBe('1.6.4');
+    expect(result.bump?.to).toBe('1.6.5');
+    expect(result.bump?.kind).toBe('patch');
+    expect(result.bump?.written).toBe(false);
+    expect(result.bump?.baseline).toBe('1.6.4');
+    // 批次清单按版本过滤：17 条旧 done 中的样本 + REQ-075(in_progress) 都不混入
+    expect(result.batch?.reqs).toEqual(['REQ-072', 'REQ-073', 'REQ-074']);
+    expect(result.batch?.stages).toEqual(['v1.6.5-stage-138']);
+    expect(result.batch?.files).toBeNull();
+    expect(result.batch?.filesReason).toBe('dry-run');
+    expect(output).toContain('本批次');
+    expect(output).toContain('1.6.4 → 1.6.5');
+    // 零写盘 + 零 git（dry-run 不跑任何子进程）
+    expect(versionSnapshot(cwd)).toBe(before);
+    expect(calls).toEqual([]);
+  });
+
+  it('--bump 与 --publish / --push / --tag / --commit-archive / --notes-only 互斥（INVALID_ARGUMENT、零写盘）', () => {
+    for (const flag of ['--publish', '--push', '--tag', '--commit-archive', '--notes-only']) {
+      expect(() => parseArgs(['--bump', 'patch', flag])).toThrow(/互斥/);
+    }
+    const cwd = makeBumpProject();
+    const before = versionSnapshot(cwd);
+    const { runner, calls } = makeRunner();
+    const { result } = runBump(cwd, ['--bump', 'patch', '--publish'], runner);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.mode).toBe('invalid');
+    expect(versionSnapshot(cwd)).toBe(before);
+    expect(calls).toEqual([]);
+  });
+
+  it('--bump patch 缺 --confirm → exit 1 且三文件字节不变', () => {
+    const cwd = makeBumpProject();
+    const before = versionSnapshot(cwd);
+    const { runner } = makeRunner();
+    const { result, output } = runBump(cwd, ['--bump', 'patch', '--skip-build'], runner, {
+      nowMs: () => Date.parse('2026-11-27T00:00:00.000Z'),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.bump?.written).toBe(false);
+    expect(output).toContain('--confirm');
+    expect(versionSnapshot(cwd)).toBe(before);
+  });
+
+  it('--bump minor 缺 --reason → exit 1 且零写盘；带 --reason + --confirm 才写 1.7.0', () => {
+    const cwd = makeBumpProject();
+    const before = versionSnapshot(cwd);
+    const { runner } = makeRunner();
+    const nowMs = () => Date.parse('2026-11-27T00:00:00.000Z');
+
+    const missingReason = runBump(cwd, ['--bump', 'minor', '--confirm', '--skip-build'], runner, { nowMs });
+    expect(missingReason.result.exitCode).toBe(1);
+    expect(missingReason.output).toContain('--reason');
+    expect(versionSnapshot(cwd)).toBe(before);
+
+    const withReason = runBump(
+      cwd,
+      ['--bump', 'minor', '--reason', '新增用户可见能力', '--confirm', '--skip-build'],
+      runner,
+      { nowMs },
+    );
+    expect(withReason.result.exitCode).toBe(0);
+    expect(withReason.result.bump?.to).toBe('1.7.0');
+    expect(withReason.result.bump?.written).toBe(true);
+    expect(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version).toBe('1.7.0');
+    expect(JSON.parse(readFileSync(join(cwd, 'dsh/package.json'), 'utf8')).version).toBe('1.7.0');
+    const lock = JSON.parse(readFileSync(join(cwd, 'package-lock.json'), 'utf8'));
+    expect(lock.version).toBe('1.7.0');
+    expect(lock.packages[''].version).toBe('1.7.0');
+  });
+
+  it('幂等：当前版本已等于目标 → no-op、exit 0、零写盘（不是 1.6.6）', () => {
+    const cwd = makeBumpProject({ version: '1.6.5', archives: ['v1.6.4.json'] });
+    const before = versionSnapshot(cwd);
+    const { runner } = makeRunner();
+    const { result, output } = runBump(cwd, ['--bump', 'patch', '--confirm'], runner, {
+      nowMs: () => Date.parse('2026-11-27T00:00:00.000Z'),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.bump?.noop).toBe(true);
+    expect(output).toContain('no-op: already 1.6.5');
+    expect(versionSnapshot(cwd)).toBe(before);
+  });
+
+  it('距上次发布 < 24h 再发 patch：warn + 缺 --confirm-twice → exit 1 零写盘', () => {
+    const cwd = makeBumpProject({ lastReleaseAt: '2026-11-26T16:00:00.000Z' });
+    const before = versionSnapshot(cwd);
+    const { runner } = makeRunner();
+    const { result, output } = runBump(cwd, ['--bump', 'patch', '--confirm', '--skip-build'], runner, {
+      nowMs: () => Date.parse('2026-11-26T17:00:00.000Z'),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.batch?.warn).toContain('< 24h');
+    expect(output).toContain('--confirm-twice');
+    expect(versionSnapshot(cwd)).toBe(before);
+  });
+
+  it('距上次发布 < 24h + --confirm-twice → 放行并写 1.6.5', () => {
+    const cwd = makeBumpProject({ lastReleaseAt: '2026-11-26T16:00:00.000Z' });
+    const { runner } = makeRunner();
+    const { result } = runBump(
+      cwd,
+      ['--bump', 'patch', '--confirm', '--confirm-twice', '--skip-build'],
+      runner,
+      { nowMs: () => Date.parse('2026-11-26T17:00:00.000Z') },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.bump?.written).toBe(true);
+    expect(JSON.parse(readFileSync(join(cwd, 'package.json'), 'utf8')).version).toBe('1.6.5');
+  });
+
+  it('基线过期（目标低于当前版本）→ exit 1 并指出基线过期', () => {
+    const cwd = makeBumpProject({ version: '1.7.0', archives: ['v1.6.4.json'] });
+    const before = versionSnapshot(cwd);
+    const { runner } = makeRunner();
+    const { result, output } = runBump(cwd, ['--bump', 'patch', '--confirm', '--skip-build'], runner, {
+      nowMs: () => Date.parse('2026-11-27T00:00:00.000Z'),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(output).toContain('基线过期');
+    expect(versionSnapshot(cwd)).toBe(before);
+  });
+
+  it('基线按 semver 选：不按 mtime，未来版本归档 v1.7.0.json 不参与', () => {
+    const cwd = makeBumpProject({ archives: ['v1.6.4.json', 'v1.7.0.json'] });
+    const { runner } = makeRunner();
+    const { result } = runBump(cwd, ['--bump', 'patch', '--dry-run'], runner, { nowMs: () => Date.parse(FAR_PAST) });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.bump?.baseline).toBe('1.6.4');
+    expect(result.bump?.to).toBe('1.6.5');
+  });
+
+  it('同名归档（v1.6.4.json 与 1.6.4.json）不重复计入、取同一个基线', () => {
+    const cwd = makeBumpProject({ archives: ['v1.6.4.json', '1.6.4.json'] });
+    const { runner } = makeRunner();
+    const { result } = runBump(cwd, ['--bump', 'patch', '--dry-run'], runner, { nowMs: () => Date.parse(FAR_PAST) });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.bump?.baseline).toBe('1.6.4');
+    expect(result.bump?.to).toBe('1.6.5');
+  });
+
+  it('flow.json 缺失 → 批次清单降级（reason=flow-unavailable），不阻断 dry-run', () => {
+    const cwd = makeBumpProject();
+    rmSync(join(cwd, '.openfeel/flow.json'));
+    const { runner } = makeRunner();
+    const { result } = runBump(cwd, ['--bump', 'patch', '--dry-run'], runner, { nowMs: () => Date.parse(FAR_PAST) });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.batch?.reason).toBe('flow-unavailable');
+    expect(result.batch?.reqs).toEqual([]);
+    expect(result.batch?.files).toBeNull();
+  });
+
+  it('--json 末位追加 batch / bump 两键（既有键序不变）', () => {
+    const cwd = makeBumpProject();
+    const { runner } = makeRunner();
+    const { messages } = runBump(cwd, ['--bump', 'patch', '--dry-run', '--json'], runner, {
+      nowMs: () => Date.parse(FAR_PAST),
+    });
+    const payloadLine = messages.filter((line) => line.trim().startsWith('{')).pop();
+    expect(payloadLine).toBeTruthy();
+    const payload = JSON.parse(payloadLine as string);
+    expect(Object.keys(payload).slice(0, 9)).toEqual([
+      'ok',
+      'exitCode',
+      'version',
+      'mode',
+      'steps',
+      'push',
+      'draft',
+      'draftPath',
+      'draftWritten',
+    ]);
+    expect(Object.keys(payload).slice(-2)).toEqual(['batch', 'bump']);
+    expect(payload.batch.version).toBe('1.6.5');
+    expect(payload.bump.to).toBe('1.6.5');
   });
 });

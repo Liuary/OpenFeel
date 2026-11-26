@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
-  existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
+  copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
@@ -3232,6 +3232,108 @@ check('A67.5（fix 2）：node 脚本按路径决定是否读内容（scripts/**
   assert.equal(warned.detail?.wrapper, 'node');
   assert.equal(basename(warned.detail.scriptPath), 'guard.js');
   assert.equal(warned.detail.reason, 'node-script-content-not-inspected');
+});
+
+// ── v1.6.5 / REQ-072 A72.1—A72.6：release 预演参数白名单 ─────────────────
+
+/**
+ * A72.1 夹具：项目根含 `.openfeel/`，`scripts/release.mjs` 正文是「真实发布」形态
+ * （与 A67.5 同一份正文 —— highRisk 读内容后不可判定，走原 class1 拒绝路径）。
+ * @param {string} name
+ */
+function releaseFixture(name) {
+  const cwd = project(name, planFlow);
+  mkdirSync(join(cwd, 'scripts'), { recursive: true });
+  writeFileSync(join(cwd, 'scripts', 'release.mjs'), [
+    '#!/usr/bin/env node',
+    "import { execFileSync } from 'node:child_process';",
+    "execFileSync('npm', ['publish', '--access', 'public']);",
+  ].join('\n'), 'utf8');
+  return cwd;
+}
+
+check('A72.1：仓库自身 `scripts/release.mjs --dry-run` → 第 4 类 warn 放行 + 审计 reason=release-dry-run-allowlisted', () => {
+  const cwd = releaseFixture('a72-release-dry-run');
+  assert.equal(projectOnly(shellExec('bash', cwd, 'node scripts/release.mjs --dry-run')), undefined);
+  const row = readAudit(cwd).at(-1);
+  assert.equal(row.event, 'guard_shell_unresolved');
+  assert.equal(row.decision, 'warn');
+  assert.equal(row.kind, 'undecidable');
+  assert.equal(row.detail?.wrapper, 'node');
+  assert.equal(basename(row.detail.scriptPath), 'release.mjs');
+  assert.equal(row.detail.reason, 'release-dry-run-allowlisted');
+  // 白名单不是「降档开关」：第 4 类语义不变，`strict` 下照样拒。
+  const strict = guardWithShellGate('strict');
+  assert.equal(typeof strict(shellExec('bash', cwd, 'node scripts/release.mjs --dry-run')), 'string');
+  assert.equal(readAudit(cwd).at(-1).kind, 'undecidable');
+});
+
+check('A72.1：`--skip-build` 与 `--dry-run --skip-build` 同样放行（闭合集合内的任意组合）', () => {
+  const cwd = releaseFixture('a72-release-skip-build');
+  for (const argv of ['--skip-build', '--dry-run --skip-build']) {
+    assert.equal(projectOnly(shellExec('bash', cwd, `node scripts/release.mjs ${argv}`)), undefined, argv);
+    const row = readAudit(cwd).at(-1);
+    assert.equal(row.event, 'guard_shell_unresolved', argv);
+    assert.equal(row.decision, 'warn', argv);
+    assert.equal(row.detail?.reason, 'release-dry-run-allowlisted', argv);
+    assert.equal(basename(row.detail.scriptPath), 'release.mjs', argv);
+  }
+});
+
+check('A72.6：`--publish` / `--commit-archive` / `--tag` / `--push` 仍 class 1 拒绝，且不放行 reason 零命中', () => {
+  const cwd = releaseFixture('a72-release-publish');
+  for (const argv of ['--publish', '--commit-archive', '--tag', '--push', '--dry-run --publish']) {
+    assert.equal(typeof projectOnly(shellExec('bash', cwd, `node scripts/release.mjs ${argv}`)), 'string', argv);
+    const row = readAudit(cwd).at(-1);
+    assert.equal(row.event, 'guard_deny', argv);
+    assert.equal(row.decision, 'deny', argv);
+    assert.equal(row.kind, 'class1', argv);
+    assert.equal(row.detail?.wrapper, 'node', argv);
+    assert.notEqual(row.detail?.reason, 'release-dry-run-allowlisted', argv);
+  }
+  // 既有 A67.5 的取证口径零改动（`--publish` 单跑仍是这条 reason）。
+  assert.equal(typeof projectOnly(shellExec('bash', cwd, 'node scripts/release.mjs --publish')), 'string');
+  assert.equal(readAudit(cwd).at(-1).detail.reason, 'node-script-high-risk-undecidable');
+});
+
+check('A72.1 负向：无 flag / 未知 flag（--with-market）/ other/release.mjs / release.sh / 组合语句 → 全部拒绝', () => {
+  const cwd = releaseFixture('a72-release-negative');
+  mkdirSync(join(cwd, 'other'), { recursive: true });
+  copyFileSync(join(cwd, 'scripts', 'release.mjs'), join(cwd, 'other', 'release.mjs'));
+  writeFileSync(join(cwd, 'scripts', 'release.sh'), '#!/bin/sh\nnpm publish\n', 'utf8');
+  const cases = [
+    // 闭合集合：一个 safe flag 都没有 → 不成立
+    'node scripts/release.mjs',
+    // 既有参数里也不在白名单（A74.2 的新参数同理，属已知边界）
+    'node scripts/release.mjs --with-market',
+    // 路径变体：basename 对但相对项目根不是 scripts/release.mjs
+    'node other/release.mjs --dry-run',
+    // 扩展名变体：不是 release.mjs
+    'node scripts/release.sh --dry-run',
+    // 组合语句：前半段放行分支必须 `continue`，后半段的真实发布仍要拒
+    'node scripts/release.mjs --dry-run && node scripts/release.mjs --publish',
+  ];
+  for (const command of cases) {
+    assert.equal(typeof projectOnly(shellExec('bash', cwd, command)), 'string', command);
+    const row = readAudit(cwd).at(-1);
+    assert.equal(row.event, 'guard_deny', command);
+    assert.equal(row.kind, 'class1', command);
+    assert.notEqual(row.detail?.reason, 'release-dry-run-allowlisted', command);
+  }
+});
+
+check('A72.1：TEMP 下的同名 `release.mjs --dry-run` 仍拒绝（realpath 无含 .openfeel/ 的项目根）', () => {
+  const cwd = releaseFixture('a72-release-temp-host');
+  const tempDir = mkdtempSync(join(tmpdir(), 'openfeel-a72-temp-'));
+  const tempScript = join(tempDir, 'release.mjs');
+  copyFileSync(join(cwd, 'scripts', 'release.mjs'), tempScript);
+  // 夹具自证：TEMP 目录里没有任何祖先含 `.openfeel/`（否则这条用例就没有意义）
+  assert.equal(existsSync(join(tempDir, '.openfeel')), false);
+  assert.equal(typeof projectOnly(shellExec('bash', cwd, `node "${tempScript}" --dry-run`)), 'string');
+  const row = readAudit(cwd).at(-1);
+  assert.equal(row.event, 'guard_deny');
+  assert.equal(row.kind, 'class1');
+  assert.notEqual(row.detail?.reason, 'release-dry-run-allowlisted');
 });
 
 check('A67.6（fix 3）：`.cmd` 正文按 cmd 语义分类（copy/move 只算目标；del/ren 全算；`>` 重定向算写）', () => {

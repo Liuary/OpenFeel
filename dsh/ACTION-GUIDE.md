@@ -48,7 +48,7 @@
 - **遵守率四指标**（`feel_verify action=adherence`，只读、恒 exit 0）：`main_write_ratio` = `origin=root` 写调用 /（root + `subagent|delegated` + **`origin` 缺失计 unknown 且进分母**）；`subagent_per_req` = `role=executor` 且 `closing.status='done'` 的派发数 / `in_progress` 需求数；`sync_gap` = 现在 − `.sync.json.last_sync`（分钟，缺失 → null）；`violation_rate` = `deny` / 全部 guard 决策。每键带 `definition`（分子/分母 + 样本窗口），样本不足 `value:null`、绝不 NaN。
 - **guard wrapper 静态分类（REQ-067）**：`pwsh -File` / `cmd /c` / `bash <脚本>` 读脚本内容（≤64KB）按同一套 `classifyShellCommand` 递归判定；UTF-16LE+BOM 解码后命中 deny；**GBK 等编码不解码 → `undecidable`**（默认 warn + 审计含 `wrapper` / `scriptPath` / `reason`，`strict` 仍拒）；`node` 脚本不读内容 → `undecidable`；`readonly.ps1` / `build.ps1` 等普通脚本不误杀。
 - **审后文档 / 夹具白名单（REQ-062）**：`review_passed` / `test_passed` 相位允许改 `docs/**`、根级 `*.md`、`test/fixtures/**`、`dsh/test/fixtures/**`（`reason:'doc-asset-phase'`）；`src/**` 与 `test/core/**` 仍拒；豁免只在相位层、不扩散到源码树。
-- **JSON 契约**：51 成功出口 / 52 注册选项（#47~#51）；`release` 脚本的 `--json` 不进 CLI 出口表；错误码表 20 行。
+- **JSON 契约**：52 成功出口 / 53 注册选项（#47~#52；v1.6.5 新增 #52 `config unset`）；`release` 脚本的 `--json` 不进 CLI 出口表；错误码表 20 行。
 
 ---
 
@@ -72,11 +72,11 @@
 
 | 项 | 值 |
 |---|---|
-| OpenFeel 版本 | `1.2.3`（存档基线；现行 1.6.1） |
-| 成功 `--json` 出口 | **33**（存档；现行 **51**，注册选项 **52**） |
+| OpenFeel 版本 | `1.2.3`（存档基线；现行 1.6.5） |
+| 成功 `--json` 出口 | **33**（存档；现行 **52**，注册选项 **53**） |
 | 适配器已消费 | **25** 个出口（存档；现行按工具实现，不按出口总数折算） |
 | 适配器文本回显 | **8** 处（存档；现行仅 `dev status` 与 `instructions` XML 默认形态） |
-| 适配器验证 | 存档 110 断言；现行 contract 54 / verify 136 / guard 193 / preflight 10 / integration 跳过 |
+| 适配器验证 | 存档 110 断言；现行 contract 55 / verify 137 / guard 198 / preflight 10 / integration 跳过（2026-11-27 实测） |
 | 适配器位置 | `OpenFeel/dsh/`（与 `claude/`、`kilo/` 同级的一等适配器） |
 
 **为什么要关心文本回显那 7 处**：适配器要把结构化结果交给模型。落地为人类中文文本后，

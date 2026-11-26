@@ -454,6 +454,17 @@ async function main() {
     assert(tools.length === 15, `工具数应保持 15，实际 ${tools.length}`);
   });
 
+  await check('v1.6.5 / REQ-073：feel_verify config_unset 只扩 action（工具数仍 15）', () => {
+    const verifyTool = tools.find((tool) => tool.name === 'feel_verify');
+    assert(verifyTool, '缺少 feel_verify 工具');
+    assert(
+      verifyTool.parameters.properties.action.enum.includes('config_unset'),
+      'feel_verify.action 缺枚举值 config_unset（出口约定：不新增工具 / 不新增 CLI 子命令）',
+    );
+    assert(/config_unset/.test(verifyTool.description ?? ''), 'feel_verify.description 应提到 config_unset');
+    assert(tools.length === 15, `工具数应保持 15，实际 ${tools.length}`);
+  });
+
   // v1.5.12 / stage-127 §3-B（V4）：真实 guard 状态未被本测试改写。
   await check('guard 测试隔离：真实 marker 与全局目录未被改写（V4）', () => {
     const verdict = assertRealGuardUntouched(realGuardBefore, iso);

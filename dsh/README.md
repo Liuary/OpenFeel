@@ -307,9 +307,9 @@ provider 桥接层会把「只有 description、没有 type」的节点转成 `t
 
 ```powershell
 cd plugin
-node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（54 项）
-node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（136 项）
-node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（193 项）
+node test/contract.js       # DSH 契约：schema 子集、无 type:null、参数契约（55 项）
+node test/verify.js         # 行为：真实 CLI + 真实 .openfeel 副本（137 项）
+node test/guard.js          # 写入门禁：fake ToolExecution + 临时工作区（198 项）
 node test/preflight.js      # 写前自愈：账本窗口与写入前刷新（10 项）
 node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂载（取不到 tools 服务时跳过，exit 0）
 ```
@@ -317,7 +317,7 @@ node test/integration.js    # 真实注册表：真 cordis + 真 ToolRuntime 挂
 - `contract.js` 用宿主 asar 提取出的**真实** `assertSupportedJsonSchema`。
 - `verify.js` 对真实 OpenFeel 项目做只读校验，**所有写操作只打在 `os.tmpdir()` 副本上**，并断言原项目 `revision` 未被改动。
   **前置条件**：当前项目必须至少有 1 个已注册阶段（`flow.json` 的 `stages` 非空）。版本归档（`flow archive <version>`）会把阶段从 `flow.json` 移出，归档后 `stages = 0` 时脚本会在 `[2] 只读工具 — 真实项目快照` 报「需要至少一个阶段用于适配器验证」并退出 1——这是**前置条件不满足**，不是适配器缺陷。此时先 `openfeel plan stage add <临时阶段>`（或切到有活跃阶段的工作区）再跑；CI 不执行本脚本（CI 只跑 `node --check dsh/lib/**` 与 `npm test`），不影响发布门禁。
-- `guard.js` 覆盖 `off/project/always`、`.openfeel/**` 产物、`exec_running`、general 需求、apply_patch 混合/无头/Move 同块、受保护路径、bootstrap 文案、shell 四类判定与 `OPENFEEL_SHELL_GATE` 三档、v1.6.1 wrapper 静态分类（`-File` / `cmd /c` / 编码混淆）与审后文档白名单等（当前 **193** 条）。
+- `guard.js` 覆盖 `off/project/always`、`.openfeel/**` 产物、`exec_running`、general 需求、apply_patch 混合/无头/Move 同块、受保护路径、bootstrap 文案、shell 四类判定与 `OPENFEEL_SHELL_GATE` 三档、v1.6.1 wrapper 静态分类（`-File` / `cmd /c` / 编码混淆）与审后文档白名单等（当前 **198** 条）。
 - `integration.js` 构造真实 Cordis 上下文 + 真实 `ToolRuntime`，调用适配器 `apply()`，断言 **15** 个工具真的完成注册与投影。
 
 依赖提取：`contract.js` / `integration.js` 默认读 `%TEMP%\dsh-asar\dsh\node_modules\@deepseek-ai`（从宿主
@@ -372,7 +372,7 @@ dsh/                               # OpenFeel 仓库内的一等适配器目录
 3. **CLI 契约（v1.3.0）**：`flow next --json` 提供调度决策；`flow status --json` 的
    `stages[]` 已含 `workflowMode` / `requirementId` / `reviewTier` / `effectiveReviewTier` /
    `opsSummary`；`--json` 失败输出 envelope（`error.code` / `kind` / `detail`）为分类权威；
-   `flow advance --json` 仅用于失败 envelope。v1.6.1 起共 **51 个成功 `--json` 出口 / 52 个注册选项**；
+   `flow advance --json` 仅用于失败 envelope。v1.6.5 起共 **52 个成功 `--json` 出口 / 53 个注册选项**；
    适配器按需消费其中一部分（具体调用点见各工具实现，不再按出口总数折算）。详见 [操作指南](https://github.com/Liuary/OpenFeel/blob/master/dsh/ACTION-GUIDE.md) 与
    [更新说明](https://github.com/Liuary/OpenFeel/blob/master/docs/dsh-cli-requirements-supplement-1.2.3.md)。
 4. **读命令已全面结构化**：v1.2.4 补齐了 `plan stage list` / `model list|get` / `flow retry` /

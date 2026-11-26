@@ -49,4 +49,17 @@ describe('Feel 提示词渲染态预算（A10：≤1200 字符 / ≤25 行）', 
     expect(FEEL_BODY_EN).toContain('minor');
     expect(FEEL_BODY_EN).toContain('major');
   });
+
+  // v1.6.5 / REQ-074 A74.1：「版本纪律」句的关键词断言（防止纪律句被静默删掉）
+  it('源正文（zh）含版本纪律关键词：批次 / backlog / 连发', () => {
+    expect(FEEL_BODY_ZH).toContain('批次');
+    expect(FEEL_BODY_ZH).toContain('backlog');
+    expect(FEEL_BODY_ZH).toMatch(/连发/);
+  });
+
+  it('源正文（en）含版本纪律关键词：one batch / backlog / back-to-back', () => {
+    expect(FEEL_BODY_EN).toContain('one batch');
+    expect(FEEL_BODY_EN).toContain('backlog');
+    expect(FEEL_BODY_EN).toMatch(/back-to-back/);
+  });
 });

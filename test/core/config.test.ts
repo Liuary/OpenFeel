@@ -3,7 +3,7 @@
  * 测试 readConfig 和 writeDefaultConfig 的 YAML 解析行为
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, DEFAULT_CONFIG, ConfigDefaultsSchema, normalizeConfigKey, resolveConfigDefaults, getConfigFieldLegalValues, WORKFLOW_MODES, FEEL_MODES, resolveFeelMode, type Profile } from '../../src/core/config.js';
+import { readConfig, writeDefaultConfig, readProfile, writeProfile, ensureProfileDefaults, getConfigValue, setConfigValue, unsetConfigValue, parseConfigUnsetPath, DEFAULT_CONFIG, ConfigDefaultsSchema, normalizeConfigKey, resolveConfigDefaults, getConfigFieldLegalValues, WORKFLOW_MODES, FEEL_MODES, resolveFeelMode, type Profile } from '../../src/core/config.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -446,6 +446,131 @@ describe('getConfigValue & setConfigValue', () => {
     setConfigValue(tmpDir, 'merge_mode', 'auto');
     expect(existsSync(join(tmpDir, '.openfeel', 'config.yaml'))).toBe(true);
     expect(getConfigValue(tmpDir, 'merge_mode')).toBe('auto');
+  });
+});
+
+describe('unsetConfigValue（v1.6.5 / REQ-073 / A73.1-A73.2）', () => {
+  let tmpDir: string;
+  let configPath: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-config-unset-'));
+    mkdirSync(join(tmpDir, '.openfeel'), { recursive: true });
+    configPath = join(tmpDir, '.openfeel', 'config.yaml');
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  /** 含注释 / 行内注释 / models 段 / 多个 defaults 键的真实形状夹具 */
+  const CONFIG_WITH_MODELS = [
+    '# 顶注：必须保留',
+    'meta:',
+    '  version: 1.5.9',
+    'defaults:',
+    '  execution_mode: auto   # 行内注释保留',
+    '  feel_mode: enabled',
+    'models:',
+    '  default:',
+    '    provider: deepseek',
+    '    model_name: deepseek-chat',
+    '',
+  ].join('\n');
+
+  it('应删除顶层 models 段，保留注释、其它键与键序（A73.1/A73.4）', () => {
+    writeFileSync(configPath, CONFIG_WITH_MODELS, 'utf-8');
+
+    const result = unsetConfigValue(tmpDir, 'models');
+
+    expect(result).toEqual({ removed: true, path: configPath });
+    const text = readFileSync(configPath, 'utf-8');
+    expect(text).not.toMatch(/^models:/m);
+    expect(text).not.toContain('deepseek-chat');
+    expect(text).toContain('# 顶注：必须保留');
+    expect(text).toContain('行内注释保留');
+    expect(text).toContain('execution_mode: auto');
+    expect(text).toContain('feel_mode: enabled');
+    expect(text.indexOf('meta:')).toBeLessThan(text.indexOf('defaults:'));
+    expect(readConfig(tmpDir).models).toBeUndefined();
+  });
+
+  it('应删除 defaults.X（不限 schema：退役键 test_enabled 同样可删）', () => {
+    writeFileSync(
+      configPath,
+      ['# 顶注', 'defaults:', '  execution_mode: manual', `  ${REMOVED_LEGACY_KEY}: true`, ''].join('\n'),
+      'utf-8',
+    );
+
+    const result = unsetConfigValue(tmpDir, `defaults.${REMOVED_LEGACY_KEY}`);
+
+    expect(result.removed).toBe(true);
+    const text = readFileSync(configPath, 'utf-8');
+    expect(text).not.toContain(REMOVED_LEGACY_KEY);
+    expect(text).toContain('# 顶注');
+    expect(text).toContain('execution_mode: manual');
+  });
+
+  it('裸键只匹配顶层段：defaults.feel_mode 存在时 unset feel_mode → not_found 且字节不变', () => {
+    writeFileSync(configPath, CONFIG_WITH_MODELS, 'utf-8');
+    const before = readFileSync(configPath, 'utf-8');
+
+    const result = unsetConfigValue(tmpDir, 'feel_mode');
+
+    expect(result).toEqual({ removed: false, path: configPath, reason: 'not_found' });
+    expect(readFileSync(configPath, 'utf-8')).toBe(before);
+  });
+
+  it('键不存在 → removed:false + not_found，且不写盘（幂等第二次同值）', () => {
+    writeFileSync(configPath, CONFIG_WITH_MODELS, 'utf-8');
+
+    expect(unsetConfigValue(tmpDir, 'models').removed).toBe(true);
+    const afterFirst = readFileSync(configPath, 'utf-8');
+    const second = unsetConfigValue(tmpDir, 'models');
+
+    expect(second).toEqual({ removed: false, path: configPath, reason: 'not_found' });
+    expect(readFileSync(configPath, 'utf-8')).toBe(afterFirst);
+  });
+
+  it('config.yaml 不存在 → config-missing 且不创建文件', () => {
+    const result = unsetConfigValue(tmpDir, 'models');
+
+    expect(result).toEqual({ removed: false, path: configPath, reason: 'config-missing' });
+    expect(existsSync(configPath)).toBe(false);
+  });
+
+  it('删除整个 defaults 段后 readConfig 无 defaults（三层 schema 全 optional）', () => {
+    writeFileSync(configPath, CONFIG_WITH_MODELS, 'utf-8');
+
+    const result = unsetConfigValue(tmpDir, 'defaults');
+
+    expect(result.removed).toBe(true);
+    const text = readFileSync(configPath, 'utf-8');
+    expect(text).not.toMatch(/^defaults:/m);
+    expect(text).toContain('models:');
+    expect(readConfig(tmpDir).defaults).toBeUndefined();
+  });
+
+  it('删除后 ConfigSchema 复验失败 → 抛错且零写盘', () => {
+    // execution_mode 是非法枚举：删除 meta 后剩余配置无法通过 ConfigSchema → 必须零写盘
+    writeFileSync(
+      configPath,
+      ['meta:', '  version: 1.5.9', 'defaults:', '  execution_mode: bogus', ''].join('\n'),
+      'utf-8',
+    );
+    const before = readFileSync(configPath, 'utf-8');
+
+    expect(() => unsetConfigValue(tmpDir, 'meta')).toThrow();
+    expect(readFileSync(configPath, 'utf-8')).toBe(before);
+  });
+
+  it('非法键路径 → 抛错（空键 / 空段 / 多段非 defaults / 原型链危险键）', () => {
+    writeFileSync(configPath, CONFIG_WITH_MODELS, 'utf-8');
+    for (const bad of ['', 'defaults.', 'a..b', 'defaults.a.b', 'meta.version', '__proto__', 'defaults.constructor', 'prototype']) {
+      expect(() => parseConfigUnsetPath(bad)).toThrow();
+      expect(() => unsetConfigValue(tmpDir, bad)).toThrow();
+    }
+    expect(readFileSync(configPath, 'utf-8')).toBe(CONFIG_WITH_MODELS);
   });
 });
 

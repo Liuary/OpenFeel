@@ -2,6 +2,10 @@
  * migrate 单元测试（stage-39 / op-001）
  * 覆盖 detectLegacy / listLegacyFiles / dry-run / 执行 / 幂等 / --remap-assignee / rollback / 备份清理。
  * mock homedir 隔离，不污染真实主目录（REV-1204③）。
+ * v1.6.5 / REQ-072 A72.3：全局路径三重隔离 —— mock `node:os` 的 `homedir()` 指向每测试
+ * 临时目录 + 显式 `HOME`/`USERPROFILE`/`CLAUDE_CONFIG_DIR`（`global-paths.ts` 唯一的 env
+ * 分支）指向同一 tmp + 断言**真实**用户全局 `opencode.jsonc` / `update_state.json` 前后
+ * 哈希不变。注意：**只登记「未复现根因」**，不声称根因已消除。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -38,8 +42,40 @@ import { loadUpdateState, loadGlobalUpdateState } from '../../src/core/update-st
 import {
   existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync, statSync, copyFileSync,
 } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve, relative } from 'node:path';
 import { tmpdir } from 'node:os';
+
+/**
+ * 真实用户主目录（**在任何 beforeEach 改写 env 之前**取）。
+ * 本文件 mock 了 `node:os`，所以这里只能读进程环境，不能再用 `homedir()`。
+ * 用途：A72.3 的「真实用户文件零变化」取证 —— 隔离一旦失效就会红。
+ */
+const REAL_HOME = (process.env.USERPROFILE || process.env.HOME || '').trim();
+
+/** 真实用户会被 migrate 写到的全局文件（opencode 全局面 + 全局 update state）。 */
+const REAL_GLOBAL_FILES: string[] = REAL_HOME === ''
+  ? []
+  : [
+    join(REAL_HOME, '.config', 'opencode', 'opencode.jsonc'),
+    join(REAL_HOME, '.openfeel', 'update_state.json'),
+  ];
+
+/** 文件内容 sha256（不存在 → `'absent'`，这样「原不存在且仍不存在」也算不变）。 */
+function fileHash(absPath: string): string {
+  if (!existsSync(absPath)) return 'absent';
+  return createHash('sha256').update(readFileSync(absPath)).digest('hex');
+}
+
+/** 模块求值时（尚未跑任何用例）先记下真实全局文件的哈希。 */
+const realGlobalBefore = new Map(REAL_GLOBAL_FILES.map((p) => [p, fileHash(p)]));
+
+/** A72.3 取证：真实用户全局文件在一次用例前后必须**逐字节不变**（不存在也必须仍不存在）。 */
+function assertRealGlobalFilesUnchanged(when: string): void {
+  for (const [absPath, before] of realGlobalBefore) {
+    expect(`${when} ${absPath} ${fileHash(absPath)}`).toBe(`${when} ${absPath} ${before}`);
+  }
+}
 
 /** 静态 legacy fixture 根目录 */
 const FIXTURE = resolve(process.cwd(), 'test', 'fixtures', 'legacy-project');
@@ -82,17 +118,38 @@ function snapshotDir(dir: string): Record<string, string> {
 describe('migrate', () => {
   let homeDir: string;
   let projects: string[];
+  /** 本机原有的 env 值（**逐键恢复**，不做 delete —— 原样归还才不给后续用例/并发文件留差异）。 */
+  let savedEnv: Record<'HOME' | 'USERPROFILE' | 'CLAUDE_CONFIG_DIR', string | undefined>;
 
   beforeEach(() => {
     homeDir = mkdtempSync(join(tmpdir(), 'openfeel-migrate-home-'));
     mockHome.dir = homeDir;
+    // A72.3 全局路径隔离：
+    // ① `homedir()` 已由本文件顶部的 `vi.mock('node:os')` 指向每测试临时目录；
+    // ② `global-paths.ts` 里**唯一**的 env 分支是 `CLAUDE_CONFIG_DIR`（`:102-104`），
+    //    本机若把它指向真实 `~/.claude`，全局部署就会漏到真实用户目录 —— 这里显式
+    //    钉到临时 home 下；`HOME` / `USERPROFILE` 一并指向同一 tmp，覆盖其它库
+    //    走 env 而不是 `homedir()` 的取法。
+    savedEnv = {
+      HOME: process.env.HOME,
+      USERPROFILE: process.env.USERPROFILE,
+      CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
+    };
+    process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
+    process.env.CLAUDE_CONFIG_DIR = join(homeDir, '.claude');
     projects = [];
     resetBackupSetCache();
   });
 
   afterEach(() => {
     for (const p of projects) { rmSync(p, { recursive: true, force: true }); }
+    // 先取证再删临时 home：真实用户文件必须在**本轮用例结束后**仍然零变化。
+    assertRealGlobalFilesUnchanged('afterEach');
     rmSync(homeDir, { recursive: true, force: true });
+    for (const [key, value] of Object.entries(savedEnv)) {
+      if (value === undefined) { delete process.env[key]; } else { process.env[key] = value; }
+    }
   });
 
   /** 复制 fixture 到临时项目目录（可选剔除 custom-agent.md，构造纯框架项目） */
@@ -266,6 +323,27 @@ describe('migrate', () => {
       writeFileSync(globalJsoncPath(), original, 'utf-8');
       expect(() => migrateProject(proj)).not.toThrow();
       expect(readFileSync(globalJsoncPath(), 'utf-8')).toBe(original);
+    });
+
+    it('A72.3：全局 opencode.jsonc 用例完全隔离（写入落临时 home；真实用户文件零变化）', () => {
+      const proj = makeProject();
+      const realJsonc = REAL_GLOBAL_FILES[0];
+      const realBefore = realJsonc === undefined ? 'absent' : fileHash(realJsonc);
+      mkdirSync(globalOpencodeDir(), { recursive: true });
+      writeFileSync(globalJsoncPath(), '{ "mocked": true }\n', 'utf-8');
+      migrateProject(proj);
+
+      // ① 全局路径全部落在本轮临时 home 下（mock homedir + CLAUDE_CONFIG_DIR 生效）
+      expect(globalJsoncPath().startsWith(homeDir)).toBe(true);
+      expect(globalAgentsMdPath().startsWith(homeDir)).toBe(true);
+      expect(process.env.CLAUDE_CONFIG_DIR?.startsWith(homeDir)).toBe(true);
+      // ② 临时 home 内的全局 jsonc 被合并（证明这条用例确实执行了全局写路径）
+      expect(readFileSync(globalJsoncPath(), 'utf-8')).toContain('mocked');
+      // ③ 真实用户全局 jsonc 逐字节不变（隔离失效时会在这里红）
+      if (realJsonc !== undefined) {
+        expect(realJsonc.startsWith(homeDir)).toBe(false);
+        expect(fileHash(realJsonc)).toBe(realBefore);
+      }
     });
   });
 

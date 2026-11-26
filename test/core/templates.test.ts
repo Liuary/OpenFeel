@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { getCurrentTemplate } from '../../src/core/templates.js';
+import { getCurrentTemplate, getDevCoreTemplate } from '../../src/core/templates.js';
 import { listAgentIds, listClaudeAgentIds, listOpencodeAgentIds, loadOpencodeAgentTemplate, loadTemplate, loadClaudeConstraintTemplate } from '../../src/core/template-loader.js';
 import { splitFrontmatter } from '../../src/core/managed-region.js';
 
@@ -905,6 +905,9 @@ describe('stage-90：三模式文案（supersede）', () => {
  *   - Tier A（7 类 × 4 = 28 份）：<= min(ceil(65% x baseline), 8192)；
  *   - Tier S（explorer ×4 + utility ×4 = 8 份）：<= baseline + 512 B（`## 技能索引` 索引节增量预算；
  *     REV-91-005 同源订正——加节必增字节，「不增长」口径不可达）。
+ *
+ * v1.6.5 / REQ-074 A74.4：reviewer ×4 新增「过度设计 5 判据 + 计划外改动」两节（安全/质量门必需内容），
+ * 四份基线按实测字节重算，`ceiling = 新基线`（此后 reviewer 模板不得再增长；要加内容先等量删减）。
  */
 export const AGENT_SIZE_TARGETS: Record<string, { file: string; baseline: number; ceiling: number }> = {
   'claude/en/feel': { file: 'src/core/templates-data/claude/agents/en/feel.md', baseline: 36517, ceiling: 18259 },
@@ -913,7 +916,7 @@ export const AGENT_SIZE_TARGETS: Record<string, { file: string; baseline: number
   'claude/en/openfeel-explorer': { file: 'src/core/templates-data/claude/agents/en/openfeel-explorer.md', baseline: 3230, ceiling: 3742 },
   'claude/en/openfeel-feel-tester': { file: 'src/core/templates-data/claude/agents/en/openfeel-feel-tester.md', baseline: 5290, ceiling: 3439 },
   'claude/en/openfeel-planner': { file: 'src/core/templates-data/claude/agents/en/openfeel-planner.md', baseline: 10076, ceiling: 6550 },
-  'claude/en/openfeel-reviewer': { file: 'src/core/templates-data/claude/agents/en/openfeel-reviewer.md', baseline: 10355, ceiling: 6731 },
+  'claude/en/openfeel-reviewer': { file: 'src/core/templates-data/claude/agents/en/openfeel-reviewer.md', baseline: 7168, ceiling: 7168 },
   'claude/en/openfeel-schemer': { file: 'src/core/templates-data/claude/agents/en/openfeel-schemer.md', baseline: 7386, ceiling: 4801 },
   'claude/en/openfeel-utility': { file: 'src/core/templates-data/claude/agents/en/openfeel-utility.md', baseline: 3524, ceiling: 4036 },
   'claude/en/openfeel-vision': { file: 'src/core/templates-data/claude/agents/en/openfeel-vision.md', baseline: 4638, ceiling: 3015 },
@@ -923,7 +926,7 @@ export const AGENT_SIZE_TARGETS: Record<string, { file: string; baseline: number
   'claude/zh-CN/openfeel-explorer': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-explorer.md', baseline: 2710, ceiling: 3222 },
   'claude/zh-CN/openfeel-feel-tester': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-feel-tester.md', baseline: 4414, ceiling: 2870 },
   'claude/zh-CN/openfeel-planner': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-planner.md', baseline: 8456, ceiling: 5497 },
-  'claude/zh-CN/openfeel-reviewer': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-reviewer.md', baseline: 8797, ceiling: 5719 },
+  'claude/zh-CN/openfeel-reviewer': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-reviewer.md', baseline: 6685, ceiling: 6685 },
   'claude/zh-CN/openfeel-schemer': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-schemer.md', baseline: 6092, ceiling: 3960 },
   'claude/zh-CN/openfeel-utility': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-utility.md', baseline: 2935, ceiling: 3447 },
   'claude/zh-CN/openfeel-vision': { file: 'src/core/templates-data/claude/agents/zh-CN/openfeel-vision.md', baseline: 3764, ceiling: 2447 },
@@ -933,7 +936,7 @@ export const AGENT_SIZE_TARGETS: Record<string, { file: string; baseline: number
   'opencode/en/openfeel-explorer': { file: 'src/core/templates-data/opencode/agents/en/openfeel-explorer.md', baseline: 3258, ceiling: 3770 },
   'opencode/en/openfeel-feel-tester': { file: 'src/core/templates-data/opencode/agents/en/openfeel-feel-tester.md', baseline: 4964, ceiling: 3227 },
   'opencode/en/openfeel-planner': { file: 'src/core/templates-data/opencode/agents/en/openfeel-planner.md', baseline: 9646, ceiling: 6270 },
-  'opencode/en/openfeel-reviewer': { file: 'src/core/templates-data/opencode/agents/en/openfeel-reviewer.md', baseline: 6255, ceiling: 6214 },
+  'opencode/en/openfeel-reviewer': { file: 'src/core/templates-data/opencode/agents/en/openfeel-reviewer.md', baseline: 7317, ceiling: 7317 },
   'opencode/en/openfeel-schemer': { file: 'src/core/templates-data/opencode/agents/en/openfeel-schemer.md', baseline: 7052, ceiling: 4584 },
   'opencode/en/openfeel-utility': { file: 'src/core/templates-data/opencode/agents/en/openfeel-utility.md', baseline: 3409, ceiling: 3921 },
   'opencode/en/openfeel-vision': { file: 'src/core/templates-data/opencode/agents/en/openfeel-vision.md', baseline: 4573, ceiling: 2973 },
@@ -943,7 +946,7 @@ export const AGENT_SIZE_TARGETS: Record<string, { file: string; baseline: number
   'opencode/zh-CN/openfeel-explorer': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-explorer.md', baseline: 2773, ceiling: 3285 },
   'opencode/zh-CN/openfeel-feel-tester': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-feel-tester.md', baseline: 4187, ceiling: 2722 },
   'opencode/zh-CN/openfeel-planner': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-planner.md', baseline: 8237, ceiling: 5355 },
-  'opencode/zh-CN/openfeel-reviewer': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-reviewer.md', baseline: 5859, ceiling: 5818 },
+  'opencode/zh-CN/openfeel-reviewer': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-reviewer.md', baseline: 6841, ceiling: 6841 },
   'opencode/zh-CN/openfeel-schemer': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-schemer.md', baseline: 5872, ceiling: 3817 },
   'opencode/zh-CN/openfeel-utility': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-utility.md', baseline: 2872, ceiling: 3384 },
   'opencode/zh-CN/openfeel-vision': { file: 'src/core/templates-data/opencode/agents/zh-CN/openfeel-vision.md', baseline: 3722, ceiling: 2420 },
@@ -1278,6 +1281,48 @@ describe('v1.6.3：opencode agent 模板零 model + 厂商名中性化（REQ-070
       for (const s of BANNED) {
         expect(injected, `${rel} 残留厂商串 ${s}`).not.toContain(s);
       }
+    }
+  });
+});
+
+/**
+ * v1.6.5 / REQ-074 A74.3 / A74.4：版本与范围纪律 + 过度设计判据 + 计划模板两节
+ */
+describe('v1.6.5 / REQ-074：版本与范围纪律（A74.3 / A74.4）', () => {
+  const TD = join(ROOT, 'src', 'core', 'templates-data');
+
+  it('A74.3 DEV_CORE 模板 zh/en 含「版本与范围纪律」五条', () => {
+    const zh = getDevCoreTemplate('zh-CN');
+    const en = getDevCoreTemplate('en');
+    expect(zh).toContain('版本与范围纪律');
+    expect(en).toContain('Version and scope discipline');
+    for (const s of ['版本是发布信号', '一批次一版本', '新想法进 backlog', '小改动不单独发版', '同批需求拆阶段']) {
+      expect(zh, `DEV_CORE zh 缺 ${s}`).toContain(s);
+    }
+    for (const s of ['release signal', 'One batch per release', 'backlog', 'small changes alone', 'Split stages, not versions']) {
+      expect(en, `DEV_CORE en 缺 ${s}`).toContain(s);
+    }
+  });
+
+  it('A74.4 reviewer ×4：过度设计 5 判据 + 计划外改动（review_add blocking + auto_fix）', () => {
+    for (const h of ['claude', 'opencode']) {
+      const zh = readFileSync(join(TD, h, 'agents', 'zh-CN', 'openfeel-reviewer.md'), 'utf-8');
+      const en = readFileSync(join(TD, h, 'agents', 'en', 'openfeel-reviewer.md'), 'utf-8');
+      for (const s of ['不必要抽象', '新依赖', '兼容层', 'IO 分支', 'REQ 外公开契约', '计划外改动', 'review_add', 'blocking=true', 'auto_fix']) {
+        expect(zh, `${h} reviewer zh 缺 ${s}`).toContain(s);
+      }
+      for (const s of ['Unnecessary abstraction', 'New dependency', 'Compat layer', 'IO branches', 'Out-of-REQ public contract', 'Out-of-plan changes', 'review_add', 'blocking=true', 'auto_fix']) {
+        expect(en, `${h} reviewer en 缺 ${s}`).toContain(s);
+      }
+    }
+  });
+
+  it('A74.4 planner ×4：计划产出结构含 不做清单 / 允许改动', () => {
+    for (const h of ['claude', 'opencode']) {
+      const zh = readFileSync(join(TD, h, 'agents', 'zh-CN', 'openfeel-planner.md'), 'utf-8');
+      const en = readFileSync(join(TD, h, 'agents', 'en', 'openfeel-planner.md'), 'utf-8');
+      for (const s of ['## 不做清单', '## 允许改动', '计划外改动']) expect(zh, `${h} planner zh 缺 ${s}`).toContain(s);
+      for (const s of ['## Not-to-do', '## Allowed changes', 'out-of-plan']) expect(en, `${h} planner en 缺 ${s}`).toContain(s);
     }
   });
 });

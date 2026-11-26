@@ -1043,4 +1043,125 @@ describe('config 命令（stage-42 op-002）', () => {
       expect(existsSync(join(tmpDir, '.openfeel', 'tmp', 'status.v1.0.0-stage-01.bak'))).toBe(false);
     });
   });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // config unset（v1.6.5 / REQ-073 / A73.1-A73.3）
+  // ═══════════════════════════════════════════════════════════════════
+  describe('config unset（v1.6.5 / REQ-073）', () => {
+    const CONFIG_WITH_MODELS = [
+      '# 顶注保留',
+      'meta:',
+      '  version: 1.5.9',
+      'defaults:',
+      '  execution_mode: auto   # 行内注释保留',
+      '  feel_mode: enabled',
+      'models:',
+      '  default:',
+      '    provider: deepseek',
+      '    model_name: deepseek-chat',
+      '',
+    ].join('\n');
+
+    function configPath(): string {
+      return join(tmpDir, '.openfeel', 'config.yaml');
+    }
+
+    it('人类输出一行 + 删除 models 段并保留注释与其它配置', async () => {
+      writeProjectConfigRaw(CONFIG_WITH_MODELS);
+
+      await safeParse(['config', 'unset', 'models']);
+
+      const out = stdout();
+      expect(out.trim().split('\n')).toHaveLength(1);
+      expect(out).toContain('models');
+      expect(stderr()).toBe('');
+      expect(exitMock).not.toHaveBeenCalled();
+      const text = readFileSync(configPath(), 'utf-8');
+      expect(text).not.toMatch(/^models:/m);
+      expect(text).not.toContain('deepseek-chat');
+      expect(text).toContain('# 顶注保留');
+      expect(text).toContain('行内注释保留');
+    });
+
+    it('--json 成功 → schemaVersion,key,removed,path 固定键序', async () => {
+      writeProjectConfigRaw(CONFIG_WITH_MODELS);
+
+      const doc = await jsonDoc(['config', 'unset', 'models', '--json']);
+
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'key', 'removed', 'path']);
+      expect(doc.key).toBe('models');
+      expect(doc.removed).toBe(true);
+      expect(doc.path).toBe(configPath());
+      expect(existsSync(configPath())).toBe(true);
+    });
+
+    it('幂等：第二次 unset → 人类 stderr + exit 1；--json → removed:false + reason 末键', async () => {
+      writeProjectConfigRaw(CONFIG_WITH_MODELS);
+      await safeParse(['config', 'unset', 'models']);
+      logMock.mockClear();
+      errorMock.mockClear();
+
+      await safeParse(['config', 'unset', 'models']);
+      expect(process.exitCode).toBe(1);
+      expect(stderr()).toContain('models');
+      expect(exitMock).not.toHaveBeenCalled();
+
+      process.exitCode = 0;
+      const doc = await jsonDoc(['config', 'unset', 'models', '--json']);
+      expect(Object.keys(doc)).toEqual(['schemaVersion', 'key', 'removed', 'path', 'reason']);
+      expect(doc.removed).toBe(false);
+      expect(doc.reason).toBe('not_found');
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
+    });
+
+    it('A73.3：删除 defaults.feel_mode 后 config effective 回落并打印来源', async () => {
+      writeProjectConfigRaw(CONFIG_WITH_MODELS);
+      await safeParse(['config', 'unset', 'defaults.feel_mode']);
+      logMock.mockClear();
+
+      const doc = await jsonDoc(['config', 'effective', 'feel_mode', '--json']);
+
+      expect(doc.key).toBe('feel_mode');
+      expect(doc.source).not.toBe('config.yaml');
+      expect(['builtin', 'profile.yaml']).toContain(doc.source as string);
+    });
+
+    it('--global → 明确拒绝 exit 1 且不改任何文件（G1 遗留）', async () => {
+      writeProjectConfigRaw(CONFIG_WITH_MODELS);
+      const before = readFileSync(configPath(), 'utf-8');
+
+      await safeParse(['config', 'unset', 'models', '--global']);
+
+      expect(exitMock).toHaveBeenCalledWith(1);
+      expect(stderr()).toContain('--global');
+      expect(readFileSync(configPath(), 'utf-8')).toBe(before);
+    });
+
+    it('非法键路径（__proto__ / defaults. / a..b）→ exit 1 且零写盘', async () => {
+      writeProjectConfigRaw(CONFIG_WITH_MODELS);
+      const before = readFileSync(configPath(), 'utf-8');
+
+      for (const bad of ['__proto__', 'defaults.', 'a..b']) {
+        exitMock.mockClear();
+        errorMock.mockClear();
+        await safeParse(['config', 'unset', bad]);
+        expect(exitMock).toHaveBeenCalledWith(1);
+        expect(readFileSync(configPath(), 'utf-8')).toBe(before);
+      }
+    });
+
+    it('JSON 非法键 → envelope INVALID_ARGUMENT/refusal/1（零写盘）', async () => {
+      writeProjectConfigRaw(CONFIG_WITH_MODELS);
+      const before = readFileSync(configPath(), 'utf-8');
+
+      const doc = await jsonError(['config', 'unset', '__proto__', '--json']);
+
+      expect(doc.error.code).toBe('INVALID_ARGUMENT');
+      expect(doc.error.kind).toBe('refusal');
+      expect(doc.error.detail).toEqual({ reason: 'invalid-key', key: '__proto__' });
+      expect(process.exitCode).toBe(1);
+      expect(readFileSync(configPath(), 'utf-8')).toBe(before);
+    });
+  });
 });

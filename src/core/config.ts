@@ -688,3 +688,107 @@ export function setConfigValue(projectPath: string, key: string, value: string):
   // 6. 序列化并写回
   atomicWriteFileSync(configPath, doc.toString());
 }
+
+/** 原型链危险键名（与命令层 get/set 同口径，T30）：unset 一律拒绝 */
+const UNSAFE_CONFIG_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * 把 `config unset` 的键语法解析为 YAML Document 路径（v1.6.5 / REQ-073 / A73.1）。
+ *
+ * 支持三种写法：
+ * - `defaults.X` → `['defaults', X]`（X 为单段非空键名，**不限 schema** —— `test_enabled`
+ *   这类已退役键同样可删；schema 白名单是 `set` 的限制，不是 `unset` 的）
+ * - `defaults` → `['defaults']`（删整段）
+ * - 无点号 → `[key]`（顶层段，如 `models` / `meta` / passthrough 键）
+ *
+ * 其它多段点号键（如 `meta.version`）与空段（`defaults.` / `a..b`）、危险键名一律判为非法路径。
+ * @param key 用户输入键（允许首尾空白）
+ * @returns Document 路径（至少一段）
+ * @throws Error 键语法非法
+ */
+export function parseConfigUnsetPath(key: string): string[] {
+  const trimmed = key.trim();
+  if (trimmed === '') {
+    throw new Error('empty config key');
+  }
+  const segments = trimmed.split('.');
+  if (segments.some((segment) => segment === '')) {
+    throw new Error(`invalid config key path: ${key}`);
+  }
+  if (segments.some((segment) => UNSAFE_CONFIG_KEYS.has(segment))) {
+    throw new Error(`unsafe config key: ${key}`);
+  }
+  if (segments[0] === 'defaults') {
+    if (segments.length === 1) {
+      return ['defaults'];
+    }
+    if (segments.length === 2) {
+      return ['defaults', segments[1]];
+    }
+    throw new Error(`invalid config key path: ${key}`);
+  }
+  if (segments.length > 1) {
+    throw new Error(`invalid config key path: ${key}`);
+  }
+  return [segments[0]];
+}
+
+/** `unsetConfigValue` 结果 */
+export interface UnsetConfigResult {
+  /** 是否真的删除并写回（幂等：第二次删除同一键 → false） */
+  removed: boolean;
+  /** `.openfeel/config.yaml` 的绝对路径 */
+  path: string;
+  /** 未删除原因：`config-missing`=文件不存在；`not_found`=键不存在 */
+  reason?: 'config-missing' | 'not_found';
+}
+
+/**
+ * 删除项目 config.yaml 中指定键（v1.6.5 / REQ-073 / A73.1、A73.2）。
+ *
+ * 与 `setConfigValue` 对称的写盘单点：`parseDocument`（保留注释/键序）→ `hasIn` 校验 →
+ * `deleteIn` → 序列化后 `parseYaml` + `ConfigSchema` 复验（失败抛错、**零写盘**）→
+ * `atomicWriteFileSync`。空文档不删文件。
+ * @param projectPath 项目根路径
+ * @param key 配置键（`defaults.X` / `defaults` / 顶层段）
+ * @returns 删除结果（键或文件不存在时 `removed:false` + `reason`，且不写盘）
+ * @throws Error 键语法非法 / YAML 或 Schema 复验失败
+ */
+export function unsetConfigValue(projectPath: string, key: string): UnsetConfigResult {
+  const path = parseConfigUnsetPath(key);
+  const configPath = resolve(projectPath, '.openfeel', 'config.yaml');
+
+  if (!existsSync(configPath)) {
+    return { removed: false, path: configPath, reason: 'config-missing' };
+  }
+
+  const doc = parseDocument(readFileSync(configPath, 'utf-8'));
+  if (doc.errors.length > 0) {
+    throw new Error(`Failed to parse config.yaml: ${doc.errors[0].message}`);
+  }
+  if (!doc.hasIn(path)) {
+    return { removed: false, path: configPath, reason: 'not_found' };
+  }
+
+  doc.deleteIn(path);
+
+  // 删除后复验：YAML 仍可解析、且不破坏 ConfigSchema（失败抛错 → 调用方零写盘）
+  const remaining = parseYaml(doc.toString());
+  const preprocessed: Record<string, unknown> =
+    remaining !== null && typeof remaining === 'object'
+      ? { ...(remaining as Record<string, unknown>) }
+      : {};
+  if (preprocessed.meta === null) {
+    preprocessed.meta = {};
+  }
+  if (preprocessed.defaults === null) {
+    preprocessed.defaults = {};
+  }
+  if (preprocessed.models === null) {
+    delete preprocessed.models;
+  }
+  ConfigSchema.parse(preprocessed);
+
+  atomicWriteFileSync(configPath, doc.toString());
+  return { removed: true, path: configPath };
+}

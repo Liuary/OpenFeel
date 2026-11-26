@@ -1685,14 +1685,14 @@ export function createTools(context) {
   const feelVerify = {
     name: 'feel_verify',
     description:
-      '健康检查与对账。action=health 全面检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml（fix=true 时以 flow.json 为权威回写 status.md 的状态字段）；action=lint 项目健康检查（i18n 键一致性 / kb 引用有效性）；action=adherence 遵守率四指标（主会话写占比 / 每需求 executor 派发 / 账本同步间隔 / 门禁拒绝率，每键带 definition，只读不改门禁）；action=recover 跨会话上下文恢复（流水线状态、阻塞原因、待处理任务），换会话或中断后先跑它；action=project 结构化项目概览；action=config_get / config_set 读写项目配置（workflow_mode / auto_advance / merge_mode / execution_mode）。',
+      '健康检查与对账。action=health 全面检查 flow.json / 跨文件一致性 / 僵尸状态 / config.yaml（fix=true 时以 flow.json 为权威回写 status.md 的状态字段）；action=lint 项目健康检查（i18n 键一致性 / kb 引用有效性）；action=adherence 遵守率四指标（主会话写占比 / 每需求 executor 派发 / 账本同步间隔 / 门禁拒绝率，每键带 definition，只读不改门禁）；action=recover 跨会话上下文恢复（流水线状态、阻塞原因、待处理任务），换会话或中断后先跑它；action=project 结构化项目概览；action=config_get / config_set 读写项目配置（workflow_mode / auto_advance / merge_mode / execution_mode）；action=config_unset 删除项目配置键（defaults.X 或顶层段如 models，走同一 CLI）。',
     parameters: {
-      action: stringEnum(['health', 'lint', 'adherence', 'recover', 'project', 'config_get', 'config_set', 'config_effective'], '操作。', { required: true }),
+      action: stringEnum(['health', 'lint', 'adherence', 'recover', 'project', 'config_get', 'config_set', 'config_effective', 'config_unset'], '操作。', { required: true }),
       quick: boolean('health 仅检查关键项。'),
       fix: boolean('health 以 flow.json 为权威回写 status.md 状态字段。'),
       dry_run: boolean('health fix 仅预览。'),
       target: stringEnum(['i18n', 'kb'], 'lint 的目标。'),
-      key: string('配置键（config_get/config_set；支持 defaults.X 或 X）。'),
+      key: string('配置键（config_get/config_set/config_unset；支持 defaults.X 或 X；unset 另支持顶层段如 models）。'),
       value: string('配置值（config_set）。'),
       sync_stages: boolean('config_set 时同步写入所有已注册阶段的 status.md。'),
       project: string('项目根目录。'),
@@ -1801,6 +1801,23 @@ export function createTools(context) {
           return envelope(action, async () => {
             const out = await cli.write(argv, opts);
             return { data: { key, value, output: out.text }, summary: `配置 ${key} 已设为 ${value}。` };
+          });
+        }
+        case 'config_unset': {
+          // v1.6.5 / REQ-073 A73.5：只扩 action，不新增工具（工具数仍 15）。
+          // 走同一 CLI 出口（`config unset <key> --json`）：键不存在时 CLI exit 1 → json() 抛 refusal，
+          // 与「删除失败」语义一致；成功时返回 {schemaVersion,key,removed,path}。
+          const key = requireArg(args, 'key', action);
+          const argv = ['config', 'unset', key, '--json'];
+          return envelope(action, async () => {
+            const data = await cli.json(argv, opts);
+            const removed = data?.removed === true;
+            return {
+              data,
+              summary: removed
+                ? `配置 ${key} 已删除（${data?.path ?? '?'}）。`
+                : `配置 ${key} 不存在，未删除（${data?.reason ?? 'not_found'}）。`,
+            };
           });
         }
         default:

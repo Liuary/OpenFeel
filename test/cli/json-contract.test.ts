@@ -888,6 +888,40 @@ describe('33 出口 JSON 契约冻结（stage-95 op-001 / stage-96 / stage-97）
     expect(typeof one.source).toBe('string');
   });
 
+  it('#52 config unset：成功 4 键固定序；键不存在 → removed:false + reason 末键 + exit 1', async () => {
+    const cfgPath = join(tmpDir, '.openfeel', 'config.yaml');
+    writeFileSync(
+      cfgPath,
+      [
+        '# 顶注保留',
+        'defaults:',
+        '  execution_mode: auto',
+        'models:',
+        '  default:',
+        '    provider: deepseek',
+        '    model_name: deepseek-chat',
+        '',
+      ].join('\n'),
+      'utf-8',
+    );
+
+    const d = await doc(['config', 'unset', 'models', '--json']);
+    expect(Object.keys(d)).toEqual(['schemaVersion', 'key', 'removed', 'path']);
+    expect(d.key).toBe('models');
+    expect(d.removed).toBe(true);
+    expect(String(d.path).endsWith(join('.openfeel', 'config.yaml'))).toBe(true);
+    const text = readFileSync(cfgPath, 'utf-8');
+    expect(text).not.toMatch(/^models:/m);
+    expect(text).toContain('# 顶注保留');
+
+    const missing = await doc(['config', 'unset', 'models', '--json']);
+    expect(Object.keys(missing)).toEqual(['schemaVersion', 'key', 'removed', 'path', 'reason']);
+    expect(missing.removed).toBe(false);
+    expect(missing.reason).toBe('not_found');
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
+  });
+
   it('#29 view list：3 键 + reviews 10 键（blocking 缺省 true / false）', async () => {
     seedReviews([
       {

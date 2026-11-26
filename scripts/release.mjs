@@ -84,6 +84,14 @@ export const ARCHIVE_ARTIFACTS = [
 
 const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
+/** `--bump` 的三个档位（v1.6.5 / REQ-074 A74.2）。 */
+const BUMP_KINDS = ['patch', 'minor', 'major'];
+
+/** 上次发布时间标记（本版只读；缺失时回退 flow-archive 的 `archived_at`）。 */
+const RELEASE_MARKER_REL = ['', '.openfeel', 'release', 'last.json'];
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const HELP = `
 npm run release —— 发布链路一条命令
 
@@ -107,8 +115,28 @@ npm run release —— 发布链路一条命令
   --write-notes      与 --notes-only 同用：把草稿写入 docs/releases/<版本>.md
                      （文件已存在则不覆盖；--dry-run 下仍不写）。
   --json             机器可读输出（steps[].id = version/build/publish/market/archive-commit/tag；
-                     push 是六步之外的收尾动作，单独在顶层 push 字段）。
+                     push 是六步之外的收尾动作，单独在顶层 push 字段；--bump 模式在末位追加
+                     batch 与 bump 两个键）。
   -h, --help         显示本帮助。
+
+版本递增（v1.6.5 / REQ-074 A74.2；独立模式，不进六步链）
+  --bump <kind>      patch | minor | major：目标版本 = 上次发布基线递增（不取当前 package.json）。
+                     当前版本已等于目标 → 打印 no-op、exit 0、零写盘。
+                     写 package.json / dsh/package.json / package-lock.json 的 4 个版本字段；
+                     不写 CHANGELOG / VERSIONS / 文档（归发布批次人工）。
+  --reason <text>    minor / major 必须给出理由（缺 → exit 1 零写盘）。
+  --confirm          真实 bump 必须显式确认（缺 → exit 1 零写盘）；只约束 --bump，
+                     --publish / --push 语义不变（不需要它）。
+  --confirm-twice    距上次发布 < 24h 仍要再发 patch 时的第二次确认（与 --confirm 各管各的）；
+                     只 warn 不是硬门。数据源 .openfeel/release/last.json → flow-archive 的
+                     archived_at；都拿不到则不 warn。
+  --dry-run --bump  只打印 old → new + 本批次清单（REQ / 阶段 / 改动文件=null），零写盘零 git。
+
+批次清单（--bump 打印；真实模式下才跑 git）
+  只列 status=done 且（target_version = 目标版本 或 关联 <目标版本>-stage-* 阶段）的 REQ；
+  旧的 done 会被过滤掉，绝不按全量 done 出清单。改动文件数用
+  git rev-list -1 HEAD -- .openfeel/flow-archive/<上次版本>.json + git diff --name-only，
+  再并上 git status --porcelain 去重（不依赖 git tag）。
 
 行为
   1. 版本一致性：package.json.version === dsh/package.json.version，
@@ -164,6 +192,11 @@ export function parseArgs(argv = []) {
     withMarket: false,
     json: false,
     help: false,
+    // v1.6.5 / REQ-074 A74.2：版本只在发布窗口动
+    bump: null,
+    confirm: false,
+    confirmTwice: false,
+    reason: null,
   };
   const invalid = (message) => {
     const err = new Error(message);
@@ -171,7 +204,8 @@ export function parseArgs(argv = []) {
     return err;
   };
 
-  for (const raw of argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const raw = argv[index];
     if (raw === '--skip-build') opts.skipBuild = true;
     else if (raw === '--publish') opts.publish = true;
     else if (raw === '--dry-run') opts.dryRun = true;
@@ -183,13 +217,47 @@ export function parseArgs(argv = []) {
     else if (raw === '--with-market') opts.withMarket = true;
     else if (raw === '--json') opts.json = true;
     else if (raw === '--help' || raw === '-h') opts.help = true;
-    else if (typeof raw === 'string' && raw.startsWith('--')) {
+    else if (raw === '--confirm') opts.confirm = true;
+    else if (raw === '--confirm-twice') opts.confirmTwice = true;
+    else if (raw === '--bump') {
+      const value = argv[index + 1];
+      if (typeof value !== 'string' || value.startsWith('--')) {
+        throw invalid('--bump 缺省值（应为 patch | minor | major）');
+      }
+      index += 1;
+      if (!BUMP_KINDS.includes(value)) {
+        throw invalid(`--bump 只接受 patch | minor | major（收到 ${value}）`);
+      }
+      opts.bump = value;
+    } else if (raw === '--reason') {
+      const value = argv[index + 1];
+      if (typeof value !== 'string' || value.trim() === '') {
+        throw invalid('--reason 缺少说明文本（minor / major 必须给出理由）');
+      }
+      index += 1;
+      opts.reason = value;
+    } else if (typeof raw === 'string' && raw.startsWith('--')) {
       throw invalid(`未知参数：${raw}（用 --help 查看用法）`);
     } else if (typeof raw === 'string') {
       if (opts.version !== null) throw invalid(`只能指定一个版本号（已有 ${opts.version}，又收到 ${raw}）`);
       const candidate = raw.startsWith('v') ? raw.slice(1) : raw;
       if (!SEMVER_RE.test(candidate)) throw invalid(`版本号不是合法 SemVer：${raw}`);
       opts.version = candidate;
+    }
+  }
+  // `--bump` 是**独立模式**（不进六步链）：与真实发布 / 提交 / tag / 草稿互斥。
+  if (opts.bump !== null) {
+    const conflicts = [
+      ['--publish', opts.publish],
+      ['--push', opts.push],
+      ['--commit-archive', opts.commitArchive],
+      ['--tag', opts.tag],
+      ['--notes-only', opts.notesOnly],
+    ];
+    for (const [flag, enabled] of conflicts) {
+      if (enabled) {
+        throw invalid(`--bump 与 ${flag} 互斥（bump 是独立模式，不进六步链）`);
+      }
     }
   }
   // `--write-notes` 只在草稿模式下有意义（其余模式没有「草稿文件」可写）
@@ -203,6 +271,258 @@ export function parseArgs(argv = []) {
 export function topChangelogVersion(text) {
   const match = /^## \[([^\]]+)\]/.exec(String(text ?? ''));
   return match ? match[1].trim() : null;
+}
+
+// ── 版本递增 / 发布基线 / 批次清单（v1.6.5 / REQ-074 A74.2）────────────────────
+// 单点口径：目标版本 = inc(上次发布基线, kind)，**不取当前 package.json**。
+// 基线 = `.openfeel/flow-archive/*.json` 中 semver **不大于当前版本**的最新一版
+// （不按 mtime —— 仓库里存在 mtime 更新的 v1.7.0.json，按 mtime 会选错）。
+
+/** 解析 SemVer 的数字三段（预发布 / 构建元数据忽略；非法 → null）。 */
+const SEMVER_PARTS_RE = /^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+export function parseSemverParts(value) {
+  const m = SEMVER_PARTS_RE.exec(String(value ?? '').trim());
+  if (!m) return null;
+  return { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]) };
+}
+
+/** 比较两个 SemVer（只比数字三段；非法视为最小）。 */
+export function compareSemver(a, b) {
+  const left = parseSemverParts(a) ?? { major: 0, minor: 0, patch: 0 };
+  const right = parseSemverParts(b) ?? { major: 0, minor: 0, patch: 0 };
+  for (const key of ['major', 'minor', 'patch']) {
+    if (left[key] !== right[key]) return left[key] - right[key];
+  }
+  return 0;
+}
+
+/**
+ * 递增版本号。
+ * - `patch`：Z+1（minor / major 归零）
+ * - `minor`：Y+1，Z 归零
+ * - `major`：X+1，Y / Z 归零
+ */
+export function incVersion(version, kind) {
+  const parsed = parseSemverParts(version);
+  if (!parsed) throw new Error(`不是合法 SemVer：${version}`);
+  if (!BUMP_KINDS.includes(kind)) throw new Error(`未知递增档位：${kind}`);
+  if (kind === 'major') return `${parsed.major + 1}.0.0`;
+  if (kind === 'minor') return `${parsed.major}.${parsed.minor + 1}.0`;
+  return `${parsed.major}.${parsed.minor}.${parsed.patch + 1}`;
+}
+
+/** 时间戳归一（数字按 ms；小于 1e11 的数字按秒；字符串走 Date.parse）。 */
+function toTimestampMs(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value > 1e11 ? value : value * 1000;
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+/** 读 `.openfeel/release/last.json` 的 `at`（本版**只读不写**；缺失 / 非法 → null）。 */
+export function readReleaseMarker({ cwd, readText, fileExists }) {
+  const path = join(cwd, ...RELEASE_MARKER_REL);
+  if (!fileExists(path)) return null;
+  try {
+    const parsed = JSON.parse(readText(path));
+    const ms = toTimestampMs(parsed?.at ?? parsed?.releasedAt ?? null);
+    return ms === null ? null : { path, ms };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 选发布基线：flow-archive 里 **semver ≤ 当前版本** 的最新一版。
+ * 找不到（空目录 / 全解析失败）→ 降级用当前版本并标 `fallback`（不阻断，但会 warn）。
+ */
+export function selectReleaseBaseline({ cwd, currentVersion, readText, readDir }) {
+  const dir = join(cwd, '.openfeel', 'flow-archive');
+  let names = [];
+  try {
+    names = readDir(dir);
+  } catch {
+    names = [];
+  }
+  let best = null;
+  for (const name of names) {
+    if (typeof name !== 'string' || !/\.json$/i.test(name)) continue;
+    const bare = name.replace(/\.json$/i, '').replace(/^v/i, '');
+    const parsed = parseSemverParts(bare);
+    if (!parsed) continue;
+    if (parseSemverParts(currentVersion) && compareSemver(bare, currentVersion) > 0) continue;
+    let archive = null;
+    try {
+      archive = JSON.parse(readText(join(dir, name)));
+    } catch {
+      archive = null;
+    }
+    const candidate = {
+      version: bare,
+      parsed,
+      archivedAt: archive?.archived_at ?? archive?.archivedAt ?? null,
+      archiveFile: name,
+    };
+    if (best === null || compareSemver(bare, best.version) > 0) best = candidate;
+  }
+  if (best !== null) return best;
+  return {
+    version: String(currentVersion),
+    parsed: parseSemverParts(currentVersion),
+    archivedAt: null,
+    archiveFile: null,
+    fallback: true,
+  };
+}
+
+/** 从 flow.json（或测试夹具）里取阶段列表；兼容数组与「id → 阶段」对象两种形状。 */
+export function collectFlowStages(flow) {
+  const raw = flow?.stages;
+  const list = [];
+  if (Array.isArray(raw)) {
+    for (const entry of raw) {
+      if (entry && typeof entry === 'object') list.push(entry);
+    }
+  } else if (raw && typeof raw === 'object') {
+    for (const [key, entry] of Object.entries(raw)) {
+      list.push({ id: key, ...(entry && typeof entry === 'object' ? entry : {}) });
+    }
+  }
+  return list;
+}
+
+/** 阶段关联的需求 id（兼容 `requirements: [{id}]` / `['REQ-1']` 与旧单值 `requirement_id`）。 */
+function stageRequirementIds(stage) {
+  const ids = new Set();
+  const raw = stage?.requirements;
+  if (Array.isArray(raw)) {
+    for (const entry of raw) {
+      if (typeof entry === 'string') ids.add(entry);
+      else if (entry && typeof entry === 'object' && typeof entry.id === 'string') ids.add(entry.id);
+    }
+  }
+  if (typeof stage?.requirement_id === 'string') ids.add(stage.requirement_id);
+  return [...ids];
+}
+
+/**
+ * 本批次清单（**按版本过滤，绝不全量 done**）。
+ *
+ * 候选 REQ = `status==='done'` **且**（`target_version` 等于目标版本 **或** 属于
+ * `id` 以 `<目标版本>-stage-` 开头的阶段）。仓库现有 17 条 done 全是旧 target_version，
+ * 必须被排除。
+ *
+ * 改动文件数：`--dry-run` 不跑 git → `files:null`；真实模式用
+ * `git rev-list -1 HEAD -- .openfeel/flow-archive/<基线>.json` + `git diff --name-only`
+ * + `git status --porcelain` 去重（不依赖 tag）。flow.json 不可读 → 降级不阻断。
+ */
+export function buildBatchSummary({
+  cwd,
+  targetVersion,
+  baseline = null,
+  readText,
+  dryRun = false,
+  runner = null,
+}) {
+  const summary = {
+    version: targetVersion,
+    reqs: [],
+    stages: [],
+    files: null,
+    filesReason: dryRun ? 'dry-run' : null,
+  };
+
+  let flow = null;
+  try {
+    flow = JSON.parse(readText(join(cwd, '.openfeel', 'flow.json')));
+  } catch {
+    summary.filesReason = summary.filesReason ?? 'flow-unavailable';
+    summary.reason = 'flow-unavailable';
+    return summary;
+  }
+
+  const prefixes = [`${targetVersion}-stage-`, `v${targetVersion}-stage-`];
+  const stageIds = new Set();
+  const stageReqIds = new Set();
+  for (const stage of collectFlowStages(flow)) {
+    const id = typeof stage?.id === 'string' ? stage.id : typeof stage?.name === 'string' ? stage.name : '';
+    if (id === '' || !prefixes.some((prefix) => id.startsWith(prefix))) continue;
+    stageIds.add(id);
+    for (const reqId of stageRequirementIds(stage)) stageReqIds.add(reqId);
+  }
+  summary.stages = [...stageIds].sort();
+
+  const requirements = Array.isArray(flow?.requirements) ? flow.requirements : [];
+  const reqIds = new Set();
+  for (const req of requirements) {
+    if (!req || typeof req !== 'object') continue;
+    if (req.status !== 'done' || typeof req.id !== 'string') continue;
+    const targets = [targetVersion, `v${targetVersion}`];
+    const byVersion = targets.includes(String(req.target_version ?? '').trim());
+    const byStage = stageReqIds.has(req.id);
+    if (byVersion || byStage) reqIds.add(req.id);
+  }
+  summary.reqs = [...reqIds].sort();
+
+  if (dryRun) return summary;
+
+  if (typeof runner !== 'function') {
+    summary.filesReason = 'git-unavailable';
+    return summary;
+  }
+
+  const files = new Set();
+  const baseArchive = baseline?.archiveFile
+    ? `.openfeel/flow-archive/${baseline.archiveFile}`
+    : null;
+  let baseCommit = null;
+  if (baseArchive !== null) {
+    const rev = runner('git', ['rev-list', '-1', 'HEAD', '--', baseArchive], { cwd, capture: true });
+    const text = String(rev?.stdout ?? '').trim();
+    if (rev?.status === 0 && text !== '') baseCommit = text.split('\n')[0].trim();
+  }
+  if (baseCommit !== null) {
+    const diff = runner('git', ['diff', '--name-only', baseCommit], { cwd, capture: true });
+    if (diff?.status === 0) {
+      for (const line of String(diff.stdout ?? '').split('\n')) {
+        if (line.trim() !== '') files.add(line.trim());
+      }
+    } else {
+      summary.filesReason = 'git-unavailable';
+    }
+  } else {
+    summary.filesReason = 'baseline-commit-unavailable';
+  }
+  // 未提交改动（R4 未提交时由它补并；纯 `.openfeel/**` 也照实计入）
+  const status = runner('git', ['status', '--porcelain'], { cwd, capture: true });
+  if (status?.status === 0) {
+    for (const line of String(status.stdout ?? '').split('\n')) {
+      const path = line.slice(3).trim();
+      if (path !== '') files.add(path.includes(' -> ') ? path.split(' -> ').pop().trim() : path);
+    }
+  }
+  summary.files = summary.filesReason === null ? [...files].sort() : null;
+  return summary;
+}
+
+/**
+ * <24h 再发 patch 的 warn（**不是硬门**：只 warn + 真实 bump 额外要 `--confirm-twice`）。
+ * `lastReleaseAt` 拿不到 → 不 warn（宁可漏报不可造假）。
+ */
+export function warnRecentRelease({ nowMs, lastReleaseAt, kind }) {
+  if (kind !== 'patch') return { recent: false, hours: null };
+  const last = toTimestampMs(lastReleaseAt);
+  if (last === null || typeof nowMs !== 'number' || !Number.isFinite(nowMs)) {
+    return { recent: false, hours: null };
+  }
+  const elapsed = nowMs - last;
+  if (elapsed < 0 || elapsed >= DAY_MS) return { recent: false, hours: elapsed / 3_600_000 };
+  return { recent: true, hours: elapsed / 3_600_000 };
 }
 
 /**
@@ -492,6 +812,7 @@ export const isPublishConflict = (text) => PUBLISH_CONFLICT_RE.test(String(text 
 
 const modeOf = (opts) => {
   if (!opts) return 'invalid';
+  if (opts.bump) return 'bump';
   if (opts.notesOnly) return 'notes-only';
   if (opts.publish) return 'publish';
   if (opts.dryRun) return 'dry-run';
@@ -509,6 +830,8 @@ export function runRelease(options = {}) {
     runner = defaultRunner,
     log = () => {},
     now = () => new Date().toISOString().slice(0, 10),
+    /** 毫秒时钟（24h warn 用；测试可注入，缺省 Date.now） */
+    nowMs = () => Date.now(),
     readText = (path) => readFileSync(path, 'utf8'),
     writeText = (path, text) => {
       mkdirSync(dirname(path), { recursive: true });
@@ -583,8 +906,10 @@ export function runRelease(options = {}) {
       draftPath: extra.draftPath ?? null,
       draftWritten: extra.draftWritten === true,
     };
+    if (extra.batch !== undefined) result.batch = extra.batch;
+    if (extra.bump !== undefined) result.bump = extra.bump;
     if (jsonMode) {
-      emitJson({
+      const payload = {
         ok: result.ok,
         exitCode: result.exitCode,
         version: result.version,
@@ -594,10 +919,180 @@ export function runRelease(options = {}) {
         draft: result.draft,
         draftPath: result.draftPath,
         draftWritten: result.draftWritten,
-      });
+      };
+      // 既有键序不变：新键追加在末位（v1.6.5 / A74.2）
+      if (extra.batch !== undefined) payload.batch = extra.batch;
+      if (extra.bump !== undefined) payload.bump = extra.bump;
+      emitJson(payload);
     }
     return result;
   };
+
+  // ── 0. --bump（**独立模式**，不进六步链；v1.6.5 / REQ-074 A74.2）──────────
+  // 目标版本 = inc(上次发布基线)；当前已等于目标 → no-op（零写盘）；开发阶段不改版本。
+  if (opts.bump !== null) {
+    const kind = opts.bump;
+    for (const s of steps) {
+      s.status = 'skipped';
+      s.reason = '--bump 独立模式（不进六步链）';
+    }
+    const failBump = (message, bump) => {
+      emit(`✗ ${message}`);
+      return finish(1, { version: bump?.to ?? null, bump });
+    };
+
+    let rootPkg;
+    try {
+      rootPkg = JSON.parse(readText(join(cwd, 'package.json')));
+    } catch (err) {
+      return failBump(`--bump 读取 package.json 失败：${err.message}`, {
+        from: null,
+        to: null,
+        kind,
+        reason: opts.reason,
+        files: [],
+        written: false,
+      });
+    }
+    const currentVersion = String(rootPkg?.version ?? '').trim();
+    if (parseSemverParts(currentVersion) === null) {
+      return failBump(`--bump：package.json 版本不是合法 SemVer（${currentVersion || '空'}）`, {
+        from: currentVersion || null,
+        to: null,
+        kind,
+        reason: opts.reason,
+        files: [],
+        written: false,
+      });
+    }
+
+    const baseline = selectReleaseBaseline({ cwd, currentVersion, readText, readDir });
+    if (baseline.fallback === true) {
+      emit(`  ! 未找到 flow-archive 发布基线，降级以当前版本 ${currentVersion} 为基线`);
+    }
+    let targetVersion;
+    try {
+      targetVersion = incVersion(baseline.version, kind);
+    } catch (err) {
+      return failBump(`--bump 计算目标版本失败：${err.message}`, {
+        from: currentVersion,
+        to: null,
+        kind,
+        reason: opts.reason,
+        files: [],
+        written: false,
+      });
+    }
+    const bumpBase = {
+      from: currentVersion,
+      to: targetVersion,
+      kind,
+      reason: opts.reason ?? null,
+      files: [],
+      written: false,
+      dryRun: opts.dryRun === true,
+      baseline: baseline.version,
+    };
+
+    const comparison = compareSemver(targetVersion, currentVersion);
+    if (comparison === 0) {
+      // 幂等：1.6.5 已 bump 后再跑 --bump patch 是 no-op，不是 1.6.6
+      emit(`no-op: already ${targetVersion}（0 文件写入）`);
+      return finish(0, { version: targetVersion, bump: { ...bumpBase, noop: true } });
+    }
+    if (comparison < 0) {
+      return failBump(
+        `--bump 目标版本 ${targetVersion} 低于当前版本 ${currentVersion}：发布基线过期（基线 ${baseline.version}），请检查 .openfeel/flow-archive`,
+        bumpBase,
+      );
+    }
+
+    const batch = buildBatchSummary({
+      cwd,
+      targetVersion,
+      baseline,
+      readText,
+      dryRun: opts.dryRun === true,
+      runner: opts.dryRun === true ? null : runner,
+    });
+    const marker = readReleaseMarker({ cwd, readText, fileExists });
+    const lastReleaseAt = marker !== null ? marker.ms : baseline.archivedAt;
+    const recent = warnRecentRelease({ nowMs: nowMs(), lastReleaseAt, kind });
+    batch.warn = recent.recent
+      ? `距上次发布约 ${recent.hours.toFixed(1)}h（< 24h）再发 patch：同批不连发；真实 bump 需 --confirm-twice`
+      : null;
+
+    // 真实动作前打印本批次清单（dry-run 同样打印，但 files=null）
+    const reqLabel = batch.reqs.length > 0 ? `${batch.reqs.length}（${batch.reqs.join(' / ')}）` : '0';
+    const stageLabel = batch.stages.length > 0 ? `${batch.stages.length}（${batch.stages.join(' / ')}）` : '0';
+    const fileLabel = batch.files === null ? `null（${batch.filesReason ?? 'unknown'}）` : String(batch.files.length);
+    emit(`本批次：REQ-${reqLabel} / 阶段${stageLabel} / 改动文件${fileLabel}`);
+    emit(`版本：${currentVersion} → ${targetVersion}（${kind}；基线 ${baseline.version}）`);
+    if (batch.warn !== null) emit(`  ! ${batch.warn}`);
+
+    if (opts.dryRun === true) {
+      emit('  --dry-run：零写盘、零 git（将写 package.json / dsh/package.json / package-lock.json 的 4 个版本字段）');
+      return finish(0, { version: targetVersion, batch, bump: bumpBase });
+    }
+
+    // 校验门（dry-run 已在上面返回，不要求这些确认）
+    const failBumpWithBatch = (message) => {
+      emit(`✗ ${message}`);
+      return finish(1, { version: targetVersion, batch, bump: bumpBase });
+    };
+    if (kind !== 'patch' && (opts.reason === null || String(opts.reason).trim() === '')) {
+      return failBumpWithBatch(`--bump ${kind} 需要 --reason（说明为什么升 ${kind}）`);
+    }
+    if (!opts.confirm) {
+      return failBumpWithBatch('--bump 会改版本号，需 --confirm（确认这次要动版本）');
+    }
+    if (recent.recent && !opts.confirmTwice) {
+      return failBumpWithBatch(
+        '距上次发布 < 24h 再发 patch：需 --confirm-twice（二次确认「明知连发仍要发」）',
+      );
+    }
+
+    // 写 4 个版本字段（root version / dsh version / lock 顶层 version / lock packages[""].version）。
+    // 先算后写；单次写失败即 exit 1（无事务回滚，由 git status 兜底）。
+    const mutations = [
+      ['package.json', (pkg) => { pkg.version = targetVersion; }],
+      ['dsh/package.json', (pkg) => { pkg.version = targetVersion; }],
+      [
+        'package-lock.json',
+        (lock) => {
+          lock.version = targetVersion;
+          if (lock.packages && typeof lock.packages === 'object' && lock.packages['']) {
+            lock.packages[''].version = targetVersion;
+          }
+        },
+      ],
+    ];
+    const writtenFiles = [];
+    try {
+      for (const [relative, mutate] of mutations) {
+        const path = join(cwd, relative);
+        if (!fileExists(path)) {
+          emit(`  ! ${relative} 不存在，跳过`);
+          continue;
+        }
+        const parsed = JSON.parse(readText(path));
+        mutate(parsed);
+        writeText(path, `${JSON.stringify(parsed, null, 2)}\n`);
+        writtenFiles.push(relative);
+      }
+    } catch (err) {
+      return failBump(`--bump 写版本字段失败（已写 ${writtenFiles.join(' / ') || '无'}）：${err.message}`, {
+        ...bumpBase,
+        files: writtenFiles,
+      });
+    }
+    emit(`✓ bump ${currentVersion} → ${targetVersion}（${kind}）：已写 ${writtenFiles.join(' / ')}`);
+    return finish(0, {
+      version: targetVersion,
+      batch,
+      bump: { ...bumpBase, files: writtenFiles, written: true },
+    });
+  }
 
   if (opts.dryRun && opts.publish) {
     mark('version', 'failed', { reason: '--dry-run 与 --publish 互斥（dry-run 不发布）' });

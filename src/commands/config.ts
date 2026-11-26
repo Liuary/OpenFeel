@@ -8,13 +8,13 @@
  */
 import { Command } from 'commander';
 import { getGlobalConfig, setGlobalConfig } from '../core/workspace/identity.js';
-import { getConfigValue, setConfigValue, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey, resolveConfigDefaults, STAGE_FIELD_BY_CONFIG_KEY } from '../core/config.js';
+import { getConfigValue, setConfigValue, unsetConfigValue, parseConfigUnsetPath, readProfile, writeProfile, ProfileSchema, ConfigDefaultsSchema, getConfigFieldLegalValues, normalizeConfigKey, resolveConfigDefaults, STAGE_FIELD_BY_CONFIG_KEY } from '../core/config.js';
 import { FlowManager } from '../core/flow-manager.js';
 import { normalizeStageId, suggestStageId, isArchivedVersionOf } from '../core/plan/path.js';
 import { t, getCliLang } from '../core/i18n.js';
 import type { Profile } from '../core/config.js';
 import { withSchemaVersion, emitJson } from './shared/json-output.js';
-import { failRefusal } from './shared/errors.js';
+import { failRefusal, failInternal } from './shared/errors.js';
 import { enforcePreflightOrFail } from './shared/preflight-gate.js';
 
 /** 全局 profile 固定键序（人类输出顺序；JSON `values` 同序） */
@@ -470,6 +470,68 @@ export function registerConfigCommand(program: Command): void {
           inserted: String(inserted),
           skipped: String(skipped),
         }));
+      }
+    });
+
+  // openfeel config unset <key> — 删除项目配置键（v1.6.5 / REQ-073；通用删除入口）
+  // 与 set 对称但**故意例外**支持 --json（A73.2 需要 removed 机读位）；不支持 --global（遗留 G1）。
+  configCmd
+    .command('unset <key>')
+    .description(t('help.config.unset'))
+    .option('-g, --global', '不接受全局 profile（本命令只删除项目 .openfeel/config.yaml 的键）')
+    .option('--json', t('help.config.unset.json', getCliLang(process.cwd())))
+    .action(function (key: string) {
+      const opts = this.opts() as { global?: boolean; json?: boolean };
+      const asJson = opts.json === true;
+      const lang = getCliLang(process.cwd());
+
+      // --global：本需求只交付项目配置删除入口，不覆盖 profile 键域（G1 登记遗留）
+      if (opts.global) {
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('config.unset.profileUnsupported', lang),
+          detail: { reason: 'global-unsupported', key },
+        });
+        return;
+      }
+
+      // 键语法校验在写盘之前（零写盘拒绝：空键 / 空段 / 危险键名 / 非 defaults 的多段点号键）
+      try {
+        parseConfigUnsetPath(key);
+      } catch (err) {
+        failRefusal({
+          code: 'INVALID_ARGUMENT',
+          message: t('config.unset.invalidKey', lang, { val: key, err: (err as Error).message }),
+          detail: { reason: 'invalid-key', key },
+        });
+        return;
+      }
+
+      try {
+        const result = unsetConfigValue(process.cwd(), key);
+        if (asJson) {
+          emitJson(withSchemaVersion({
+            key,
+            removed: result.removed,
+            path: result.path,
+            // 未删除时末位追加 reason（成功路径键序恒为 schemaVersion,key,removed,path）
+            ...(result.removed ? {} : { reason: result.reason ?? 'not_found' }),
+          }));
+          if (!result.removed) {
+            // 置码后返回（不 process.exit：Windows 管道下会截断 stdout）
+            process.exitCode = 1;
+          }
+          return;
+        }
+        if (!result.removed) {
+          console.error(t('config.unset.notFound', lang, { key, path: result.path, reason: result.reason ?? 'not_found' }));
+          process.exitCode = 1;
+          return;
+        }
+        console.log(t('config.unset.valueOk', lang, { key, path: result.path }));
+      } catch (err) {
+        const message = t('config.unset.error', lang, { err: (err as Error).message });
+        failInternal(err, { message, stderrLines: [message] });
       }
     });
 

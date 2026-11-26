@@ -13,9 +13,9 @@
 - **落点**：`ctx.tools`（15 个 `feel_*` 工具）、`ctx.commands`（`/feel`）、
   `ctx.systemPrompt`（`<feel_mode>` 纪律段 + 每轮提醒段）。不写任何领域状态。
 - **契约**：CLI 的 `--json` 出口以 [`docs/json-contract.md`](https://github.com/Liuary/OpenFeel/blob/master/docs/json-contract.md) 为**单一权威**
-  （v1.6.1 起 51 个成功出口 / 52 个注册 `--json` 选项）；本适配器只消费、不重实现。
+  （v1.6.5 起 52 个成功出口 / 53 个注册 `--json` 选项）；本适配器只消费、不重实现。
 - **升级**：`npm i -g openfeel@latest` → 重启 DSH。适配器版本要求见 `package.json`
-  的 `openfeel.requiresCli`（≥1.6.4；`model` 两层语义与 opencode agent 模板去 `model` 是硬依赖）。
+  的 `openfeel.requiresCli`（≥1.6.5；`config unset` 与 `feel_verify action=config_unset` 是硬依赖）。
 
 ## 设计边界
 
@@ -210,7 +210,7 @@ spike 原始证据（含 upgrade 条件）见 `.openfeel/tmp/stage-132/spike.md`
 |---|---|
 | `feel_dispatch` | **`action=finish`**：按 `dispatchId` **原地补写** `closing{status:'done'\|'failed', artifacts[], durationMs, summary}` + 行顶层 `closedAt`；行数 / 行序 / 其余行字节不变；重复 finish 内容相同 → `ok:true, changed:false`（`ts` / `closing` / `closedAt` 不二次改写）；未知 id → 报错。`durationMs` 缺省 = `now - Date.parse(ts)`（非负整数，解析失败 → 0）。 |
 | `feel_status` | `dispatch` 汇总升到 **7 键**：`{required, total, sincePhase, open[], closedRatio, missingRoles, records[]}`（旧四键保留）。`open[]` = 当前 `stage` 范围内无 `closing` 或 `closing.status!=='done'` 的派发；`closedRatio` = `closing.status==='done'` 条数 / `total`（`total===0` → `null`，不出现 NaN）；`missingRoles` **改按 `closing.status==='done'`** 判定（旧「有 record 即算」作废）；`records[]` 透出 `closing` / `closedAt`。 |
-| `feel_verify` | **`action=adherence`**：调 `openfeel lint adherence --json`（CLI 出口 #51），返回四指标 `{main_write_ratio, subagent_per_req, sync_gap, violation_rate}`，每键 `{value, definition}`；样本不足 → `value:null` 且不抛错。**不新增工具、不新增 `openfeel verify` 顶层命令**。 |
+| `feel_verify` | **`action=adherence`**：调 `openfeel lint adherence --json`（CLI 出口 #51），返回四指标 `{main_write_ratio, subagent_per_req, sync_gap, violation_rate}`，每键 `{value, definition}`；样本不足 → `value:null` 且不抛错。**不新增工具、不新增 `openfeel verify` 顶层命令**。（v1.6.5 起 `action` 枚举另含 `config_unset`，见 `## v1.6.5`） |
 | `feel_req` | `action=body`（v1.6.0 起；v1.6.1 起 `text` **走 `os.tmpdir()` 临时文件 + `--file`**，argv 零 `--text`，`finally` 清理）；`action=add` 可带 `plan` 参数写正文 `## 初步规划` 小节。**已知缺口**：适配器当前没有 `action=plan`，也没有 `body --from` 透传——需求级计划请用 `openfeel req plan <id> [--force]`（CLI 出口 #50），多节导入请用 `openfeel req body <id> --from <md>`。 |
 
 ### 派发台账 schema v2（`.openfeel/dev/dispatch.jsonl`）
@@ -277,6 +277,16 @@ v1.6.0 的 13 键（`dispatchId,ts,leadSessionId,origin,stage,phase,targetAgent,
 - **验证计数（A71.3）**：见「验证」段——五套，contract 54 / verify 136 / guard 193 / preflight 10 / integration 跳过（2026-11-26 实测）。
 - **兼容性**：适配器代码零改动；本版只抬 `requiresCli` 基线与刷新文档。
 
+## v1.6.5：配置删除入口、发布纪律与发布预演放行
+
+> 基线：CLI `1.6.5`（`openfeel.requiresCli >=1.6.5`）；工具面**仍 15 个**（本版只扩 `feel_verify` 的 action 枚举，不增删工具）。
+
+- **`feel_verify action=config_unset`（REQ-073 / A73.5）**：参数沿用 `key`（支持 `defaults.X` 或顶层段如 `models`），内部走同一 CLI `config unset <key> --json`（CLI 出口 **#52**，键集 `schemaVersion,key,removed,path`；键不存在时末位追加 `reason` 且 exit 1 → `json()` 抛 refusal）。summary 回 `removed`；**不新增独立工具**（`contract.js` / `verify.js` 均断言工具数仍 15 且不存在名为 `config_unset` 的工具）。CLI 出口计数 51/52 → **52/53**。
+- **协议增量**：`config unset` 与 `config get/set` 共用键归一（`defaults.X ≡ X`），但**故意破例提供 `--json`**（`config set` 仍无 `--json`）—— A73.2 需要机读 `removed` 位；`--global` **不支持**（不覆盖 profile 键域，`INVALID_ARGUMENT`）。删除走同一 YAML Document 的 `deleteIn` → `ConfigSchema.safeParse` 复验 → 原子写回，注释与键序保留。
+- **克制规则（REQ-074 / A74.1—A74.5）落到适配器可见面**：① feel_mode 提示段新增「版本纪律」（版本只在发布窗口动 / 一次发布=一个批次 / 新想法进 backlog / 同批不连发 patch / 结构性才 minor、破坏性才 major；四组渲染仍在 ≤1200 字符 / ≤25 行内：zh 802 / 919，en 1070 / 1186，16/19/15/18 行，parity 5/5）；② **不新增工具、不新增 CLI 子命令、不做 dashboard/metrics 采集、不做批次锁、不做 `<24h` 硬门** —— 本版只把规则做成「`--bump` + 本批次清单 + 24h warn + `--confirm` / `--confirm-twice`」与提示词/模板判据；③ reviewer 模板新增「过度设计」5 判据（不必要抽象 / 新依赖 / 兼容层 / IO 分支 / REQ 外公开契约），**计划外改动必须落 blocking REV**（`feel_flow action=review_add` + `auto_fix`），不得只口头。
+- **发布预演放行（REQ-072 / A72.1—A72.2）对适配器的影响**：guard 现在放行**仓库自身**的 `node scripts/release.mjs` + 纯预演参数（`argv ⊆ {--dry-run, --skip-build}`，realpath 绑定「含 `.openfeel/` 的项目根」）→ class 4 warn + 审计 `detail.reason='release-dry-run-allowlisted'`；TEMP / 仓外同名脚本与任何真实发布/提交参数仍 class 1 拒绝。**`--bump` / `--reason` / `--confirm` / `--confirm-twice` 不进白名单**，带新参数一律走 `npm run release -- ...`（既有 class4 warn 路径）——这是**已知边界**，本版不扩 guard 白名单。
+- **兼容性**：适配器改动面**只有两处、都不改工具数**——① `lib/tools/index.js` 的 `feel_verify` action 枚举与 case（`config_unset`）；② `lib/guard.js` 的发布预演放行分支（只新增放行，deny 走原路径，A67.5 断言零改动）。本版抬 `requiresCli` 基底并新增本节。
+
 ## 目录
 
 | 路径 | 内容 |
@@ -303,10 +313,10 @@ v1.6.0 的 13 键（`dispatchId,ts,leadSessionId,origin,stage,phase,targetAgent,
 
 ```bash
 cd dsh
-node test/contract.js      # 54 — DSH schema 契约（真实 assertSupportedJsonSchema；2026-11-26 实测）
-node test/verify.js        # 136 — 行为（真实 CLI + 真实 .openfeel 副本；2026-11-26 实测）
-node test/guard.js         # 193 — 写入门禁（fake ToolExecution + 临时工作区；2026-11-26 实测）
-node test/preflight.js     # 10 — 写前自愈（账本窗口与写入前刷新；2026-11-26 实测）
+node test/contract.js      # 55 — DSH schema 契约（真实 assertSupportedJsonSchema；2026-11-27 实测）
+node test/verify.js        # 137 — 行为（真实 CLI + 真实 .openfeel 副本；2026-11-27 实测）
+node test/guard.js         # 198 — 写入门禁（fake ToolExecution + 临时工作区；2026-11-27 实测）
+node test/preflight.js     # 10 — 写前自愈（账本窗口与写入前刷新；2026-11-27 实测）
 node test/integration.js   # 真实注册表：真 cordis + 真 ToolRuntime 挂载（取不到 tools 服务时跳过，exit 0）
 ```
 

@@ -1820,6 +1820,62 @@ async function main() {
     assertString(String(data.value), 'value 为空');
   });
 
+  await check('v1.6.5 / REQ-073 feel_verify action=config_unset（只扩 action，工具数仍 15）', async () => {
+    const verify = workspace.tools.get('feel_verify');
+    assert(verify !== undefined, '缺少 feel_verify 工具');
+    assert(
+      verify.parameters.properties.action.enum.includes('config_unset'),
+      'feel_verify.action 缺枚举值 config_unset',
+    );
+    assert(!workspace.tools.has('config_unset'), 'config_unset 不应注册为独立工具');
+
+    // 仓库源码入口（bin/openfeel.js）能力探测：已安装 CLI 可能落后于仓库
+    let hasUnset = false;
+    try {
+      const probe = await sourceCli.run(['config', '--help'], { cwd: SOURCE_PROJECT });
+      hasUnset = probe.code === 0 && probe.stdout.includes('unset');
+    } catch {
+      hasUnset = false;
+    }
+    if (!hasUnset) {
+      process.stdout.write('    (skip: 仓库 dist 未包含 config unset —— 先 npm run build 再跑本验证)\n');
+      return;
+    }
+
+    const sourceVerify = sourceTools.get('feel_verify');
+    assert(sourceVerify !== undefined, '源码工具集缺 feel_verify');
+    const dir = mkdtempSync(join(tmpdir(), 'feel-config-unset-'));
+    try {
+      mkdirSync(join(dir, '.openfeel'), { recursive: true });
+      const cfgPath = join(dir, '.openfeel', 'config.yaml');
+      writeFileSync(
+        cfgPath,
+        [
+          '# 顶注保留',
+          'defaults:',
+          '  execution_mode: auto',
+          'models:',
+          '  default:',
+          '    provider: deepseek',
+          '    model_name: deepseek-chat',
+          '',
+        ].join('\n'),
+        'utf-8',
+      );
+      const data = ok(
+        await sourceVerify.execute({ action: 'config_unset', key: 'models', project: dir }, execFor(dir)),
+        'feel_verify config_unset',
+      );
+      assert(data.removed === true, `data.removed 应为 true，实际 ${JSON.stringify(data.removed)}`);
+      assert(data.key === 'models', `data.key 应为 models，实际 ${data.key}`);
+      const text = readFileSync(cfgPath, 'utf-8');
+      assert(!/^models:/m.test(text), 'models 段应被删除');
+      assert(text.includes('# 顶注保留') && text.includes('execution_mode: auto'), '其它配置/注释应保留');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   // 3) /feel 命令
   process.stdout.write('\n[3] /feel 人类命令\n');
   const handler = workspace.commands[0].handler;

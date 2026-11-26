@@ -1984,6 +1984,114 @@ function nodeScriptNeedsInspection(scriptPath, baseDir) {
   return /release|publish|commit/i.test(basename(scriptPath));
 }
 
+/* ── v1.6.5 / REQ-072 A72.1：release 预演参数白名单 ─────────────────────── */
+
+/**
+ * 可放行的 release 参数（**闭合集合**）：两个都是零写盘 / 零 git 的预演开关。
+ *
+ * 为什么要有这道例外：1.6.4 收口时文档里的发布预演命令
+ * `node scripts/release.mjs --dry-run` 被 highRisk 分支按「node 脚本正文不可判定 →
+ * 第 1 类拒绝」拦下（`:3212-3230`），agent 无法执行预演；而 `--publish` 这类**真实
+ * 发布**参数必须继续拒绝。所以这里只加一条**放行分支**，不放宽 highRisk ——
+ * 任何非白名单参数（`--publish` / `--commit-archive` / `--tag` / `--push` 以及未知
+ * 参数）都落回原来的 class1 路径，A67.5 的既有断言零改动（A72.6）。
+ */
+const RELEASE_DRY_RUN_SAFE_FLAGS = new Set(['--dry-run', '--skip-build']);
+
+/**
+ * 真实发布 / 提交参数：出现在 argv 里即**绝不放行**（显式列出来，便于审计与 grep 复核；
+ * 语义上它们同时被下面「argv 必须全部 ∈ SAFE」的闭合集合排除）。
+ */
+const RELEASE_PUBLISH_FLAGS = new Set(['--publish', '--commit-archive', '--tag', '--push']);
+
+/**
+ * 从 `startDir` 向上找**最近一个含 `.openfeel/` 的目录**（项目根；到盘符根为止）。
+ * @param {string} startDir
+ * @returns {string | null}
+ */
+function findEnclosingProjectRoot(startDir) {
+  let current = startDir;
+  for (;;) {
+    try {
+      if (statSync(join(current, OPENFEEL_DIR)).isDirectory()) return current;
+    } catch {
+      // 没有 marker / 不可读 → 继续向上
+    }
+    const parent = dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+/**
+ * 取 `node <脚本> <参数…>` 里**脚本之后**的 token（`|` 截断）。
+ *
+ * 必须校验「取到的载体 == 已解析的载体」：否则 `node a.mjs` 的参数会被错挂到
+ * 同一句里别的 `node …` 上（白名单只能挂在真实载体上）。
+ *
+ * @param {string} statement
+ * @param {string} scriptPath 已解析的载体绝对路径
+ * @param {string} baseDir 命令基准目录
+ * @returns {string[] | null}
+ */
+function wrapperScriptArgv(statement, scriptPath, baseDir) {
+  const tokens = tokenizeShell(statement);
+  const expected = tryRealPath(scriptPath);
+  if (expected === null) return null;
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (commandNameOf(tokens[index]) !== 'node') continue;
+    let scriptIndex = -1;
+    for (let cursor = index + 1; cursor < tokens.length && tokens[cursor] !== '|'; cursor += 1) {
+      if (tokens[cursor].startsWith('-')) continue;
+      scriptIndex = cursor;
+      break;
+    }
+    if (scriptIndex === -1) return null;
+    const found = tryRealPath(resolve(baseDir, tokens[scriptIndex]));
+    if (found === null) return null;
+    if (normalizeForComparison(found) !== normalizeForComparison(expected)) return null;
+    const argv = [];
+    for (let cursor = scriptIndex + 1; cursor < tokens.length && tokens[cursor] !== '|'; cursor += 1) {
+      argv.push(tokens[cursor]);
+    }
+    return argv;
+  }
+  return null;
+}
+
+/**
+ * `node …/release.mjs` 是否属于「**仓库自身的**纯预演」→ 可 class 4 放行。
+ *
+ * 判定顺序（任何一步不成立 → false，落回原 highRisk class1 拒绝）：
+ * 1. 包装器是 `node`；
+ * 2. 载体**真实路径**（`tryRealPath`：链接 / 大小写 / 8.3 短名在此归位）的 basename
+ *    是 `release.mjs`；
+ * 3. 从载体目录向上找到最近含 `.openfeel/` 的目录作为项目根，且载体相对项目根**恰为**
+ *    `scripts/release.mjs` —— 这条是防后门的关键：把 `release.mjs` 复制到 `os.tmpdir()`
+ *    或仓外目录后，没有含 `.openfeel/` 的祖先 / 相对路径不符，一律 false；
+ * 4. 脚本之后的 token **全部** ∈ `RELEASE_DRY_RUN_SAFE_FLAGS` 且至少一个（闭合集合：
+ *    `--publish` 等真实参数、`--bump` 等未知参数都不放行）。
+ *
+ * @param {string} statement 单条 shell 语句（`splitShellStatements` 之后）
+ * @param {{ wrapper: string, scriptPath: string } | null} scriptInvocation
+ * @param {string} baseDir 命令基准目录
+ * @returns {boolean}
+ */
+function isReleaseDryRunAllowlisted(statement, scriptInvocation, baseDir) {
+  if (scriptInvocation === null || scriptInvocation.wrapper !== 'node') return false;
+  const real = tryRealPath(scriptInvocation.scriptPath);
+  if (real === null) return false;
+  if (basename(real).toLowerCase() !== 'release.mjs') return false;
+  const projectRoot = findEnclosingProjectRoot(dirname(real));
+  if (projectRoot === null) return false;
+  const expected = join(projectRoot, 'scripts', 'release.mjs');
+  if (normalizeForComparison(real) !== normalizeForComparison(expected)) return false;
+  const argv = wrapperScriptArgv(statement, scriptInvocation.scriptPath, baseDir);
+  if (argv === null || argv.length === 0) return false;
+  if (argv.some((token) => RELEASE_PUBLISH_FLAGS.has(token))) return false;
+  return argv.every((token) => RELEASE_DRY_RUN_SAFE_FLAGS.has(token));
+}
+
 /**
  * 解析包装器背后的脚本文件并读取内容（v1.6.1 / REQ-067 A67）。
  *
@@ -3169,6 +3277,29 @@ export function classifyShellCommand({ command, baseDir, shell, depth = 0 }) {
     if (scriptInvocation !== null) {
       // 外层重定向（`pwsh -File x.ps1 > src/x.ts`）同样算写入。
       for (const raw of scanShellRedirections(statement).targets) pushTarget(raw);
+      // v1.6.5 / REQ-072 A72.1：**仓库自身** `scripts/release.mjs` 的纯预演参数
+      // （`--dry-run` / `--skip-build`，闭合集合）按第 4 类放行并留审计。
+      // 三条硬约束：
+      // ① 只加**放行分支**，不放宽 highRisk —— 含 `--publish` 等真实参数时这里返回
+      //    false，落回下面的 `node-script-high-risk-undecidable` class1 拒绝（A67.5
+      //    的既有断言零改动，A72.6）；
+      // ② 必须 `continue`（**不能 `return`**）：同一命令多语句时提前返回会跳过后续
+      //    语句的写目标判定 = 后门；
+      // ③ 判定经 realpath 绑定「含 `.openfeel/` 的项目根 + 相对路径恰为
+      //    `scripts/release.mjs`」—— TEMP / 仓外同名脚本不放行（见
+      //    `isReleaseDryRunAllowlisted`）。
+      if (isReleaseDryRunAllowlisted(statement, scriptInvocation, baseDir)) {
+        undecidable = true;
+        detail = detail
+          || `wrapper node（${scriptInvocation.scriptPath}）：release 预演参数已白名单放行`;
+        wrapper = {
+          wrapper: scriptInvocation.wrapper,
+          scriptPath: scriptInvocation.scriptPath,
+          class: 'class4',
+          reason: 'release-dry-run-allowlisted',
+        };
+        continue;
+      }
       if (scriptInvocation.undecidable === true) {
         undecidable = true;
         detail = detail || `wrapper ${scriptInvocation.wrapper}（${scriptInvocation.scriptPath}）：${scriptInvocation.reason}`;

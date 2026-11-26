@@ -2,6 +2,9 @@
  * update 单元测试
  * 测试 updateProject 在隔离 HOME 下的全局部署行为（~/.config/opencode、~/.openfeel）。
  * mock homedir 隔离，不污染真实主目录。
+ * v1.6.5 / REQ-072 A72.3：同类全局路径用例硬化 —— `CLAUDE_CONFIG_DIR`（`global-paths.ts`
+ * 唯一的 env 分支）显式钉到临时 home 下（取值与 `join(homeDir,'.claude')` 相同，行为不变），
+ * 且**逐键保存/恢复**原有 env（不再 delete 后不管），并断言真实用户全局文件哈希前后不变。
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -31,10 +34,43 @@ import { updateProject, supportedTools } from '../../src/core/update.js';
 import { resetBackupSetCache } from '../../src/core/backup.js';
 import { createUpdateState, saveUpdateState, hashContent, getOpenfeelVersion } from '../../src/core/update-state.js';
 import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, relative } from 'node:path';
 import { getClaudeMdPath, getClaudeAgentsDir, getClaudeSkillsDir, getClaudeSettingsPath } from '../../src/core/global-paths.js';
 import { tmpdir } from 'node:os';
 import { splitFrontmatter } from '../../src/core/managed-region.js';
+
+/**
+ * 真实用户主目录（在任何 beforeEach 改写 env 之前取；本文件 mock 了 `node:os`）。
+ * 用途与 migrate.test.ts 一致：A72.3 的「真实用户文件零变化」取证。
+ */
+const REAL_HOME = (process.env.USERPROFILE || process.env.HOME || '').trim();
+
+/** 真实用户会被 update 写到的全局文件（opencode 全局面 + 全局 state + claude 面）。 */
+const REAL_GLOBAL_FILES: string[] = REAL_HOME === ''
+  ? []
+  : [
+    join(REAL_HOME, '.config', 'opencode', 'opencode.jsonc'),
+    join(REAL_HOME, '.openfeel', 'update_state.json'),
+    join(REAL_HOME, '.claude', 'CLAUDE.md'),
+    join(REAL_HOME, '.claude', 'settings.json'),
+  ];
+
+/** 文件内容 sha256（不存在 → `'absent'`）。 */
+function fileHash(absPath: string): string {
+  if (!existsSync(absPath)) return 'absent';
+  return createHash('sha256').update(readFileSync(absPath)).digest('hex');
+}
+
+/** 模块求值时先记下真实全局文件哈希。 */
+const realGlobalBefore = new Map(REAL_GLOBAL_FILES.map((p) => [p, fileHash(p)]));
+
+/** A72.3 取证：真实用户全局文件必须**逐字节不变**（不存在也必须仍不存在）。 */
+function assertRealGlobalFilesUnchanged(when: string): void {
+  for (const [absPath, before] of realGlobalBefore) {
+    expect(`${when} ${absPath} ${fileHash(absPath)}`).toBe(`${when} ${absPath} ${before}`);
+  }
+}
 
 /** 全局 opencode 目录（基于 mock home） */
 function globalOpencodeDir(): string {
@@ -99,6 +135,8 @@ function stripAllGlobalMarkers(): void {
 describe('updateProject', () => {
   let tmpDir: string;
   let homeDir: string;
+  /** 本机原有的 env 值（**逐键恢复**；v1.6.5 / A72.3 之前是 delete 后不管）。 */
+  let savedEnv: Record<'HOME' | 'USERPROFILE' | 'CLAUDE_CONFIG_DIR', string | undefined>;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'openfeel-update-test-'));
@@ -106,13 +144,28 @@ describe('updateProject', () => {
     mockHome.dir = homeDir;
     backupMock.failFor = null;
     resetBackupSetCache();
-    delete process.env.CLAUDE_CONFIG_DIR;
+    // A72.3 全局路径隔离：`global-paths.ts` 唯一的 env 分支是 `CLAUDE_CONFIG_DIR`
+    // （`:102-104`，非空即优先）。显式钉到 `join(homeDir,'.claude')` —— 与「env 为空
+    // 时回落到 mock homedir」等价（本文件多处断言 `join(homeDir,'.claude')` 存在/不存在），
+    // 但不再依赖「本机恰好没设这个变量」。HOME/USERPROFILE 同指 tmp，覆盖走 env 的取法。
+    savedEnv = {
+      HOME: process.env.HOME,
+      USERPROFILE: process.env.USERPROFILE,
+      CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
+    };
+    process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
+    process.env.CLAUDE_CONFIG_DIR = join(homeDir, '.claude');
   });
 
   afterEach(() => {
+    // 先取证再删临时 home：真实用户文件在本轮用例结束后必须仍然零变化。
+    assertRealGlobalFilesUnchanged('afterEach');
     rmSync(tmpDir, { recursive: true, force: true });
     rmSync(homeDir, { recursive: true, force: true });
-    delete process.env.CLAUDE_CONFIG_DIR;
+    for (const [key, value] of Object.entries(savedEnv)) {
+      if (value === undefined) { delete process.env[key]; } else { process.env[key] = value; }
+    }
   });
 
   it('应创建 10 个全局 Agent 定义文件', () => {
@@ -1015,8 +1068,30 @@ describe('updateProject', () => {
       expect(existsSync(join(ext, 'settings.json'))).toBe(true);
       expect(JSON.parse(readFileSync(join(ext, 'settings.json'), 'utf-8')).agent).toBe('feel');
     } finally {
-      delete process.env.CLAUDE_CONFIG_DIR;
+      // A72.3：恢复成本用例的隔离基线（不是 delete —— 否则后续用例的 CLAUDE_CONFIG_DIR
+      // 会临时为空、与本文件 beforeEach 钉住的值不一致）。
+      process.env.CLAUDE_CONFIG_DIR = join(homeDir, '.claude');
       rmSync(ext, { recursive: true, force: true });
     }
+  });
+
+  it('A72.3：全局路径完全隔离（CLAUDE_CONFIG_DIR 钉临时 home；真实用户全局文件零变化）', () => {
+    // ① 三条 env 都指向本轮临时 home（env 分支与 mock homedir 同向）
+    expect(process.env.CLAUDE_CONFIG_DIR).toBe(join(homeDir, '.claude'));
+    expect(process.env.USERPROFILE).toBe(homeDir);
+    // ② 全局路径解析结果全在临时 home 下
+    expect(globalAgentsMdPath().startsWith(homeDir)).toBe(true);
+    expect(getClaudeMdPath().startsWith(homeDir)).toBe(true);
+    expect(getClaudeSettingsPath().startsWith(homeDir)).toBe(true);
+    // ③ 真跑一次全局部署，临时 home 内确实落了文件（证明写路径被执行）
+    updateProject(tmpDir);
+    expect(existsSync(globalAgentsMdPath())).toBe(true);
+    // ④ 真实用户全局文件逐字节不变（隔离失效时在这里红）
+    const realJsonc = REAL_GLOBAL_FILES[0];
+    if (realJsonc !== undefined) {
+      expect(realJsonc.startsWith(homeDir)).toBe(false);
+      expect(fileHash(realJsonc)).toBe(realGlobalBefore.get(realJsonc));
+    }
+    assertRealGlobalFilesUnchanged('inline');
   });
 });

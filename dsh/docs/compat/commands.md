@@ -71,7 +71,7 @@ Only `target !== 'utf8'` installs a wrapper; wrapper transcodes **string** chunk
 
 ## 3. Complete command tree
 
-**17 registrars, 80 leaf subcommands** (leaf = a fully-qualified argv path that dispatches an action).
+**17 registrars, 81 leaf subcommands** (leaf = a fully-qualified argv path that dispatches an action).
 
 Registration order in `src/cli/index.ts` (affects `--help` ordering): `init, flow, plan, view, archive, roadmap, instructions, update, knowledge, stage, project, config, lint, migrate, model, setup, req`.
 
@@ -220,7 +220,7 @@ Semantics that must be preserved:
 - `plan scheme remove`: only deletes the flow.json registration key (**never** the file). Guard failures: `op-done`, `has-checkpoint` (both overridable with `--force`), otherwise `notFoundTmpl`; exit 1. `--dry-run` prints `remove.dryRunTmpl` and writes nothing. Orphan note when the file remains.
 - `plan scheme register`: back-fills `ops/` files not yet registered (file orphans); `--dry-run` previews; specific `opId` with no file → `notFoundTmpl` exit 1; all-registered → `register.noopTmpl`.
 
-### 3.5 `config` (`src/commands/config.ts`) — 6 leaves
+### 3.5 `config` (`src/commands/config.ts`) — 7 leaves
 
 | Command | Positional | Flags | JSON |
 |---|---|---|---|
@@ -229,6 +229,7 @@ Semantics that must be preserved:
 | `config list-projects` | — | — | — |
 | `config get` | `[key]` | `-g, --global` | — |
 | `config set` | `<key> <value>` | `-g, --global`; `--sync-stages`; `--stage <ids...>` | — |
+| `config unset` | `<key>` (`defaults.X` \| `defaults` \| dot-free top-level section) | `--json`; `-g, --global` accepted by commander but rejected at runtime (`INVALID_ARGUMENT`, zero writes) | ✅ (exit #52, §5.14) |
 | `config effective` | `[key]` | — | — |
 
 - **Global profile keys** (`~/.config/openfeel/profile.yaml`) whitelist + domains: `user.name` (any string), `user.lang` (`zh-CN`\|`en`), `preferences.auto_advance` (`enabled`\|`disabled`), `preferences.review_mode` (`full`\|`skip_small_changes`), `preferences.communication` (`concise`\|`detailed`), `preferences.confirm_threshold` (`low`\|`medium`\|`high`).
@@ -238,6 +239,7 @@ Semantics that must be preserved:
 - `config set` (project) preconditions, all exit 1 and **zero writes**: `--stage` without `--sync-stages`; `--stage`/`--sync-stages` with `--global`; key outside `ConfigDefaultsSchema` (`config.set.invalidKey` listing `<k>（或 defaults.<k>）`); value outside the enum (`config.set.invalidValue`); `workflow_mode=general` at project level (`common.generalOnlyRequirement`); `--stage` ids each normalized and required to be registered **or** an archived explicit version (archived ⇒ downgrade note `config.set.syncArchivedStageTmpl`, status.md only).
 - `config set --sync-stages` then calls `syncConfigFieldToStages(key, value, {onlyStages})` per stage; per-result lines: `updated` / `inserted` / `noop` / `skipped-no-anchor` (stderr) / `skipped-no-status` (stderr) / `skipped-no-field` (stderr), then a summary `config.set.syncSummaryTmpl {updated, inserted, skipped}`. Exit code stays 0 even when stages were skipped. Field mapping: `auto_advance→自动推进`, `execution_mode→执行模式`, `workflow_mode→工作流模式` (`merge_mode` has no stage field → `skipped-no-field`).
 - `config effective [key]`: resolves the four managed keys `execution_mode, auto_advance, merge_mode, workflow_mode` through the cascade **profile.yaml < config.yaml < status.md < builtin** and prints `key=value (source)`; source ∈ `status.md`|`config.yaml`|`profile.yaml`|`builtin`|`requirement`. Unknown key → `effective.unknownKey` listing the valid keys, exit 1.
+- `config unset <key>` (**v1.6.5 / REQ-073, exit #52**): deletes one key from the project `.openfeel/config.yaml` — the **only** delete entry point (`config set` still has no deletion, and the file is guard-protected). `defaults.X` deletes a single key under `defaults` (**no schema whitelist**, so retired keys like `defaults.feel_mode` work); `defaults` deletes the whole block; a dot-free key deletes a top-level section (`models` / `meta`). Existence is decided by the YAML Document's `hasIn`; absent key → `removed:false` + `reason` (`not_found` / `config-missing`) and exit 1 (sets `process.exitCode` then returns — **no** `process.exit`, so Windows pipes are not truncated). Write = `deleteIn` on the same document + atomic write-back, so comments and key order survive; a document emptied to `{}` does **not** delete the file. The result is re-validated with `ConfigSchema` (all three layers optional) → on failure nothing is written (`INTERNAL_ERROR`/3). Illegal key paths (`defaults.`, `a..b`, `__proto__`, `constructor`, `prototype`) and `--global` → `INVALID_ARGUMENT` (refusal/1, zero writes). Deleted `defaults.X` falls back per the `config effective` cascade.
 
 ### 3.6 `knowledge` (`src/commands/knowledge.ts`) — 5 leaves
 
@@ -407,7 +409,7 @@ Loads the schema via `resolveSchema(schemaName, projectPath)`, then emits either
 | `plan stage add` | `.openfeel/plan/<series>/<stage>/` (`overview.md`, `status.md`), flow.json registration. |
 | `plan scheme create` / `publish` / `rename` / `remove` / `register` | `.openfeel/plan/**/ops/op-NNN.md` (+ `ops/deps.yaml`), flow.json `ops` keys/state/title. |
 | `plan scheme remove` | **flow.json key only** (files preserved). |
-| `config set-lang`, `config set` | `~/.openfeel/config.json` / `~/.config/openfeel/profile.yaml` / `.openfeel/config.yaml`; `--sync-stages` also rewrites status.md fields. |
+| `config set-lang`, `config set`, `config unset` | `~/.openfeel/config.json` / `~/.config/openfeel/profile.yaml` / `.openfeel/config.yaml`; `--sync-stages` also rewrites status.md fields; `unset` deletes one key from `.openfeel/config.yaml` (atomic write-back; zero writes on refusal). |
 | `knowledge add`, `archive` | `.openfeel/kb/*.md` (and `kb/index.md`). |
 | `archive` | `.openfeel/log/archive-<stage>.md`, flow.json log, `.openfeel/kb/patterns.md`. |
 | `roadmap create` | `.openfeel/roadmap/v<ver>.md`. |
@@ -421,7 +423,7 @@ Loads the schema via `resolveSchema(schemaName, projectPath)`, then emits either
 
 Modeled on one rule: **`--json` prints exactly one JSON document on stdout, never mixing human prose or stderr text, and `schemaVersion: 1` is always present at the top level** (except `flow archive show`, which emits the archive file whose own `schemaVersion` is `1`). Failures still print a JSON document (and set a non-zero exit code) rather than human text.
 
-18 commands accept `--json`: `flow status|overview|current|metrics|phases|mode`, `flow ops list`, `flow archive`, `flow archive list`, `flow archive show`, `flow health`, `req list|show|split|board|next`, `setup --check`, `instructions`.
+**Frozen `--json` surface (v1.6.5): 52 success exits / 53 registered `--json` options** — the extra option is the `flow advance --json` error-envelope switch (success stays human text); `--version --json` is counted separately. Authoritative table: `docs/json-contract.md` §5; per-command shapes are documented below (the v1.2.1 read-only set, plus `req`, plus `config unset` #52). `config set` has no `--json`; `config unset` is the deliberate exception.
 
 Because `openfeel` never globally registers `--json`, sub-commands take it locally; `flow archive list/show` and `req *` therefore also merge the **parent** command's opts (`command.parent?.opts().json === true`) so `openfeel flow archive list --json` works.
 
@@ -516,6 +518,9 @@ Key order is significant (`schemaVersion`, `phases`, `transitions`, `advanceAcce
   - `{schemaVersion:1, error:"invalid-argument", field:"status"|"id"|"into"|"limit", value?:"…", allowed?:[...]}`
   - `{schemaVersion:1, error:"not_found", id:"REQ-001"}`
   - `{schemaVersion:1, error:"<RequirementErrorCode>", id:"REQ-001"}` (split path)
+
+### 5.14 `config unset --json` (exit **#52**, v1.6.5)
+`{schemaVersion:1, key:"defaults.feel_mode", removed:true, path:"<abs>/.openfeel/config.yaml"}` — four keys, fixed order (`schemaVersion,key,removed,path`); `key` echoes the user's original spelling. Key absent / config file missing → same four keys with `removed:false` plus a **trailing conditional** `reason` (`"not_found"` / `"config-missing"`), exit 1. Illegal key path or `--global` → the standard error envelope (`INVALID_ARGUMENT`, refusal/1, zero writes); re-validation failure → `INTERNAL_ERROR`/3, zero writes. `config set` still has **no** `--json` — unset is a deliberate exception (REQ-073 A73.2 needs the machine-readable `removed` bit).
 
 ---
 

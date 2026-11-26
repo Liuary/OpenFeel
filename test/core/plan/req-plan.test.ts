@@ -77,7 +77,7 @@ describe('需求级计划骨架（v1.6.1 / REQ-064）', () => {
     writeFilledBody();
     const md = buildRequirementPlanSkeleton(tmpDir, { id: 'REQ-001', title: '需求计划生成' }, { now: '2026-01-02T00:00:00.000Z' });
 
-    for (const name of ['目标', '任务拆解', '验收判据', '偏差与回写', '变更记录']) {
+    for (const name of ['目标', '任务拆解', '验收判据', '不做清单', '允许改动', '偏差与回写', '变更记录']) {
       expect(md).toContain(`## ${name}`);
     }
     // 三节写实（判据单点复用 filled.ts，不新写规则）
@@ -102,6 +102,21 @@ describe('需求级计划骨架（v1.6.1 / REQ-064）', () => {
     const md = buildRequirementPlanSkeleton(tmpDir, { id: 'REQ-002', title: '空壳需求' });
     expect(isRequirementPlanFilled(md)).toBe(false);
     expect(extractSection(md, '目标')).toBe('（待补充）');
+  });
+
+  // v1.6.5 / REQ-074 A74.4：范围纪律两节是占位，不是写实判据
+  it('A74.4 新增 `## 不做清单` / `## 允许改动` 两节：占位存在，但 isRequirementPlanFilled 仍只查三节', () => {
+    writeFilledBody();
+    const md = buildRequirementPlanSkeleton(tmpDir, { id: 'REQ-001', title: '需求计划生成' });
+    expect(extractSection(md, '不做清单')).toContain('占位');
+    expect(extractSection(md, '允许改动')).toContain('占位');
+    // 两节占位不得把写实判据放宽：写实正文仍为真
+    expect(isRequirementPlanFilled(md)).toBe(true);
+    // 也不得因为占位而被判写实：空壳正文仍为假
+    writeBody('REQ-005', '空壳需求五', ['## 摘要', '', '（待补充）', '']);
+    const empty = buildRequirementPlanSkeleton(tmpDir, { id: 'REQ-005', title: '空壳需求五' });
+    expect(extractSection(empty, '不做清单')).toContain('占位');
+    expect(isRequirementPlanFilled(empty)).toBe(false);
   });
 
   it('标题缺省回退 ID；空 ID 抛 invalid_field', () => {

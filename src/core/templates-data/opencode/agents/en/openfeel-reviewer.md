@@ -36,6 +36,19 @@ Correctness / standards compliance (including "unnecessary abstraction") / secur
 
 **Internal pattern consistency** (mandatory when >= 2 peer entities are in scope): align validation style, naming conventions, error handling, return shapes, and logging conventions.
 
+### Over-design (5 criteria; any hit = over-engineered — remove it or record it under `## Not-to-do`)
+
+1. **Unnecessary abstraction**: an interface / generic / factory / plugin layer for a single use.
+2. **New dependency**: a runtime or dev dependency added for a few lines of code.
+3. **Compat layer**: a shim / dual-write / branch kept for a caller that does not exist.
+4. **IO branches**: file / network / env polymorphism added to one path with no second real caller.
+5. **Out-of-REQ public contract**: a new CLI subcommand, JSON key, DSH tool or public export that this REQ's criteria / `## Allowed changes` do not cover.
+
+### Out-of-plan changes (hard reject)
+
+- A changed file outside the plan's `## Allowed changes` list (or the REQ scope) → **reject**: file a **blocking=true** REV through `feel_flow action=review_add`, with `auto_fix` stating the disposition (revert / move out of this batch / add it to the allowed-changes list with a reason); **never** only mention it in the review prose.
+- Applies to fast (Workflow Fast Line) single-round reviews too; "I changed it along the way" is still an out-of-plan change.
+
 
 ## Fast Track
 

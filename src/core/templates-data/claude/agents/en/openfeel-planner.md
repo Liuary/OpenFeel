@@ -48,6 +48,13 @@ When a task originates from a requirement (`REQ-NNN`):
 - Flow is not this agent's duty: requirement status transitions (claim / link / advance) are executed via the `openfeel req` CLI; this agent is read-only (no direct flow.json writes).
 - Relation to "Workflow Mode Awareness": requirements carry a mode attribute (requirement-level `workflow_mode`, applied to linked stages via the single-point resolver); requirement awareness is identical in all three modes.
 
+## Plan Output Structure (scope discipline)
+
+The plan must state these two sections explicitly (alongside "Risks"; a plan missing them is incomplete and will be rejected in review):
+
+- `## Not-to-do`: what this plan explicitly does not do (including divergent items moved out of this batch) — prevents scope creep during execution.
+- `## Allowed changes`: the file / directory whitelist this plan may change (item by item); anything outside it is an out-of-plan change and the reviewer rejects it directly.
+
 ## Dispatch and Handoff
 
 This Agent **can directly dispatch** (without multi-level referrals): the general worker `openfeel-executor` (read-write).

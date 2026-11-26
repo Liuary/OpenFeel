@@ -13,9 +13,35 @@
 - **版本号**：批次默认 `patch`；含用户可见新能力/契约变更时 `minor`；发布前必须全门禁通过（测试 / dsh / tsc / i18n / kb / build ×2）。
 - **紧急例外**：安装/发布/安全类阻断可单独 patch，但需在 CHANGELOG 标注并评估同批次未完成项。
 
+### AI 执行纪律（v1.6.5 起机制化）
+
+上面四条以前只是文档规则，AI 仍按「完成即发布」的惯性推进（1.6.0—1.6.4 = 5 个版本 / 17 个 REQ / 约 50 小时，其中两版归档相隔 32 秒且同属一个主题，本应合并为 1 版）。v1.6.5 把它们变成可执行机制，AI 必须照此执行：
+
+- **版本是发布信号，不是开发里程碑**：开发期**不改版本号**；版本只在发布窗口由 `npm run release -- --bump patch|minor|major` 推进（`minor` / `major` 必须给 `--reason`）。
+- **一次发布 = 一个批次**：同批需求拆阶段、**不拆版本**；同一批多个需求放进同一阶段的 `requirements[]`。
+- **同批不连发 patch**：距上次发布不足 24 小时再发 patch 会明确 warn，真实 bump 额外要求 `--confirm-twice`（本版只 warn，硬门登记后续需求）。
+- **新想法进 backlog**：执行中冒出的发散需求记 `draft` + 下一版本 `target_version`，不塞进当前批次。
+- **发布前打印本批次清单**：`--bump` 输出只含「`target_version` = 目标版本 或 关联 `<目标版本>-stage-*` 阶段」的 done REQ（旧 done 被过滤）、阶段与改动文件数；清单为空说明本批次没有可发布的 REQ。
+
+## 发布指标定义（v1.6.5 / A74.5）
+
+> **只定义口径，不实现采集**。dashboard / metrics 采集与展示、批次锁 `BATCH_LOCKED`、`<24h` 硬门均登记为后续需求，本版不实现。本节与 `openfeel flow metrics`（进程健康：resumed 比例 / `plan_pending → plan_review` 停留 / 最近 preflight 年龄）**严格区分**——后者不读发布数据。
+
+| 指标 | 公式 / 口径 | 数据源 | 空样本 |
+|---|---|---|---|
+| `releasesLast7d` | 近 7 天发布次数：`count(archived_at ≥ now-7d)`，同一 `version` 只计一次 | `.openfeel/flow-archive/*.json` 的 `archived_at` | `0`（真的没有发布） |
+| `medianIntervalHours` | 相邻发布间隔中位数：`median(archived_at[i] − archived_at[i−1])`（小时） | 同上（按 `archived_at` 升序） | `null`（样本 < 2，不是 0） |
+| `reqsPerVersion` | 每版 done 需求数：该版本归档 `requirements.length`（或 `target_version` = 该版本的 done REQ 数）；跨版本另报均值 / 中位数 | flow-archive 的 `requirements` + `flow.json` | `null` |
+| `patchPerMinor` | `patch 发布数 ÷ minor 发布数`（按 SemVer 第二段是否变化判档；`major` 不计入分母） | 版本号序列 | `null`（分母 0） |
+| `outOfBatchRatio` | 批次外改动占比：`不属于本批次 REQ / 阶段允许改动清单的改动文件数 ÷ 本批次改动文件总数` | 本批次清单（`--bump` 输出）+ `git diff --name-only` | `null`（0 文件） |
+
+> 判读：`releasesLast7d` 高而 `reqsPerVersion` 低、`patchPerMinor` 偏大 → 典型的「一需求一发版」；`outOfBatchRatio` > 0 表示执行期出现了计划外改动（reviewer 应已按 A74.4 落 blocking REV）。
+
 ## English highlights
 
 OpenFeel is a CLI for AI-agent development process governance. Recent releases:
+
+- **v1.6.5** — Restraint becomes mechanism, plus a real delete entry for config: `openfeel config unset <key>` removes either a `defaults.X` key or a whole top-level section (e.g. the retired `models:`) from `.openfeel/config.yaml`, keeping comments and key order, with `--json` `{schemaVersion,key,removed,path}` (exit 1 + `reason` when absent; `--global` unsupported) and DSH `feel_verify action=config_unset` (still 15 tools, 52 success exits / 53 registered `--json` options). `npm run release -- --bump patch|minor|major` is now the only place a version moves: the target is derived from the last release baseline, it prints the batch list (done requirements filtered by target version / this version's stages — stale entries excluded) before writing the four version fields, is a no-op when already at the target, needs `--confirm` (bump only) and an extra `--confirm-twice` when re-releasing a patch < 24h after the previous release (warn only, not a hard gate). The feel-mode prompt gains a version-discipline checkpoint (patch/minor/major, one batch per release, ideas to backlog) inside the 1200-char / 25-line budget, reviewer templates gain five over-design criteria plus mandatory blocking REVs for out-of-plan changes, and `docs/VERSIONS.md` documents the release-cadence rules and five release metrics (definitions only). The write guard allowlists the repo's own `node scripts/release.mjs` dry-run only (realpath-bound to a project root containing `.openfeel/`, so a same-named script in TEMP is still denied), and the global-config migrate/update tests are isolated from the real home directory. Two packages are 1.6.5 lockstep, `openfeel.requiresCli >=1.6.5`.
 
 - **v1.6.4** — Cleanup release with **zero behavior change**: the unreachable `model.get.inconsistent` / `model.get.shadowed` i18n strings and their three dead branches in `model.ts` are gone, while the internal `byScope.default` / `inconsistent` fields and every `model --json` key stay put — `dsh/docs/compat/commands.md` now says the branches were removed in v1.6.4. The adapter's verification counts are refreshed to five suites (snapshot dated 2026-11-26) across `dsh/ADAPTER.md`, `dsh/README.md` and `dsh/ACTION-GUIDE.md`; `docs/GETTING_STARTED.md` explains how to drop the stale, non-effective `models:` block from an old project's `.openfeel/config.yaml` (manual edit only — the file is guard-protected — then restart the session). Two packages are 1.6.4 lockstep, `openfeel.requiresCli >=1.6.4`.
 
@@ -60,6 +86,16 @@ OpenFeel is a CLI for AI-agent development process governance. Recent releases:
 - **v1.2.1** — Requirement intake/splitting (`req`), three workflow modes (`full` / `fast` / `general`), review tiers.
 - **v1.2.0** — Version-shard archiving (`flow archive`) and requirement flow (`req`).
 - Upgrade: `npm i -g openfeel@latest` → `openfeel setup` → restart the harness.
+
+## v1.6.5 — 克制机制：版本只在发布窗口动 + `config unset` 配置删除入口
+
+- **`openfeel config unset <key>`**：项目配置终于有了**删除入口**（此前只能手改、而 `config.yaml` 受 guard 保护 —— agent 改不了）。支持 `defaults.X` 单键（不限 schema，退役键也能删）、`defaults` 整段、无点号的**顶层段**（如旧项目的退役 `models:`）；同一 YAML Document 删除后原子写回，**注释、行内注释与其它键序全部保留**。键不存在 → exit 1；`--json` = `{schemaVersion,key,removed,path}`（不存在时末位追加 `reason`）；`--global` 不支持（不覆盖 profile 键域）。DSH 侧以 `feel_verify action=config_unset` 复用，**工具数仍 15**。
+- **`npm run release -- --bump patch|minor|major`**：版本**只在发布窗口动** —— 目标版本由上次发布基线递增（不取当前 `package.json`），已等于目标时打印 `no-op` 且零写盘（不会顺手变成下一个补丁）；真实 bump 写 4 个版本字段、必须 `--confirm`（**只约束 `--bump`**，`--publish` / `--push` 语义不变），`minor` / `major` 必须给 `--reason`。
+- **发布前看得见本批次**：`--bump` 先打印「REQ / 阶段 / 改动文件」清单，只含 `target_version` = 目标版本或关联该版本阶段的 done 需求（**旧的 done 被过滤**）；距上次发布 < 24h 再发 patch 会明确 warn，并要求 `--confirm-twice` 二次确认（本版只 warn，硬门登记后续）。
+- **提示词里的版本纪律**：版本是发布信号不是开发里程碑、一次发布=一个批次（同批需求拆阶段不拆版本）、新想法进 backlog、同批不连发 patch、结构性才 minor、破坏性才 major —— 写进 feel_mode 提示段（仍在 1200 字符 / 25 行预算内）与 `DEV_CORE` 规则，`docs/VERSIONS.md` 同步给出五条发布指标口径（只定义、不采集）。
+- **审查与计划模板加「克制」判据**：reviewer 新增过度设计五条（不必要抽象 / 新依赖 / 兼容层 / IO 分支 / REQ 外公开契约），计划外改动必须落 blocking REV；planner 计划结构新增「不做清单」与「允许改动」两节。
+- **发布预演不再被门禁拦死**：guard 只放行仓库自身 `node scripts/release.mjs` 的纯 dry-run（`--dry-run` / `--skip-build`），且绑定「含 `.openfeel/` 的项目根」—— 真实发布参数、TEMP / 仓外同名脚本照旧拒绝；migrate / update 的全局配置测试与真实 home 隔离（真实文件零写入）。
+- 版本 1.6.5（root / dsh lockstep、`requiresCli >=1.6.5`）。升级：`npm i -g openfeel@latest` → `openfeel setup` → 重启 harness。
 
 ## v1.6.4 — 清理债：model 死文案/死分支、验证计数与 config models 迁移提示
 

@@ -2,8 +2,8 @@
   "meta": {
     "version": "1.0",
     "project": "OpenFeel",
-    "updated": "2026-11-26T15:51:20.496Z",
-    "revision": 2691,
+    "updated": "2026-11-26T15:51:29.867Z",
+    "revision": 2692,
     "archived_versions": [
       "v1.0.0",
       "v1.1.0",
@@ -56,48 +56,20 @@
       "v1.6.1",
       "v1.7.0",
       "v1.6.3",
-      "v1.6.2"
+      "v1.6.2",
+      "v1.6.4"
     ],
     "last_req_seq": 72
   },
   "pipeline": {
-    "phase": "done",
+    "phase": "active",
     "current": {
-      "stage": "v1.6.4-stage-137",
+      "stage": "",
       "op": ""
     },
     "retry": 0
   },
-  "stages": {
-    "v1.6.4-stage-137": {
-      "name": "v1.6.4-stage-137",
-      "phase": "done",
-      "status": "done",
-      "deps": [],
-      "ops": {},
-      "workflow_mode": "fast",
-      "requirements": [
-        {
-          "id": "REQ-071",
-          "order": 0
-        }
-      ],
-      "stats": {
-        "start_time": "2026-11-26T15:17:57.182Z",
-        "end_time": "2026-11-26T15:51:20.472Z",
-        "duration_ms": 2003290
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "review-v164",
-        "at": "2026-11-26T15:51:14.666Z",
-        "note": "REQ-071 收口：死分支/死键清理、文档计数同步、迁移提示、版本 1.6.4；release dry-run 门禁偏差登记为 1.6.5（REQ-072）。",
-        "evidence": "tsc 0；npm test 2695 passed；build ×2 幂等；dsh 五测全绿；lint i18n 1338；--version 1.6.4；文档旧计数与版本指针 0 残留",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    }
-  },
+  "stages": {},
   "reviews": [],
   "log": [
     {
@@ -1945,15 +1917,6 @@
       }
     },
     {
-      "time": "2026-11-26T15:11:34.549Z",
-      "agent": "cli",
-      "action": "register_stage",
-      "detail": {
-        "stageName": "v1.6.4-stage-137",
-        "deps": []
-      }
-    },
-    {
       "time": "2026-11-26T15:11:36.345Z",
       "agent": "cli",
       "action": "requirement_link",
@@ -1961,29 +1924,6 @@
         "stage": "v1.6.4-stage-137",
         "requirementId": "REQ-071",
         "action": "link"
-      }
-    },
-    {
-      "time": "2026-11-26T15:17:57.178Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.4-stage-137",
-        "from": "plan_pending",
-        "to": "plan_review",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
-    },
-    {
-      "time": "2026-11-26T15:29:07.129Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.4-stage-137",
-        "from": "plan_review",
-        "to": "plan_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -2013,18 +1953,6 @@
         "id": "REQ-071",
         "from": "scheduled",
         "to": "in_progress"
-      }
-    },
-    {
-      "time": "2026-11-26T15:29:21.330Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.4-stage-137",
-        "from": "plan_passed",
-        "to": "exec_running",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -2069,18 +1997,6 @@
       }
     },
     {
-      "time": "2026-11-26T15:50:39.160Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.4-stage-137",
-        "from": "exec_running",
-        "to": "review_pending",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
       "time": "2026-11-26T15:51:01.301Z",
       "agent": "cli",
       "action": "requirement_status",
@@ -2088,30 +2004,6 @@
         "id": "REQ-071",
         "from": "review_pending",
         "to": "done"
-      }
-    },
-    {
-      "time": "2026-11-26T15:51:03.944Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.4-stage-137",
-        "from": "review_pending",
-        "to": "review_passed",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
-      }
-    },
-    {
-      "time": "2026-11-26T15:51:09.635Z",
-      "agent": "cli",
-      "action": "advance_stage_phase",
-      "detail": {
-        "stageName": "v1.6.4-stage-137",
-        "from": "review_passed",
-        "to": "archiving",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
       }
     },
     {
@@ -2126,15 +2018,15 @@
       }
     },
     {
-      "time": "2026-11-26T15:51:20.467Z",
+      "time": "2026-11-26T15:51:29.867Z",
       "agent": "cli",
-      "action": "advance_stage_phase",
+      "action": "archive_flow_version",
       "detail": {
-        "stageName": "v1.6.4-stage-137",
-        "from": "archiving",
-        "to": "done",
-        "session_id": "project:408e3133-7190-431c-8404-cd1e838387dc",
-        "resumed": false
+        "version": "v1.6.4",
+        "stages": 1,
+        "reviews": 0,
+        "log": 8,
+        "requirements": 1
       }
     }
   ],
@@ -2357,40 +2249,6 @@
       "body_path": ".openfeel/requirements/REQ-017.md",
       "owner": "Liuary",
       "claimed_at": "2026-10-31T10:24:48.059Z"
-    },
-    {
-      "id": "REQ-071",
-      "title": "1.6.4 清理债：model 死文案/死分支 + ADAPTER 验证计数 + config models 迁移提示",
-      "status": "done",
-      "created_at": "2026-11-25T18:11:25.302Z",
-      "updated_at": "2026-11-26T15:51:01.301Z",
-      "target_version": "v1.6.4",
-      "priority": "P2",
-      "body_path": ".openfeel/requirements/REQ-071.md",
-      "owner": "Liuary",
-      "claimed_at": "2026-11-26T15:29:10.885Z",
-      "plan": {
-        "path": ".openfeel/plan/reqs/REQ-071.plan.md",
-        "sha256": "4d1759ace555",
-        "recorded_at": "2026-11-26T15:29:21.315Z"
-      },
-      "review": {
-        "result": "pass",
-        "by": "review-v164",
-        "at": "2026-11-26T15:50:26.492Z",
-        "note": "独立审查 APPROVE_WITH_FIXES（0 blocking）：死分支/死键删除、JSON 字段与键序保留、dsh 三文档计数与 compat 指针已同步、迁移提示到位、版本 1.6.4 九处一致；release dry-run 门禁偏差按设计行为登记为 1.6.5。",
-        "independent": true,
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      },
-      "verification": {
-        "result": "pass",
-        "kind": "test",
-        "by": "review-v164",
-        "at": "2026-11-26T15:50:37.046Z",
-        "note": "1.6.4 清理债收口；无行为改动。",
-        "evidence": "tsc 0；npm test 2695 passed（107 files，复跑 0 failed）；build ×2；dsh contract 54/verify 136/guard 193/preflight 10/integration 0；lint i18n 1338；--version 1.6.4；get/list JSON 键序与 --scope default null 实测",
-        "session": "project:408e3133-7190-431c-8404-cd1e838387dc"
-      }
     },
     {
       "id": "REQ-072",
